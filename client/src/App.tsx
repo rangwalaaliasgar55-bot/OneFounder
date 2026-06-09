@@ -15,6 +15,7 @@ import { SettingsPage } from './pages/SettingsPage'
 import { SocialPage } from './pages/SocialPage'
 import { FinancePage } from './pages/FinancePage'
 import { SeoPage } from './pages/SeoPage'
+import { JourneyPage } from './pages/JourneyPage'
 
 type Page =
   | 'dashboard'
@@ -30,6 +31,7 @@ type Page =
   | 'social'
   | 'finance'
   | 'seo'
+  | 'journey'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -76,6 +78,7 @@ export default function App() {
     social: <SocialPage />,
     finance: <FinancePage />,
     seo: <SeoPage />,
+    journey: <JourneyPage />,
   }
 
   return (

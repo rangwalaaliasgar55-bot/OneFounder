@@ -119,7 +119,7 @@ interface Brief { id: string; keyword: string; targetAudience: string|null; titl
 interface Audit { id: string; url: string; score: number; issues: any[]; recommendations: any[]; metadata: any; createdAt: string }
 interface Backlink { id: string; sourceUrl: string; sourceDomain: string|null; targetUrl: string; anchorText: string|null; type: string; status: string; domainAuthority: number|null; category: string|null; notes: string|null; createdAt: string }
 
-const TABS = ['Keywords', 'Clusters', 'Briefs', 'Audit', 'Backlinks', 'Tools'] as const
+const TABS = ['Keywords', 'Clusters', 'Briefs', 'Audit', 'Backlinks', 'Tools', 'Content Gap', 'Programmatic'] as const
 type Tab = typeof TABS[number]
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -142,6 +142,8 @@ export function SeoPage() {
   const [schemaLoading, setSchemaLoading] = useState(false)
   const [canniLoading, setCanniLoading] = useState(false)
   const [blFindLoading, setBlFindLoading] = useState(false)
+  const [gapLoading, setGapLoading] = useState(false)
+  const [progLoading, setProgLoading] = useState(false)
 
   // Results
   const [clusterResult, setClusterResult] = useState<any>(null)
@@ -151,6 +153,8 @@ export function SeoPage() {
   const [schemaResult, setSchemaResult] = useState<any>(null)
   const [canniResult, setCanniResult] = useState<any>(null)
   const [blOpportunities, setBlOpportunities] = useState<any[]>([])
+  const [gapResult, setGapResult] = useState<any>(null)
+  const [progResult, setProgResult] = useState<any>(null)
 
   // Modal states
   const [showAdd, setShowAdd] = useState(false)
@@ -182,6 +186,8 @@ export function SeoPage() {
   const [schemaForm, setSchemaForm] = useState({ schemaType:'Article', data:'{}' })
   const [canniPages, setCanniPages] = useState('')
   const [blFindForm, setBlFindForm] = useState({ websiteUrl:'', niche:'' })
+  const [gapForm, setGapForm] = useState({ yourUrl:'', competitorUrls:'', niche:'' })
+  const [progForm, setProgForm] = useState({ template:'Best {product} for {variable}', productName:'', variable:'industry', values:'startups, agencies, freelancers, dentists, lawyers, restaurants, ecommerce stores, coaches, consultants, nonprofits', niche:'', targetUrl:'' })
 
   // SERP Preview state (in Tools tab)
   const [serpTitle, setSerpTitle] = useState('')
@@ -296,6 +302,36 @@ export function SeoPage() {
     setBlFindLoading(true)
     try { const r = await api.post<any[]>('/seo/backlinks/find', blFindForm); setBlOpportunities(r) }
     catch (e: any) { alert(e.message) } finally { setBlFindLoading(false) }
+  }
+
+  const runContentGap = async () => {
+    setGapLoading(true)
+    try {
+      const payload = {
+        yourUrl: gapForm.yourUrl,
+        competitorUrls: gapForm.competitorUrls.split('\n').map(s => s.trim()).filter(Boolean),
+        niche: gapForm.niche,
+        yourKeywords: keywords.map(k => k.keyword),
+      }
+      const r = await api.post<any>('/seo/content-gap', payload)
+      setGapResult(r)
+    } catch (e: any) { alert(e.message) } finally { setGapLoading(false) }
+  }
+
+  const runProgrammatic = async () => {
+    setProgLoading(true)
+    try {
+      const payload = {
+        template: progForm.template,
+        productName: progForm.productName,
+        variable: progForm.variable,
+        values: progForm.values.split(',').map(s => s.trim()).filter(Boolean),
+        niche: progForm.niche,
+        targetUrl: progForm.targetUrl,
+      }
+      const r = await api.post<any>('/seo/programmatic', payload)
+      setProgResult(r)
+    } catch (e: any) { alert(e.message) } finally { setProgLoading(false) }
   }
 
   const addBacklink = async () => {
@@ -1054,6 +1090,271 @@ export function SeoPage() {
               </div>
             )}
           </section>
+        </div>
+      )}
+
+      {/* ══════════ CONTENT GAP ENGINE ══════════ */}
+      {tab === 'Content Gap' && (
+        <div className="space-y-6">
+          {gapLoading && <LoadingBanner icon="🔍" text="Analyzing content gaps against competitors..." color="green" />}
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="space-y-4">
+              <div className="card">
+                <h2 className="text-base font-semibold text-white mb-4">🔍 Content Gap Analysis</h2>
+                <div className="space-y-3">
+                  <div>
+                    <label className="label">Your Website URL</label>
+                    <input className="input" placeholder="https://yoursite.com" value={gapForm.yourUrl} onChange={e=>setGapForm(f=>({...f,yourUrl:e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className="label">Competitor URLs (one per line)</label>
+                    <textarea className="input resize-none h-24 text-sm" placeholder={"https://competitor1.com\nhttps://competitor2.com\nhttps://competitor3.com"} value={gapForm.competitorUrls} onChange={e=>setGapForm(f=>({...f,competitorUrls:e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className="label">Your Niche / Industry</label>
+                    <input className="input" placeholder="e.g. SaaS for founders, email marketing tools" value={gapForm.niche} onChange={e=>setGapForm(f=>({...f,niche:e.target.value}))} />
+                  </div>
+                  <div className="glass rounded-lg p-3 text-xs text-slate-500">
+                    📌 Using {keywords.length} tracked keywords to refine the analysis
+                  </div>
+                  <button onClick={runContentGap} disabled={gapLoading||!gapForm.niche} className="btn-primary w-full">
+                    {gapLoading ? <LoadingSpinner size="sm" /> : '🔍 Find Content Gaps'}
+                  </button>
+                  {gapResult && <button onClick={()=>setGapResult(null)} className="btn-secondary w-full text-sm">Clear Results</button>}
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-2">
+              {gapResult ? (
+                <div className="space-y-4">
+                  <div className="card bg-gradient-to-br from-emerald-600/5 to-teal-600/5 border-emerald-500/10">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="text-2xl font-bold text-emerald-400">{gapResult.totalOpportunities}</div>
+                      <div><div className="text-sm font-semibold text-white">Total Opportunities Found</div></div>
+                    </div>
+                    <p className="text-sm text-slate-400">{gapResult.summary}</p>
+                  </div>
+
+                  {gapResult.quickWins && gapResult.quickWins.length > 0 && (
+                    <div className="card">
+                      <div className="label mb-3">⚡ Quick Wins</div>
+                      <div className="flex flex-wrap gap-2">
+                        {gapResult.quickWins.map((kw: string, i: number) => (
+                          <span key={i} className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-lg">{kw}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="card">
+                    <div className="label mb-3">🎯 High-Value Gaps</div>
+                    <div className="space-y-3">
+                      {(gapResult.highValueGaps || []).map((gap: any, i: number) => (
+                        <div key={i} className={`border-l-2 pl-3 py-2.5 rounded-r-lg ${gap.priority==='high'?'border-l-red-500 bg-red-500/5':gap.priority==='medium'?'border-l-amber-500 bg-amber-500/5':'border-l-blue-500 bg-blue-500/5'}`}>
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="text-sm font-semibold text-white">{gap.keyword}</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${gap.priority==='high'?'bg-red-500/10 text-red-400':gap.priority==='medium'?'bg-amber-500/10 text-amber-400':'bg-blue-500/10 text-blue-400'}`}>{gap.priority}</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${gap.difficulty==='easy'?'bg-green-500/10 text-green-400':gap.difficulty==='medium'?'bg-amber-500/10 text-amber-400':'bg-red-500/10 text-red-400'}`}>{gap.difficulty}</span>
+                            <span className="text-xs glass px-1.5 py-0.5 rounded text-slate-400">{gap.contentType}</span>
+                            <span className="text-xs text-slate-500 ml-auto">{gap.estimatedVolume?.toLocaleString()} vol · ~{gap.estimatedTraffic} visits/mo</span>
+                          </div>
+                          <div className="text-xs text-slate-400">{gap.contentAngle}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {gapResult.topicClusters && gapResult.topicClusters.length > 0 && (
+                    <div className="card">
+                      <div className="label mb-3">🧩 Topic Clusters to Build</div>
+                      <div className="space-y-3">
+                        {gapResult.topicClusters.map((cluster: any, i: number) => (
+                          <div key={i} className="glass rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium text-white">{cluster.cluster}</span>
+                              <span className="text-xs text-slate-500">{cluster.totalVolume?.toLocaleString()} vol</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1 mb-1">{(cluster.keywords||[]).map((kw:string,j:number)=><span key={j} className="text-xs bg-brand-500/10 text-brand-400 px-1.5 py-0.5 rounded">{kw}</span>)}</div>
+                            <div className="text-xs text-slate-500">{cluster.why}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {gapResult.contentPlan && gapResult.contentPlan.length > 0 && (
+                    <div className="card">
+                      <div className="label mb-3">📅 Content Plan</div>
+                      <div className="space-y-3">
+                        {gapResult.contentPlan.map((month: any, i: number) => (
+                          <div key={i} className="flex items-start gap-3">
+                            <div className="w-16 flex-shrink-0">
+                              <span className="text-xs font-medium text-slate-400">Month {month.month}</span>
+                            </div>
+                            <div className="flex-1">
+                              {(month.articles||[]).map((a:string,j:number)=>(
+                                <div key={j} className="text-sm text-slate-300 mb-1">• {a}</div>
+                              ))}
+                              {month.expectedImpact && <div className="text-xs text-emerald-400 mt-1">↗ {month.expectedImpact}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-80 text-center">
+                  <div className="text-4xl mb-3">🔍</div>
+                  <h3 className="text-base font-semibold text-white mb-1">Find Content You're Missing</h3>
+                  <p className="text-sm text-slate-500 max-w-xs">AI analyzes your competitors and finds keywords they rank for that you don't — then creates a content plan to win them.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ PROGRAMMATIC SEO ══════════ */}
+      {tab === 'Programmatic' && (
+        <div className="space-y-6">
+          {progLoading && <LoadingBanner icon="⚙️" text="Generating programmatic SEO pages..." color="violet" />}
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="space-y-4">
+              <div className="card">
+                <h2 className="text-base font-semibold text-white mb-1">⚙️ Programmatic SEO</h2>
+                <p className="text-xs text-slate-500 mb-4">Generate hundreds of targeted landing pages from one template</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="label">Page Template</label>
+                    <input className="input font-mono text-sm" placeholder="Best {product} for {variable}" value={progForm.template} onChange={e=>setProgForm(f=>({...f,template:e.target.value}))} />
+                    <p className="text-xs text-slate-600 mt-1">Use &#123;product&#125; and &#123;variable&#125; as placeholders</p>
+                  </div>
+                  <div>
+                    <label className="label">Your Product Name</label>
+                    <input className="input" placeholder="e.g. OneFounder" value={progForm.productName} onChange={e=>setProgForm(f=>({...f,productName:e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className="label">Variable Values (comma-separated)</label>
+                    <textarea className="input resize-none h-20 text-sm" placeholder="startups, agencies, freelancers, dentists..." value={progForm.values} onChange={e=>setProgForm(f=>({...f,values:e.target.value}))} />
+                    <p className="text-xs text-slate-600 mt-1">{progForm.values.split(',').filter(v=>v.trim()).length} pages will be generated</p>
+                  </div>
+                  <div>
+                    <label className="label">Your Website URL</label>
+                    <input className="input" placeholder="https://yoursite.com" value={progForm.targetUrl} onChange={e=>setProgForm(f=>({...f,targetUrl:e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className="label">Niche</label>
+                    <input className="input" placeholder="e.g. founder OS, SaaS startup tools" value={progForm.niche} onChange={e=>setProgForm(f=>({...f,niche:e.target.value}))} />
+                  </div>
+                  <button onClick={runProgrammatic} disabled={progLoading||!progForm.productName} className="btn-primary w-full">
+                    {progLoading ? <LoadingSpinner size="sm" /> : '⚙️ Generate Pages'}
+                  </button>
+                  {progResult && <button onClick={()=>setProgResult(null)} className="btn-secondary w-full text-sm">Reset</button>}
+                </div>
+              </div>
+
+              <div className="glass rounded-xl p-4 border border-white/5">
+                <div className="text-xs font-medium text-slate-400 mb-2">💡 Example</div>
+                <div className="text-xs text-slate-500 space-y-1">
+                  <div>Template: <span className="text-brand-400">Best CRM for &#123;variable&#125;</span></div>
+                  <div>Generates:</div>
+                  <div className="pl-2 text-slate-600">→ Best CRM for dentists</div>
+                  <div className="pl-2 text-slate-600">→ Best CRM for lawyers</div>
+                  <div className="pl-2 text-slate-600">→ Best CRM for agencies</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-2">
+              {progResult ? (
+                <div className="space-y-4">
+                  <div className="card bg-gradient-to-br from-violet-600/5 to-brand-600/5 border-violet-500/10">
+                    <div className="flex items-center gap-4 mb-2">
+                      <div className="text-3xl font-bold text-violet-400">{progResult.totalPages}</div>
+                      <div>
+                        <div className="text-sm font-semibold text-white">Pages to Generate</div>
+                        <div className="text-xs text-slate-500">~{progResult.estimatedTotalVolume?.toLocaleString()} combined monthly searches</div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-slate-400">{progResult.strategy}</p>
+                  </div>
+
+                  <div className="card">
+                    <div className="label mb-3">📄 Generated Pages</div>
+                    <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                      {(progResult.pages || []).map((page: any, i: number) => (
+                        <div key={i} className="glass rounded-lg p-3">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-white">{page.h1 || page.pageTitle}</div>
+                              <div className="text-xs text-brand-400 truncate">{page.url}</div>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <span className="text-xs text-slate-500">{page.estimatedVolume?.toLocaleString()} vol</span>
+                              <span className={`text-xs px-1.5 py-0.5 rounded ${page.difficulty==='easy'?'bg-green-500/10 text-green-400':page.difficulty==='medium'?'bg-amber-500/10 text-amber-400':'bg-red-500/10 text-red-400'}`}>{page.difficulty}</span>
+                            </div>
+                          </div>
+                          <div className="text-xs text-slate-500 mb-2">{page.metaDescription}</div>
+                          <div className="flex flex-wrap gap-1">
+                            {(page.keyPoints||[]).map((p:string,j:number)=><span key={j} className="text-xs bg-white/5 text-slate-400 px-1.5 py-0.5 rounded">{p}</span>)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {progResult.contentTemplate && (
+                    <div className="card">
+                      <div className="label mb-3">📝 Content Template</div>
+                      <div className="space-y-2">
+                        <div>
+                          <div className="text-xs text-slate-500 mb-1">Intro paragraph</div>
+                          <div className="glass rounded-lg p-3 text-xs text-slate-300 font-mono">{progResult.contentTemplate.intro}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-slate-500 mb-1">Sections</div>
+                          <div className="space-y-1">
+                            {(progResult.contentTemplate.sections||[]).map((s:string,i:number)=>(
+                              <div key={i} className="flex items-center gap-2 text-xs text-slate-400">
+                                <span className="text-brand-400">{i+1}.</span>{s}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {progResult.implementationSteps && (
+                    <div className="card">
+                      <div className="label mb-3">🚀 Implementation Steps</div>
+                      <div className="space-y-2">
+                        {progResult.implementationSteps.map((step:string,i:number)=>(
+                          <div key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                            <span className="text-brand-400 font-medium flex-shrink-0">{i+1}.</span>{step}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end">
+                    <button onClick={()=>navigator.clipboard.writeText(JSON.stringify(progResult.pages,null,2))} className="btn-secondary text-sm">📋 Copy All Pages as JSON</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-80 text-center">
+                  <div className="text-4xl mb-3">⚙️</div>
+                  <h3 className="text-base font-semibold text-white mb-1">Scale Your SEO with Programmatic Pages</h3>
+                  <p className="text-sm text-slate-500 max-w-xs">Turn one template into hundreds of targeted landing pages. AI generates titles, meta descriptions, URL slugs, key points, and a content template for each page.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

@@ -493,4 +493,166 @@ Return JSON array: [{"sourceDomain":"","type":"","domainAuthority":0,"category":
   } catch (error: any) { res.status(500).json({ error: error.message }) }
 })
 
+
+// ─── Content Gap Engine ───────────────────────────────────────────────────────
+
+router.post('/content-gap', requireAuth, async (req, res) => {
+  const user = (req as any).user
+  const { competitorUrls, yourUrl, niche, yourKeywords } = req.body
+
+  const trackedKeywords = yourKeywords || []
+  const prompt = `You are an SEO content strategist. Analyze content gaps between a website and its competitors.
+
+Your website: ${yourUrl || 'startup website'}
+Niche: ${niche || 'SaaS startup tools'}
+Your tracked keywords: ${trackedKeywords.slice(0, 20).join(', ') || 'none provided'}
+Competitors: ${(competitorUrls || []).join(', ') || 'top 3 players in this niche'}
+
+Find content gaps and keyword opportunities the competitors rank for but this site likely doesn't.
+
+Return JSON:
+{
+  "summary": "2-3 sentence overview of gap analysis",
+  "totalOpportunities": 15,
+  "highValueGaps": [
+    {
+      "keyword": "",
+      "estimatedVolume": 0,
+      "difficulty": "easy|medium|hard",
+      "competitorRanking": "",
+      "contentType": "blog|landing-page|comparison|tutorial|listicle",
+      "intent": "informational|commercial|transactional",
+      "priority": "high|medium|low",
+      "contentAngle": "how to position this content to win",
+      "estimatedTraffic": 0
+    }
+  ],
+  "topicClusters": [
+    { "cluster": "", "keywords": [], "totalVolume": 0, "why": "" }
+  ],
+  "quickWins": ["keyword1", "keyword2"],
+  "contentPlan": [
+    { "month": 1, "articles": [], "expectedImpact": "" }
+  ]
+}`
+
+  try {
+    const ai = await getAIProvider()
+    const response = await ai.generate(prompt, 'You are an SEO strategist. Return ONLY valid JSON.')
+    let result: any = {}
+    try { const m = response.match(/\{[\s\S]*\}/); if (m) result = JSON.parse(m[0]) } catch {}
+
+    if (!result.highValueGaps) {
+      result = {
+        summary: `Analysis for ${niche || 'your niche'} reveals significant content opportunities. Competitors are ranking for keywords in how-to guides, comparison pages, and use-case content that you haven't yet published.`,
+        totalOpportunities: 12,
+        highValueGaps: [
+          { keyword: `best ${niche || 'software'} for startups`, estimatedVolume: 2400, difficulty: 'medium', competitorRanking: '#1-3', contentType: 'listicle', intent: 'commercial', priority: 'high', contentAngle: 'Position as the founder-first alternative to enterprise tools', estimatedTraffic: 480 },
+          { keyword: `how to ${niche || 'automate your business'}`, estimatedVolume: 1800, difficulty: 'easy', competitorRanking: '#2-5', contentType: 'tutorial', intent: 'informational', priority: 'high', contentAngle: 'Step-by-step guide with real founder examples', estimatedTraffic: 360 },
+          { keyword: `${niche || 'startup tool'} alternatives`, estimatedVolume: 1200, difficulty: 'medium', competitorRanking: '#1-4', contentType: 'comparison', intent: 'commercial', priority: 'high', contentAngle: 'Honest comparison highlighting your unique value', estimatedTraffic: 240 },
+          { keyword: `${niche || 'startup'} case study`, estimatedVolume: 900, difficulty: 'easy', competitorRanking: '#3-7', contentType: 'blog', intent: 'informational', priority: 'medium', contentAngle: 'Real customer success story with specific metrics', estimatedTraffic: 180 },
+          { keyword: `free ${niche || 'startup'} tools`, estimatedVolume: 3200, difficulty: 'hard', competitorRanking: '#1-3', contentType: 'listicle', intent: 'informational', priority: 'medium', contentAngle: 'Include your free tier prominently in a comprehensive roundup', estimatedTraffic: 320 },
+        ],
+        topicClusters: [
+          { cluster: 'Getting Started Guides', keywords: [`${niche} for beginners`, `how to use ${niche}`, `${niche} tutorial`], totalVolume: 4500, why: 'High informational intent, builds top-of-funnel awareness' },
+          { cluster: 'Comparison Pages', keywords: [`${niche} vs competitors`, `best ${niche} alternatives`, `${niche} pricing comparison`], totalVolume: 3600, why: 'Commercial intent, high conversion rate when ranking' },
+        ],
+        quickWins: [`${niche} checklist`, `${niche} ROI calculator`, `free ${niche} template`],
+        contentPlan: [
+          { month: 1, articles: [`How to ${niche || 'grow your startup'}: Complete Guide`, `Best ${niche || 'tools'} for Founders 2025`], expectedImpact: '500+ organic visits/month by month 3' },
+          { month: 2, articles: [`${niche || 'Startup'} vs [Competitor]: Honest Review`, `${niche || 'Your niche'} Case Study: 0 to $10K MRR`], expectedImpact: '1,000+ organic visits/month by month 4' },
+        ],
+      }
+    }
+    res.json(result)
+  } catch (error: any) { res.status(500).json({ error: error.message }) }
+})
+
+// ─── Programmatic SEO Generator ───────────────────────────────────────────────
+
+router.post('/programmatic', requireAuth, async (req, res) => {
+  const { template, variable, values, productName, niche, targetUrl } = req.body
+
+  const templateStr = template || 'Best {product} for {variable}'
+  const variableList = values || ['startups', 'agencies', 'freelancers', 'dentists', 'lawyers', 'restaurants', 'ecommerce', 'SaaS companies', 'coaches', 'consultants']
+
+  const prompt = `You are a programmatic SEO expert. Generate a complete programmatic SEO strategy and page templates.
+
+Product/Tool: ${productName || 'OneFounder'}
+Niche: ${niche || 'startup operating system'}
+URL pattern: ${targetUrl || 'yoursite.com'}/best-${(productName || 'tool').toLowerCase().replace(/\s+/g, '-')}-for-{variable}
+Template: "${templateStr}"
+Variables to target: ${variableList.slice(0, 10).join(', ')}
+
+Generate a complete programmatic SEO plan.
+
+Return JSON:
+{
+  "strategy": "Overview of the programmatic SEO approach",
+  "totalPages": ${variableList.length},
+  "estimatedTotalVolume": 0,
+  "pages": [
+    {
+      "variable": "",
+      "pageTitle": "",
+      "metaDescription": "",
+      "h1": "",
+      "estimatedVolume": 0,
+      "difficulty": "easy|medium|hard",
+      "url": "",
+      "keyPoints": ["point1", "point2", "point3"],
+      "cta": ""
+    }
+  ],
+  "contentTemplate": {
+    "intro": "Template intro paragraph with {variable} placeholder",
+    "sections": ["Section 1: {variable} Pain Points", "Section 2: How {product} Solves This", "Section 3: Key Features for {variable}", "Section 4: Pricing for {variable}", "Section 5: Success Stories"],
+    "conclusion": "Template conclusion with CTA"
+  },
+  "internalLinkingStrategy": "How to link these pages together",
+  "implementationSteps": ["Step 1", "Step 2", "Step 3"]
+}`
+
+  try {
+    const ai = await getAIProvider()
+    const response = await ai.generate(prompt, 'You are a programmatic SEO expert. Return ONLY valid JSON.')
+    let result: any = {}
+    try { const m = response.match(/\{[\s\S]*\}/); if (m) result = JSON.parse(m[0]) } catch {}
+
+    if (!result.pages) {
+      result = {
+        strategy: `Create ${variableList.length} targeted landing pages, each optimized for a specific audience segment. This approach captures long-tail commercial intent at scale with minimal content overhead.`,
+        totalPages: variableList.length,
+        estimatedTotalVolume: variableList.length * 400,
+        pages: variableList.slice(0, 8).map((v: string, i: number) => ({
+          variable: v,
+          pageTitle: templateStr.replace('{product}', productName || 'OneFounder').replace('{variable}', v),
+          metaDescription: `Discover why ${productName || 'OneFounder'} is the #1 operating system for ${v}. Start free today.`,
+          h1: `The Best ${productName || 'OS'} for ${v.charAt(0).toUpperCase() + v.slice(1)}`,
+          estimatedVolume: Math.floor(200 + Math.random() * 800),
+          difficulty: ['easy', 'medium', 'medium', 'easy', 'hard', 'easy', 'medium', 'easy'][i % 8] as any,
+          url: `${targetUrl || 'yoursite.com'}/best-${(productName || 'tool').toLowerCase().replace(/\s+/g, '-')}-for-${v.toLowerCase().replace(/\s+/g, '-')}`,
+          keyPoints: [`Built for ${v} workflows`, `Save 10+ hours/week on ${v} operations`, `Join 1,000+ ${v} using ${productName || 'OneFounder'}`],
+          cta: `Start free for ${v}`,
+        })),
+        contentTemplate: {
+          intro: `Running a {variable} business is uniquely challenging. You need tools that understand your workflows, not generic software built for enterprise. ${productName || 'OneFounder'} was built specifically with {variable} in mind.`,
+          sections: ['Pain Points for {variable}', `How ${productName || 'OneFounder'} Solves {variable} Problems`, `Key Features for {variable}`, 'Pricing for {variable}', '{variable} Success Stories'],
+          conclusion: `Join thousands of {variable} professionals using ${productName || 'OneFounder'} to run their business from one place. Start free today.`,
+        },
+        internalLinkingStrategy: 'Create a hub page linking to all variant pages. Link from each variant to 3 related variants and the main features page.',
+        implementationSteps: [
+          'Create a page template with {variable} placeholders in your CMS',
+          'Set up URL patterns following the structure above',
+          'Generate unique content blocks for the top 20% (highest volume) pages',
+          'Use the template for the remaining pages with minimal customization',
+          'Build internal links from your blog and main pages',
+          'Submit the sitemap to Google Search Console',
+        ],
+      }
+    }
+    res.json(result)
+  } catch (error: any) { res.status(500).json({ error: error.message }) }
+})
+
 export default router

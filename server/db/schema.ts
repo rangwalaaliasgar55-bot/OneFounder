@@ -276,6 +276,24 @@ export const backlinks = pgTable('backlinks', {
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 
+// Founder Journey milestones
+export const journeyMilestones = pgTable('journey_milestones', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  key: text('key').notNull(),
+  stage: text('stage').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  icon: text('icon').default('🚀'),
+  xp: integer('xp').default(100),
+  order: integer('order').notNull(),
+  completed: boolean('completed').default(false),
+  completedAt: timestamp('completed_at'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
 // Saved content briefs
 export const seoBriefs = pgTable('seo_briefs', {
   id: uuid('id').primaryKey().defaultRandom(),

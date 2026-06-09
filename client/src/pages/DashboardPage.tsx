@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
-import { PageLoader } from '../components/ui/LoadingSpinner'
+import { PageLoader, LoadingSpinner } from '../components/ui/LoadingSpinner'
 
 interface Stats {
   ideas: number
@@ -36,11 +36,44 @@ const STATUS_COLORS: Record<string, string> = {
   lost: 'bg-red-500/20 text-red-400',
 }
 
+function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
+  const r = (size / 2) - 8
+  const circ = 2 * Math.PI * r
+  const offset = circ - (score / 100) * circ
+  const color = score >= 70 ? '#22c55e' : score >= 45 ? '#f59e0b' : '#ef4444'
+  return (
+    <svg width={size} height={size} className="rotate-[-90deg]">
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={6} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={6}
+        strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
+        style={{ transition: 'stroke-dashoffset 1s ease' }} />
+    </svg>
+  )
+}
+
+function ScoreBar({ score }: { score: number }) {
+  const color = score >= 70 ? 'bg-emerald-500' : score >= 45 ? 'bg-amber-500' : 'bg-red-500'
+  return (
+    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden w-full">
+      <div className={`h-full ${color} rounded-full transition-all duration-700`} style={{ width: `${score}%` }} />
+    </div>
+  )
+}
+
 export function DashboardPage({ navigate }: DashboardPageProps) {
   const { user } = useAuth()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [aiStatus, setAiStatus] = useState<{ available: boolean; provider: string; models?: string[] } | null>(null)
+
+  // Health Score
+  const [healthScore, setHealthScore] = useState<any | null>(null)
+  const [scoreLoading, setScoreLoading] = useState(false)
+
+  // CEO Brief
+  const [brief, setBrief] = useState<any | null>(null)
+  const [briefLoading, setBriefLoading] = useState(false)
+  const [showBrief, setShowBrief] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -51,6 +84,26 @@ export function DashboardPage({ navigate }: DashboardPageProps) {
       setAiStatus(ai)
     }).catch(console.error).finally(() => setLoading(false))
   }, [])
+
+  const loadHealthScore = async () => {
+    if (healthScore) return
+    setScoreLoading(true)
+    try {
+      const score = await api.get<any>('/ceo/health-score')
+      setHealthScore(score)
+    } catch {} finally { setScoreLoading(false) }
+  }
+
+  const generateBrief = async () => {
+    setBriefLoading(true)
+    setShowBrief(true)
+    try {
+      const b = await api.post<any>('/ceo/brief', {})
+      setBrief(b)
+    } catch {} finally { setBriefLoading(false) }
+  }
+
+  useEffect(() => { loadHealthScore() }, [])
 
   if (loading) return <PageLoader />
 
@@ -77,8 +130,11 @@ export function DashboardPage({ navigate }: DashboardPageProps) {
     { icon: '📋', label: 'Create Business Plan', desc: 'Full plan with AI', page: 'planner' },
     { icon: '🤖', label: 'Chat with AI Agent', desc: 'CEO, Marketing, Sales agents', page: 'chat' },
     { icon: '✍️', label: 'Generate Content', desc: 'Blog, LinkedIn, newsletters', page: 'content' },
-    { icon: '👥', label: 'Manage CRM', desc: 'Track leads & customers', page: 'crm' },
+    { icon: '🗺️', label: 'Founder Journey', desc: 'Track your startup milestones', page: 'journey' },
   ]
+
+  const urgencyColor = (u: string) => u === 'high' ? 'text-red-400' : u === 'medium' ? 'text-amber-400' : 'text-emerald-400'
+  const urgencyBg = (u: string) => u === 'high' ? 'bg-red-500/10 border-red-500/20' : u === 'medium' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-emerald-500/10 border-emerald-500/20'
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -114,6 +170,7 @@ export function DashboardPage({ navigate }: DashboardPageProps) {
         )}
       </div>
 
+      {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-8">
         {statCards.map(card => (
           <button
@@ -128,6 +185,175 @@ export function DashboardPage({ navigate }: DashboardPageProps) {
         ))}
       </div>
 
+      {/* Business Health Score + CEO Brief row */}
+      <div className="grid lg:grid-cols-5 gap-6 mb-6">
+        {/* Business Health Score */}
+        <div className="lg:col-span-2 card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold text-white">🏥 Business Health Score</h2>
+            {healthScore && (
+              <button onClick={() => { setHealthScore(null); setTimeout(loadHealthScore, 100) }}
+                className="text-xs text-slate-500 hover:text-slate-400">Refresh</button>
+            )}
+          </div>
+
+          {scoreLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <LoadingSpinner />
+            </div>
+          ) : healthScore ? (
+            <div>
+              <div className="flex items-center gap-5 mb-5">
+                <div className="relative flex-shrink-0">
+                  <ScoreRing score={healthScore.overall} size={88} />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-bold text-white">{healthScore.overall}</span>
+                    <span className="text-xs text-slate-500">/ 100</span>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className={`text-sm font-semibold mb-1 ${
+                    healthScore.overall >= 70 ? 'text-emerald-400' : healthScore.overall >= 45 ? 'text-amber-400' : 'text-red-400'
+                  }`}>
+                    {healthScore.overall >= 70 ? '🟢 Strong' : healthScore.overall >= 45 ? '🟡 Growing' : '🔴 Early Stage'}
+                  </div>
+                  {healthScore.explanation && (
+                    <p className="text-xs text-slate-400 leading-relaxed line-clamp-3">{healthScore.explanation}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                {healthScore.dimensions?.map((d: any) => (
+                  <div key={d.key}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-slate-400">{d.icon} {d.label}</span>
+                      <span className={`text-xs font-medium ${d.score >= 70 ? 'text-emerald-400' : d.score >= 40 ? 'text-amber-400' : 'text-red-400'}`}>{d.score}</span>
+                    </div>
+                    <ScoreBar score={d.score} />
+                    <div className="text-xs text-slate-600 mt-0.5 truncate">{d.insight}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <button onClick={loadHealthScore} className="btn-primary w-full">Calculate Health Score</button>
+          )}
+        </div>
+
+        {/* AI CEO Brief */}
+        <div className="lg:col-span-3 card bg-gradient-to-br from-brand-600/5 to-violet-600/5 border-brand-500/10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold text-white">🤖 AI CEO Daily Brief</h2>
+            {brief && (
+              <button onClick={generateBrief} className="text-xs text-slate-500 hover:text-slate-400 flex items-center gap-1">
+                {briefLoading ? <LoadingSpinner size="sm" /> : '↻'} Regenerate
+              </button>
+            )}
+          </div>
+
+          {!showBrief ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="text-4xl mb-3">🚀</div>
+              <h3 className="text-sm font-semibold text-white mb-1">Your AI Executive Assistant</h3>
+              <p className="text-xs text-slate-400 mb-4 max-w-sm">Get today's priorities, biggest risks, top opportunities, and focus tasks — all tailored to your business.</p>
+              <button onClick={generateBrief} className="btn-primary">
+                Generate Today's Brief
+              </button>
+            </div>
+          ) : briefLoading ? (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <LoadingSpinner />
+              <p className="text-sm text-slate-400">AI CEO is reviewing your business...</p>
+            </div>
+          ) : brief ? (
+            <div className="space-y-4 overflow-y-auto max-h-[380px] pr-1">
+              {brief.greeting && (
+                <p className="text-sm text-slate-300 italic border-l-2 border-brand-500/50 pl-3">{brief.greeting}</p>
+              )}
+
+              {brief.topPriorities && brief.topPriorities.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">🎯 Top Priorities</h4>
+                  <div className="space-y-2">
+                    {brief.topPriorities.map((p: any, i: number) => (
+                      <div key={i} className={`flex items-start gap-2 p-2.5 rounded-lg border ${urgencyBg(p.urgency)}`}>
+                        <span className={`text-xs font-bold mt-0.5 ${urgencyColor(p.urgency)}`}>{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-white">{p.title}</div>
+                          {p.description && <div className="text-xs text-slate-500 mt-0.5">{p.description}</div>}
+                        </div>
+                        {p.timeEstimate && <span className="text-xs text-slate-600 flex-shrink-0">{p.timeEstimate}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {brief.biggestRisks && brief.biggestRisks.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">⚠️ Risks to Watch</h4>
+                  <div className="space-y-2">
+                    {brief.biggestRisks.map((r: any, i: number) => (
+                      <div key={i} className="p-2.5 rounded-lg bg-red-500/5 border border-red-500/10">
+                        <div className="text-xs font-medium text-red-400">{r.risk}</div>
+                        {r.mitigation && <div className="text-xs text-slate-500 mt-0.5">→ {r.mitigation}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {brief.opportunities && brief.opportunities.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">💡 Opportunities</h4>
+                  <div className="space-y-2">
+                    {brief.opportunities.map((o: any, i: number) => (
+                      <div key={i} className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
+                        <div className="text-xs font-medium text-emerald-400">{o.opportunity}</div>
+                        {o.action && <div className="text-xs text-slate-500 mt-0.5">→ {o.action}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {brief.focusTasks && brief.focusTasks.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">📌 Focus Tasks</h4>
+                  <div className="space-y-1.5">
+                    {brief.focusTasks.map((t: any, i: number) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="text-brand-400 text-xs mt-0.5">→</span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs text-white">{t.task}</span>
+                          {t.why && <span className="text-xs text-slate-600"> · {t.why}</span>}
+                        </div>
+                        {t.module && (
+                          <button
+                            onClick={() => navigate(t.module)}
+                            className="text-xs text-brand-400 hover:text-brand-300 flex-shrink-0 underline"
+                          >
+                            Open →
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {brief.quote && (
+                <div className="border-t border-white/5 pt-3">
+                  <p className="text-xs text-slate-600 italic">"{brief.quote}"</p>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Main content grid */}
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="card">

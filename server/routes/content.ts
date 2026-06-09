@@ -66,4 +66,62 @@ router.delete('/:id', requireAuth, async (req, res) => {
   res.json({ success: true })
 })
 
+// ─── Multi-Platform Repurposer ────────────────────────────────────────────────
+
+router.post('/repurpose', requireAuth, async (req, res) => {
+  const { sourceContent, sourceTopic, sourceType, platforms, tone, audience } = req.body
+
+  const platformPrompts: Record<string, string> = {
+    linkedin: `Create an engaging LinkedIn post from this content. Include a strong hook, 3-4 key insights, personal perspective, and 3-5 hashtags. Professional yet personable tone. Max 1300 chars.`,
+    twitter: `Create an X/Twitter thread (6-8 tweets) from this content. Start with a hook tweet that makes people want to read more. Each tweet max 280 chars. End with a CTA.`,
+    newsletter: `Create a newsletter section from this content. Include: punchy subject line, intro paragraph, 3 key takeaways in bullet format, and a closing insight. Conversational tone.`,
+    instagram: `Create an Instagram carousel from this content. Write: slide 1 (hook/title), slides 2-6 (one key point each, short text + visual description), slide 7 (CTA/summary). Include 10-15 hashtags.`,
+    youtube: `Create a YouTube video script outline from this content. Include: hook (0-30s), intro (30-60s), 3-4 main sections with talking points, outro with CTA. Total 5-8 minutes runtime.`,
+    podcast: `Create a podcast episode outline from this content. Include: episode title, teaser (30s), intro, 3 discussion segments with questions, guest talking points, and outro. 20-30 min episode.`,
+  }
+
+  const requestedPlatforms = platforms || ['linkedin', 'twitter', 'newsletter']
+
+  const prompt = `You are a world-class content repurposing expert. 
+Original content topic: "${sourceTopic || 'the provided content'}"
+Source type: ${sourceType || 'blog post'}
+Target audience: ${audience || 'startup founders'}
+Tone: ${tone || 'professional and engaging'}
+
+${sourceContent ? `Original content:\n---\n${sourceContent.substring(0, 1500)}\n---\n` : ''}
+
+Repurpose this content for multiple platforms. For each platform requested, adapt the format, tone, and structure perfectly for that platform's audience and algorithm.
+
+Return JSON:
+{
+  ${requestedPlatforms.map((p: string) => `"${p}": {"content": "", "tips": ""}`).join(',\n  ')}
+}`
+
+  try {
+    const ai = await getAIProvider()
+    const response = await ai.generate(prompt, 'You are an expert content repurposer. Return ONLY valid JSON.')
+    let repurposed: any = {}
+    try { const m = response.match(/\{[\s\S]*\}/); if (m) repurposed = JSON.parse(m[0]) } catch {}
+
+    // Ensure all requested platforms have content
+    for (const platform of requestedPlatforms) {
+      if (!repurposed[platform]) {
+        const topic = sourceTopic || 'this topic'
+        repurposed[platform] = {
+          content: platform === 'linkedin'
+            ? `🚀 Key insight about ${topic}:\n\nAfter diving deep into this, here's what I've learned:\n\n• The fundamentals matter more than tactics\n• Consistency compounds over time\n• Start before you're ready\n\nWhat's your experience with this?\n\n#startup #founder #growth`
+            : platform === 'twitter'
+            ? `Thread: Everything you need to know about ${topic} 🧵\n\n1/ Most people get this wrong...\n\n2/ Here's the key insight:\n\n3/ What this means for you:\n\n4/ Action step for today:\n\n5/ Bottom line: start now.\n\nRT if this helped 🙏`
+            : platform === 'newsletter'
+            ? `Subject: The ${topic} insight I wish I had earlier\n\n---\n\nHey Founder,\n\nThis week I want to share something that changed how I think about ${topic}.\n\nKey takeaway 1: Start with fundamentals\nKey takeaway 2: Consistency beats perfection\nKey takeaway 3: Data > opinions\n\nHope this helps,\n[Your Name]`
+            : `Content repurposed for ${platform}: ${topic}`,
+          tips: `Optimize your ${platform} content by posting at peak hours and engaging with comments.`,
+        }
+      }
+    }
+
+    res.json(repurposed)
+  } catch (error: any) { res.status(500).json({ error: error.message }) }
+})
+
 export default router

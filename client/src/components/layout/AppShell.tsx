@@ -7,6 +7,7 @@ const NAV_SECTIONS = [
     label: 'Core',
     items: [
       { id: 'dashboard', icon: '⚡', label: 'Dashboard' },
+      { id: 'journey', icon: '🗺️', label: 'Founder Journey' },
       { id: 'chat', icon: '🤖', label: 'AI Agents' },
     ],
   },
