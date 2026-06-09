@@ -224,6 +224,7 @@ export const financeEntries = pgTable('finance_entries', {
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 
+// Enhanced SEO keywords with rank history, intent, cluster, priority, status
 export const seoKeywords = pgTable('seo_keywords', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -233,8 +234,42 @@ export const seoKeywords = pgTable('seo_keywords', {
   difficulty: integer('difficulty'),
   currentRank: integer('current_rank'),
   targetRank: integer('target_rank'),
+  intent: text('intent'),             // informational/commercial/transactional/navigational
+  cluster: text('cluster'),           // topic cluster label
+  priority: text('priority').default('medium'), // high/medium/low
+  status: text('status').default('tracking'),   // tracking/paused/achieved
+  rankHistory: jsonb('rank_history').default([]),  // [{date, rank}]
   notes: text('notes'),
   tags: jsonb('tags'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+// SEO Audits — on-page analysis for a URL
+export const seoAudits = pgTable('seo_audits', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  url: text('url').notNull(),
+  score: integer('score'),
+  issues: jsonb('issues'),          // [{type, severity, message, fix}]
+  recommendations: jsonb('recommendations'),
+  metadata: jsonb('metadata'),      // {title, description, h1, wordCount, ...}
+  createdAt: timestamp('created_at').defaultNow(),
+})
+
+// Saved content briefs
+export const seoBriefs = pgTable('seo_briefs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  keyword: text('keyword').notNull(),
+  targetAudience: text('target_audience'),
+  businessContext: text('business_context'),
+  titles: jsonb('titles'),
+  metaDescription: text('meta_description'),
+  outline: jsonb('outline'),
+  wordCount: integer('word_count'),
+  keyPoints: jsonb('key_points'),
+  relatedKeywords: jsonb('related_keywords'),
+  faqSection: jsonb('faq_section'),
+  createdAt: timestamp('created_at').defaultNow(),
 })
