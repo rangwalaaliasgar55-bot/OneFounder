@@ -1,0 +1,1 @@
+- [Tailwind + Vite config](tailwind-vite-config.md) — tailwind.config.js must be at workspace root with client/ paths; PostCSS must be inlined in vite.config.ts

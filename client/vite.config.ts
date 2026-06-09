@@ -1,6 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import tailwindcss from 'tailwindcss'
+import autoprefixer from 'autoprefixer'
+
+const tailwindConfig = require('../tailwind.config.js')
 
 export default defineConfig({
   plugins: [react()],
@@ -15,19 +19,21 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, '../shared'),
     },
   },
+  css: {
+    postcss: {
+      plugins: [
+        tailwindcss(tailwindConfig),
+        autoprefixer(),
+      ],
+    },
+  },
   server: {
-    port: 5173,
+    port: 5000,
     host: '0.0.0.0',
     allowedHosts: 'all',
     proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
-      '/auth': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
+      '/api': { target: 'http://localhost:3001', changeOrigin: true },
+      '/auth': { target: 'http://localhost:3001', changeOrigin: true },
     },
   },
 })
