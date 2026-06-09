@@ -257,6 +257,25 @@ export const seoAudits = pgTable('seo_audits', {
   createdAt: timestamp('created_at').defaultNow(),
 })
 
+// Backlink tracker
+export const backlinks = pgTable('backlinks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  sourceUrl: text('source_url').notNull(),         // page linking to you
+  sourceDomain: text('source_domain'),              // root domain
+  targetUrl: text('target_url').notNull(),          // your page being linked
+  anchorText: text('anchor_text'),
+  type: text('type').default('dofollow'),           // dofollow/nofollow/sponsored/ugc
+  status: text('status').default('active'),         // active/lost/pending/broken
+  domainAuthority: integer('domain_authority'),     // 0-100 DA estimate
+  category: text('category'),                      // editorial/directory/guest-post/forum/social/tool
+  notes: text('notes'),
+  discoveredAt: timestamp('discovered_at').defaultNow(),
+  lostAt: timestamp('lost_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
 // Saved content briefs
 export const seoBriefs = pgTable('seo_briefs', {
   id: uuid('id').primaryKey().defaultRandom(),

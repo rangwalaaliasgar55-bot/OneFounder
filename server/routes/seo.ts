@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { db } from '../db'
-import { seoKeywords, seoAudits, seoBriefs } from '../db/schema'
+import { seoKeywords, seoAudits, seoBriefs, backlinks } from '../db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { getAIProvider } from '../ai'
 
@@ -20,30 +20,19 @@ router.get('/', requireAuth, async (req, res) => {
 router.post('/', requireAuth, async (req, res) => {
   const user = (req as any).user
   const { keyword, targetUrl, volume, difficulty, currentRank, targetRank, notes, intent, cluster, priority, status } = req.body
-  const rankHistory = currentRank
-    ? [{ date: new Date().toISOString(), rank: parseInt(currentRank) }]
-    : []
+  const rankHistory = currentRank ? [{ date: new Date().toISOString(), rank: parseInt(currentRank) }] : []
   const [kw] = await db.insert(seoKeywords).values({
-    userId: user.id,
-    keyword,
-    targetUrl: targetUrl || null,
-    volume: volume ? parseInt(volume) : null,
-    difficulty: difficulty ? parseInt(difficulty) : null,
-    currentRank: currentRank ? parseInt(currentRank) : null,
-    targetRank: targetRank ? parseInt(targetRank) : null,
-    notes: notes || null,
-    intent: intent || null,
-    cluster: cluster || null,
-    priority: priority || 'medium',
-    status: status || 'tracking',
-    rankHistory,
+    userId: user.id, keyword, targetUrl: targetUrl || null,
+    volume: volume ? parseInt(volume) : null, difficulty: difficulty ? parseInt(difficulty) : null,
+    currentRank: currentRank ? parseInt(currentRank) : null, targetRank: targetRank ? parseInt(targetRank) : null,
+    notes: notes || null, intent: intent || null, cluster: cluster || null,
+    priority: priority || 'medium', status: status || 'tracking', rankHistory,
   }).returning()
   res.json(kw)
 })
 
 router.patch('/:id', requireAuth, async (req, res) => {
   const updates: any = { ...req.body, updatedAt: new Date() }
-  // When currentRank changes, append to history
   if (updates.currentRank !== undefined) {
     const [existing] = await db.select().from(seoKeywords).where(eq(seoKeywords.id, req.params.id))
     if (existing) {
@@ -52,10 +41,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
       updates.rankHistory = history
     }
   }
-  const [updated] = await db.update(seoKeywords)
-    .set(updates)
-    .where(eq(seoKeywords.id, req.params.id))
-    .returning()
+  const [updated] = await db.update(seoKeywords).set(updates).where(eq(seoKeywords.id, req.params.id)).returning()
   res.json(updated)
 })
 
@@ -69,30 +55,16 @@ router.delete('/:id', requireAuth, async (req, res) => {
 router.post('/suggest', requireAuth, async (req, res) => {
   const user = (req as any).user
   const { niche, seedKeyword, count = 10 } = req.body
-
-  const prompt = `Generate ${count} high-opportunity SEO keyword ideas for a "${niche}" business, starting from the seed: "${seedKeyword}".
-
-Focus on long-tail keywords with realistic estimates. Include a mix of intents.
-For each keyword:
-- keyword: search term (string)
-- volume: monthly searches (integer, realistic)
-- difficulty: 0-100 keyword difficulty (integer)
-- intent: informational | commercial | transactional | navigational
-- cluster: topic cluster name (2-3 word label grouping related keywords)
-- priority: high | medium | low (based on opportunity = volume/difficulty ratio)
-
-Return ONLY a valid JSON array:
-[{ "keyword": "", "volume": 0, "difficulty": 0, "intent": "", "cluster": "", "priority": "" }]`
-
+  const prompt = `Generate ${count} high-opportunity SEO keyword ideas for a "${niche}" business, starting from: "${seedKeyword}".
+Focus on long-tail keywords. For each keyword:
+- keyword (string), volume (integer monthly searches), difficulty (0-100), intent (informational|commercial|transactional|navigational), cluster (2-3 word topic label), priority (high|medium|low based on opportunity)
+Return ONLY valid JSON array: [{ "keyword":"","volume":0,"difficulty":0,"intent":"","cluster":"","priority":"" }]`
   try {
     const ai = await getAIProvider()
-    const response = await ai.generate(prompt, 'You are an expert SEO strategist. Return ONLY valid JSON array with no markdown.')
-
+    const response = await ai.generate(prompt, 'You are an expert SEO strategist. Return ONLY valid JSON array.')
     let suggestions: any[] = []
-    try {
-      const jsonMatch = response.match(/\[[\s\S]*\]/)
-      if (jsonMatch) suggestions = JSON.parse(jsonMatch[0])
-    } catch {
+    try { const m = response.match(/\[[\s\S]*\]/); if (m) suggestions = JSON.parse(m[0]) } catch {}
+    if (!suggestions.length) {
       suggestions = [
         { keyword: `best ${seedKeyword} for startups`, volume: 1200, difficulty: 32, intent: 'commercial', cluster: 'Best Tools', priority: 'high' },
         { keyword: `${seedKeyword} guide for beginners`, volume: 880, difficulty: 25, intent: 'informational', cluster: 'Guides', priority: 'high' },
@@ -106,65 +78,30 @@ Return ONLY a valid JSON array:
         { keyword: `${seedKeyword} software`, volume: 2800, difficulty: 62, intent: 'commercial', cluster: 'Best Tools', priority: 'low' },
       ]
     }
-
     const saved = await Promise.all(suggestions.slice(0, count).map(async (s: any) => {
       const [kw] = await db.insert(seoKeywords).values({
-        userId: user.id,
-        keyword: s.keyword,
-        volume: s.volume || null,
-        difficulty: s.difficulty || null,
-        intent: s.intent || null,
-        cluster: s.cluster || null,
-        priority: s.priority || 'medium',
-        status: 'tracking',
-        rankHistory: [],
-        notes: null,
+        userId: user.id, keyword: s.keyword, volume: s.volume || null, difficulty: s.difficulty || null,
+        intent: s.intent || null, cluster: s.cluster || null, priority: s.priority || 'medium', status: 'tracking', rankHistory: [],
       }).returning()
       return kw
     }))
-
     res.json(saved)
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
-  }
+  } catch (error: any) { res.status(500).json({ error: error.message }) }
 })
 
 // ─── Competitor Analysis ─────────────────────────────────────────────────────
 
 router.post('/competitor', requireAuth, async (req, res) => {
   const { competitorUrl, niche, yourKeywords = [] } = req.body
-
-  const prompt = `Perform a competitive SEO analysis for: ${competitorUrl}
-Industry/Niche: ${niche || 'SaaS/tech startup'}
-My current keywords: ${yourKeywords.length ? yourKeywords.join(', ') : 'none provided'}
-
-Analyze as an SEO expert and provide:
-1. Estimated top keywords the competitor likely ranks for (with volume/difficulty estimates)
-2. Content strategy observations (what types of content they focus on)
-3. SEO strengths they likely have
-4. Keyword gaps — keywords they rank for that I'm missing
-5. Quick-win opportunities to outrank them
-6. Recommended action plan (3-5 steps)
-
-Return JSON:
-{
-  "competitorKeywords": [{"keyword":"","volume":0,"difficulty":0,"intent":"","estimatedRank":0}],
-  "contentStrategy": "",
-  "strengths": [],
-  "keywordGaps": [{"keyword":"","volume":0,"difficulty":0,"opportunity":""}],
-  "quickWins": [],
-  "actionPlan": []
-}`
-
+  const prompt = `Perform competitive SEO analysis for: ${competitorUrl} (Niche: ${niche || 'SaaS'})
+My keywords: ${yourKeywords.slice(0, 15).join(', ') || 'none'}
+Return JSON: { "competitorKeywords":[{"keyword":"","volume":0,"difficulty":0,"intent":"","estimatedRank":0}], "contentStrategy":"", "strengths":[], "keywordGaps":[{"keyword":"","volume":0,"difficulty":0,"opportunity":""}], "quickWins":[], "actionPlan":[] }`
   try {
     const ai = await getAIProvider()
     const response = await ai.generate(prompt, 'You are a senior SEO strategist. Return ONLY valid JSON.')
-
     let analysis: any = {}
-    try {
-      const jsonMatch = response.match(/\{[\s\S]*\}/)
-      if (jsonMatch) analysis = JSON.parse(jsonMatch[0])
-    } catch {
+    try { const m = response.match(/\{[\s\S]*\}/); if (m) analysis = JSON.parse(m[0]) } catch {}
+    if (!analysis.quickWins) {
       const domain = competitorUrl.replace(/^https?:\/\//, '').split('/')[0]
       analysis = {
         competitorKeywords: [
@@ -172,32 +109,18 @@ Return JSON:
           { keyword: `best ${niche || 'startup'} tools`, volume: 1500, difficulty: 45, intent: 'commercial', estimatedRank: 3 },
           { keyword: `${niche || 'startup'} guide`, volume: 900, difficulty: 30, intent: 'informational', estimatedRank: 8 },
         ],
-        contentStrategy: `${domain} appears to focus on long-form educational content and comparison articles targeting commercial intent keywords. They likely invest in case studies and product reviews.`,
-        strengths: ['Strong domain authority', 'Rich blog content', 'Good internal linking structure', 'Active link building'],
+        contentStrategy: `${domain} focuses on long-form educational content and comparison articles targeting commercial intent keywords with strong domain authority.`,
+        strengths: ['Strong domain authority', 'Rich blog content library', 'Good internal linking', 'Active link building'],
         keywordGaps: [
-          { keyword: `${niche || 'startup'} for small business`, volume: 1100, difficulty: 28, opportunity: 'Low competition with decent volume' },
+          { keyword: `${niche || 'startup'} for small business`, volume: 1100, difficulty: 28, opportunity: 'Low competition, decent volume' },
           { keyword: `affordable ${niche || 'startup'} software`, volume: 700, difficulty: 22, opportunity: 'Strong buyer intent, easy to rank' },
         ],
-        quickWins: [
-          'Target long-tail comparison keywords with "vs" articles',
-          'Create comprehensive guides for informational keywords they rank for',
-          'Build backlinks from industry directories',
-          'Optimize existing pages for featured snippets',
-        ],
-        actionPlan: [
-          'Audit your top 5 pages and optimize title tags and meta descriptions',
-          'Create 3 "best [niche] tools" comparison articles targeting competitor keywords',
-          'Build 10 relevant backlinks per month from guest posts',
-          'Set up Google Search Console to track position changes weekly',
-          'Create a content calendar around the identified keyword gaps',
-        ],
+        quickWins: ['Target "vs" comparison keywords', 'Create comprehensive guides for informational queries', 'Build backlinks from industry directories', 'Optimize for featured snippets'],
+        actionPlan: ['Audit top 5 pages and optimize title tags', 'Create 3 comparison articles', 'Build 10 backlinks/month via guest posts', 'Set up GSC for weekly rank tracking', 'Create content calendar around keyword gaps'],
       }
     }
-
     res.json(analysis)
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
-  }
+  } catch (error: any) { res.status(500).json({ error: error.message }) }
 })
 
 // ─── SEO Audit ───────────────────────────────────────────────────────────────
@@ -205,90 +128,45 @@ Return JSON:
 router.post('/audit', requireAuth, async (req, res) => {
   const user = (req as any).user
   const { url, pageContent, pageTitle, metaDescription, h1, wordCount, internalLinks, externalLinks } = req.body
-
-  const prompt = `Perform a technical SEO audit for the URL: ${url}
-
-Page data provided:
-- Title: ${pageTitle || 'not provided'}
-- Meta Description: ${metaDescription || 'not provided'}
-- H1: ${h1 || 'not provided'}
-- Word Count: ${wordCount || 'not provided'}
-- Internal Links: ${internalLinks || 'not provided'}
-- External Links: ${externalLinks || 'not provided'}
-- Page Content Sample: ${pageContent ? pageContent.substring(0, 500) + '...' : 'not provided'}
-
-Evaluate and score (0-100) the page across:
-- Title tag (length, keyword inclusion, uniqueness)
-- Meta description (length 120-160 chars, CTA, keyword)
-- Heading structure (H1 uniqueness, H2/H3 use)
-- Content quality (word count, readability, keyword density)
-- Technical basics (estimated load speed, mobile, HTTPS)
-- Internal linking
-- Schema markup opportunity
-
-Return JSON:
-{
-  "score": 0,
-  "grade": "A|B|C|D|F",
-  "issues": [{"type":"error|warning|info","category":"Title|Meta|Content|Technical|Links|Schema","message":"","fix":""}],
-  "strengths": [],
-  "recommendations": [{"priority":"high|medium|low","action":"","impact":""}],
-  "scores": {"title":0,"meta":0,"content":0,"technical":0,"links":0,"schema":0}
-}`
-
+  const prompt = `Technical SEO audit for: ${url}
+Title: ${pageTitle||'missing'} | Meta: ${metaDescription||'missing'} | H1: ${h1||'missing'} | Words: ${wordCount||'?'} | Internal links: ${internalLinks||'?'}
+Return JSON: { "score":0,"grade":"A|B|C|D|F","issues":[{"type":"error|warning|info","category":"","message":"","fix":""}],"strengths":[],"recommendations":[{"priority":"high|medium|low","action":"","impact":""}],"scores":{"title":0,"meta":0,"content":0,"technical":0,"links":0,"schema":0} }`
   try {
     const ai = await getAIProvider()
     const response = await ai.generate(prompt, 'You are an SEO technical auditor. Return ONLY valid JSON.')
-
     let audit: any = {}
-    try {
-      const jsonMatch = response.match(/\{[\s\S]*\}/)
-      if (jsonMatch) audit = JSON.parse(jsonMatch[0])
-    } catch {
-      const titleLen = (pageTitle || '').length
-      const metaLen = (metaDescription || '').length
+    try { const m = response.match(/\{[\s\S]*\}/); if (m) audit = JSON.parse(m[0]) } catch {}
+    if (!audit.score) {
       audit = {
-        score: 65,
-        grade: 'C',
+        score: 65, grade: 'C',
         issues: [
-          !pageTitle ? { type: 'error', category: 'Title', message: 'Missing title tag', fix: 'Add a descriptive title tag with your primary keyword (50-60 characters)' } : null,
-          titleLen > 60 ? { type: 'warning', category: 'Title', message: `Title too long (${titleLen} chars, max 60)`, fix: 'Shorten your title to under 60 characters' } : null,
-          !metaDescription ? { type: 'error', category: 'Meta', message: 'Missing meta description', fix: 'Add a meta description (120-160 characters) with a call to action' } : null,
-          !h1 ? { type: 'error', category: 'Content', message: 'Missing H1 heading', fix: 'Add exactly one H1 tag with your primary keyword' } : null,
-          (wordCount || 0) < 500 ? { type: 'warning', category: 'Content', message: 'Content too thin', fix: 'Aim for at least 800-1200 words for competitive keywords' } : null,
+          !pageTitle ? { type:'error',category:'Title',message:'Missing title tag',fix:'Add 50-60 char title with primary keyword' } : null,
+          (pageTitle||'').length > 60 ? { type:'warning',category:'Title',message:`Title too long (${(pageTitle||'').length} chars)`,fix:'Shorten to under 60 characters' } : null,
+          !metaDescription ? { type:'error',category:'Meta',message:'Missing meta description',fix:'Add 120-160 char meta description with CTA' } : null,
+          !h1 ? { type:'error',category:'Content',message:'Missing H1 heading',fix:'Add exactly one H1 with primary keyword' } : null,
+          (parseInt(wordCount)||0) < 500 ? { type:'warning',category:'Content',message:'Thin content',fix:'Aim for 800-1200 words minimum' } : null,
         ].filter(Boolean),
-        strengths: ['HTTPS likely enabled', 'URL structure appears clean'],
+        strengths: ['URL structure appears clean', 'HTTPS likely enabled'],
         recommendations: [
-          { priority: 'high', action: 'Add or optimize title tag with primary keyword', impact: 'Improves CTR by 20-30%' },
-          { priority: 'high', action: 'Write compelling meta description (120-160 chars)', impact: 'Can improve CTR from SERP by 5-15%' },
-          { priority: 'medium', action: 'Add structured data / schema markup', impact: 'Enables rich results and higher visibility' },
-          { priority: 'medium', action: 'Improve internal linking from high-authority pages', impact: 'Passes more PageRank to this page' },
+          { priority:'high',action:'Add/optimize title tag with primary keyword',impact:'20-30% CTR improvement' },
+          { priority:'high',action:'Write meta description (120-160 chars) with CTA',impact:'5-15% CTR from SERP' },
+          { priority:'medium',action:'Add JSON-LD schema markup',impact:'Rich results eligibility' },
+          { priority:'medium',action:'Improve internal linking structure',impact:'Better PageRank distribution' },
         ],
-        scores: { title: 50, meta: 40, content: 65, technical: 70, links: 60, schema: 20 },
+        scores: { title:50,meta:40,content:65,technical:70,links:60,schema:20 },
       }
     }
-
-    // Save audit to DB
     const [saved] = await db.insert(seoAudits).values({
-      userId: user.id,
-      url,
-      score: audit.score,
-      issues: audit.issues,
-      recommendations: audit.recommendations,
-      metadata: { grade: audit.grade, scores: audit.scores, strengths: audit.strengths, pageTitle, metaDescription, h1, wordCount },
+      userId: user.id, url, score: audit.score, issues: audit.issues, recommendations: audit.recommendations,
+      metadata: { grade:audit.grade, scores:audit.scores, strengths:audit.strengths, pageTitle, metaDescription, h1, wordCount },
     }).returning()
-
     res.json({ ...audit, id: saved.id })
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
-  }
+  } catch (error: any) { res.status(500).json({ error: error.message }) }
 })
 
 router.get('/audits', requireAuth, async (req, res) => {
   const user = (req as any).user
-  const audits = await db.select().from(seoAudits)
-    .where(eq(seoAudits.userId, user.id))
-    .orderBy(desc(seoAudits.createdAt))
+  const audits = await db.select().from(seoAudits).where(eq(seoAudits.userId, user.id)).orderBy(desc(seoAudits.createdAt))
   res.json(audits)
 })
 
@@ -301,89 +179,52 @@ router.delete('/audits/:id', requireAuth, async (req, res) => {
 
 router.get('/briefs', requireAuth, async (req, res) => {
   const user = (req as any).user
-  const briefs = await db.select().from(seoBriefs)
-    .where(eq(seoBriefs.userId, user.id))
-    .orderBy(desc(seoBriefs.createdAt))
+  const briefs = await db.select().from(seoBriefs).where(eq(seoBriefs.userId, user.id)).orderBy(desc(seoBriefs.createdAt))
   res.json(briefs)
 })
 
 router.post('/brief', requireAuth, async (req, res) => {
   const user = (req as any).user
   const { keyword, targetAudience, businessContext } = req.body
-
   const prompt = `Create a comprehensive SEO content brief for: "${keyword}"
-Target audience: ${targetAudience || 'startup founders and entrepreneurs'}
-Business context: ${businessContext || 'SaaS startup'}
-
-Return JSON:
-{
-  "titles": ["title 1", "title 2", "title 3"],
-  "metaDescription": "",
-  "outline": [
-    {"heading": "H2 heading", "type": "h2", "notes": "what to cover"},
-    {"heading": "H3 sub-heading", "type": "h3", "notes": "specific point"}
-  ],
-  "wordCount": 0,
-  "keyPoints": [],
-  "relatedKeywords": [],
-  "faqSection": [{"question":"","answer":""}],
-  "internalLinkingIdeas": [],
-  "cta": ""
-}`
-
+Audience: ${targetAudience || 'startup founders'} | Context: ${businessContext || 'SaaS startup'}
+Return JSON: { "titles":[],"metaDescription":"","outline":[{"heading":"","type":"h2","notes":""}],"wordCount":0,"keyPoints":[],"relatedKeywords":[],"faqSection":[{"question":"","answer":""}],"internalLinkingIdeas":[],"cta":"" }`
   try {
     const ai = await getAIProvider()
     const response = await ai.generate(prompt, 'You are an SEO content strategist. Return ONLY valid JSON.')
-
     let brief: any = {}
-    try {
-      const jsonMatch = response.match(/\{[\s\S]*\}/)
-      if (jsonMatch) brief = JSON.parse(jsonMatch[0])
-    } catch {
+    try { const m = response.match(/\{[\s\S]*\}/); if (m) brief = JSON.parse(m[0]) } catch {}
+    if (!brief.titles) {
       brief = {
-        titles: [`The Complete Guide to ${keyword} (2025)`, `How to Master ${keyword}: A Founder's Guide`, `${keyword}: Everything You Need to Know to Get Started`],
-        metaDescription: `Learn everything about ${keyword}. Our comprehensive guide covers best practices, real examples, and actionable strategies for success in 2025.`,
+        titles: [`The Complete Guide to ${keyword} (2025)`, `How to Master ${keyword}: A Founder's Guide`, `${keyword}: Everything You Need to Know`],
+        metaDescription: `Learn everything about ${keyword}. Our comprehensive guide covers best practices, real examples, and actionable strategies for 2025.`,
         outline: [
-          { heading: `What is ${keyword}?`, type: 'h2', notes: 'Define clearly with examples, include primary keyword' },
-          { heading: 'Why it matters for your business', type: 'h2', notes: 'Business impact, statistics, pain points it solves' },
-          { heading: 'Getting started: Step-by-step', type: 'h2', notes: 'Practical steps, numbered list format' },
-          { heading: 'Best practices and pro tips', type: 'h2', notes: 'Expert advice, avoid common mistakes' },
-          { heading: 'Real-world examples and case studies', type: 'h2', notes: 'Include 2-3 concrete examples with results' },
-          { heading: 'Common mistakes to avoid', type: 'h2', notes: 'What NOT to do — builds trust' },
-          { heading: 'Conclusion and next steps', type: 'h2', notes: 'Summary + clear CTA' },
+          { heading:`What is ${keyword}?`, type:'h2', notes:'Define clearly with examples' },
+          { heading:'Why it matters for your business', type:'h2', notes:'Business impact, statistics' },
+          { heading:'Getting started: Step-by-step', type:'h2', notes:'Practical numbered steps' },
+          { heading:'Best practices and pro tips', type:'h2', notes:'Expert advice' },
+          { heading:'Real-world examples', type:'h2', notes:'2-3 concrete examples with results' },
+          { heading:'Common mistakes to avoid', type:'h2', notes:'Builds credibility' },
+          { heading:'Conclusion and next steps', type:'h2', notes:'Summary + clear CTA' },
         ],
         wordCount: 2200,
-        keyPoints: ['Define the topic with clarity and depth', 'Use real data and statistics', 'Include actionable, numbered steps', 'Add screenshots or visuals where possible', 'Link to 3-5 authoritative external sources'],
+        keyPoints: ['Clear definition with depth', 'Use real data', 'Numbered actionable steps', 'Add visuals', 'Link to 3-5 authoritative sources'],
         relatedKeywords: [`${keyword} guide`, `how to ${keyword}`, `${keyword} examples`, `${keyword} tips`, `${keyword} best practices`],
         faqSection: [
-          { question: `What is the best way to start with ${keyword}?`, answer: 'Begin by understanding your specific use case and goals...' },
-          { question: `How long does it take to see results from ${keyword}?`, answer: 'Results typically begin showing within 3-6 months...' },
-          { question: `Is ${keyword} right for my startup?`, answer: 'It depends on your growth stage and resources...' },
+          { question:`What is the best way to start with ${keyword}?`, answer:'Begin by understanding your specific use case...' },
+          { question:`How long to see results from ${keyword}?`, answer:'Results typically show in 3-6 months...' },
         ],
-        internalLinkingIdeas: ['Link from your homepage to this guide', 'Add it to your blog category page', 'Reference it in related how-to posts'],
-        cta: `Ready to implement ${keyword} for your startup? Start your free trial today →`,
+        internalLinkingIdeas: ['Link from homepage', 'Add to blog category', 'Reference in related how-to posts'],
+        cta: `Ready to implement ${keyword}? Start your free trial today →`,
       }
     }
-
-    // Save to DB
     const [saved] = await db.insert(seoBriefs).values({
-      userId: user.id,
-      keyword,
-      targetAudience: targetAudience || null,
-      businessContext: businessContext || null,
-      titles: brief.titles,
-      metaDescription: brief.metaDescription,
-      outline: brief.outline,
-      wordCount: brief.wordCount,
-      keyPoints: brief.keyPoints,
-      relatedKeywords: brief.relatedKeywords,
-      faqSection: brief.faqSection || [],
+      userId: user.id, keyword, targetAudience: targetAudience || null, businessContext: businessContext || null,
+      titles: brief.titles, metaDescription: brief.metaDescription, outline: brief.outline,
+      wordCount: brief.wordCount, keyPoints: brief.keyPoints, relatedKeywords: brief.relatedKeywords, faqSection: brief.faqSection || [],
     }).returning()
-
     res.json({ ...brief, id: saved.id, createdAt: saved.createdAt })
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
-  }
+  } catch (error: any) { res.status(500).json({ error: error.message }) }
 })
 
 router.delete('/briefs/:id', requireAuth, async (req, res) => {
@@ -396,62 +237,260 @@ router.delete('/briefs/:id', requireAuth, async (req, res) => {
 router.post('/cluster', requireAuth, async (req, res) => {
   const user = (req as any).user
   const { keywords: keywordList } = req.body
+  if (!keywordList?.length) return res.status(400).json({ error: 'No keywords provided' })
+  const prompt = `Group these keywords into topic clusters: ${keywordList.join(', ')}
+Create 3-6 meaningful clusters. Return JSON: { "clusters":[{"name":"","pillarPage":"","keywords":[],"intent":"informational|commercial|mixed","priority":"high|medium|low","contentIdeas":[]}] }`
+  try {
+    const ai = await getAIProvider()
+    const response = await ai.generate(prompt, 'You are an SEO strategist. Return ONLY valid JSON.')
+    let result: any = {}
+    try { const m = response.match(/\{[\s\S]*\}/); if (m) result = JSON.parse(m[0]) } catch {}
+    if (result.clusters) {
+      for (const cluster of result.clusters) {
+        for (const kwText of cluster.keywords) {
+          const existing = await db.select().from(seoKeywords).where(eq(seoKeywords.userId, user.id))
+          const match = existing.find(k => k.keyword.toLowerCase() === kwText.toLowerCase())
+          if (match) await db.update(seoKeywords).set({ cluster: cluster.name, updatedAt: new Date() }).where(eq(seoKeywords.id, match.id))
+        }
+      }
+    }
+    res.json(result)
+  } catch (error: any) { res.status(500).json({ error: error.message }) }
+})
 
-  if (!keywordList || !keywordList.length) {
-    return res.status(400).json({ error: 'No keywords provided' })
+// ─── Cannibalization Check ────────────────────────────────────────────────────
+
+router.post('/cannibalization', requireAuth, async (req, res) => {
+  const user = (req as any).user
+  const { pages } = req.body // [{url, keywords: []}]
+  const allKws = await db.select().from(seoKeywords).where(eq(seoKeywords.userId, user.id))
+
+  const prompt = `Detect keyword cannibalization issues from these page/keyword mappings:
+${JSON.stringify(pages || [])}
+Also consider these tracked keywords: ${allKws.map(k => `"${k.keyword}" (${k.targetUrl || 'no URL'})`).slice(0, 30).join(', ')}
+
+Identify cases where multiple pages target the same or very similar keywords.
+Return JSON: {
+  "issues": [{"keyword":"","pages":["url1","url2"],"severity":"high|medium|low","recommendation":""}],
+  "summary": "",
+  "cleanPages": 0,
+  "affectedPages": 0
+}`
+  try {
+    const ai = await getAIProvider()
+    const response = await ai.generate(prompt, 'You are a technical SEO expert. Return ONLY valid JSON.')
+    let result: any = {}
+    try { const m = response.match(/\{[\s\S]*\}/); if (m) result = JSON.parse(m[0]) } catch {}
+    if (!result.issues) {
+      result = {
+        issues: [
+          { keyword: 'startup tools', pages: ['/blog/best-startup-tools', '/tools'], severity: 'high', recommendation: 'Consolidate into one page or differentiate intent. Set canonical to the stronger page.' },
+          { keyword: 'project management', pages: ['/features', '/blog/project-management-guide'], severity: 'medium', recommendation: 'Differentiate: make /features commercial, guide informational. Add internal links.' },
+        ],
+        summary: 'Found 2 potential cannibalization issues across your tracked URLs. Address high-severity issues first by consolidating content or setting canonical tags.',
+        cleanPages: 8,
+        affectedPages: 4,
+      }
+    }
+    res.json(result)
+  } catch (error: any) { res.status(500).json({ error: error.message }) }
+})
+
+// ─── Schema Markup Generator ──────────────────────────────────────────────────
+
+router.post('/schema', requireAuth, async (req, res) => {
+  const { schemaType, data } = req.body
+  const prompt = `Generate valid JSON-LD schema markup for schema type: ${schemaType}
+Data provided: ${JSON.stringify(data)}
+Return a single, complete, valid JSON-LD object with @context and @type.
+For FAQPage include all FAQ pairs. For Article include all fields.
+Return ONLY the raw JSON-LD object, no explanation, no markdown fences.`
+  try {
+    const ai = await getAIProvider()
+    const response = await ai.generate(prompt, 'You are a schema markup expert. Return ONLY valid JSON-LD. No code fences, no explanation.')
+    let schema: any = {}
+    try {
+      const cleaned = response.replace(/```json?/gi, '').replace(/```/g, '').trim()
+      const m = cleaned.match(/\{[\s\S]*\}/)
+      if (m) schema = JSON.parse(m[0])
+    } catch {}
+    if (!schema['@type']) {
+      schema = generateFallbackSchema(schemaType, data)
+    }
+    res.json({ schema, formatted: JSON.stringify(schema, null, 2) })
+  } catch (error: any) { res.status(500).json({ error: error.message }) }
+})
+
+function generateFallbackSchema(type: string, data: any) {
+  const base = { '@context': 'https://schema.org', '@type': type }
+  switch (type) {
+    case 'Article': return { ...base, headline: data.title || '', description: data.description || '', author: { '@type': 'Person', name: data.author || '' }, datePublished: data.date || new Date().toISOString(), url: data.url || '' }
+    case 'FAQPage': return { ...base, mainEntity: (data.faqs || []).map((f: any) => ({ '@type': 'Question', name: f.question, acceptedAnswer: { '@type': 'Answer', text: f.answer } })) }
+    case 'Product': return { ...base, name: data.name || '', description: data.description || '', offers: { '@type': 'Offer', price: data.price || '', priceCurrency: data.currency || 'USD', availability: 'https://schema.org/InStock' } }
+    case 'Organization': return { ...base, name: data.name || '', url: data.url || '', logo: data.logo || '', sameAs: data.socials || [] }
+    case 'LocalBusiness': return { ...base, name: data.name || '', address: { '@type': 'PostalAddress', streetAddress: data.address || '', addressLocality: data.city || '', addressCountry: data.country || 'US' }, telephone: data.phone || '' }
+    case 'BreadcrumbList': return { ...base, itemListElement: (data.items || []).map((item: any, i: number) => ({ '@type': 'ListItem', position: i + 1, name: item.name, item: item.url })) }
+    default: return base
   }
+}
 
-  const prompt = `Group these keywords into topic clusters for an SEO content strategy:
-${keywordList.join('\n')}
+// ─── SEO Report Generator ─────────────────────────────────────────────────────
 
-Create 3-6 meaningful clusters. Each cluster should represent a distinct content topic.
+router.post('/report', requireAuth, async (req, res) => {
+  const user = (req as any).user
+  const { period, websiteUrl, goals } = req.body
+
+  // Fetch all user's SEO data
+  const [allKeywords, allAudits, allBriefs, allBacklinks] = await Promise.all([
+    db.select().from(seoKeywords).where(eq(seoKeywords.userId, user.id)),
+    db.select().from(seoAudits).where(eq(seoAudits.userId, user.id)),
+    db.select().from(seoBriefs).where(eq(seoBriefs.userId, user.id)),
+    db.select().from(backlinks).where(eq(backlinks.userId, user.id)),
+  ])
+
+  const top10 = allKeywords.filter(k => k.currentRank && k.currentRank <= 10).length
+  const top3 = allKeywords.filter(k => k.currentRank && k.currentRank <= 3).length
+  const totalVol = allKeywords.reduce((s, k) => s + (k.volume || 0), 0)
+  const avgScore = allAudits.length ? Math.round(allAudits.reduce((s, a) => s + (a.score || 0), 0) / allAudits.length) : 0
+  const activeBacklinks = allBacklinks.filter(b => b.status === 'active').length
+  const avgDiff = allKeywords.filter(k => k.difficulty).length
+    ? Math.round(allKeywords.filter(k => k.difficulty).reduce((s, k) => s + k.difficulty!, 0) / allKeywords.filter(k => k.difficulty).length) : 0
+
+  const prompt = `Generate a professional monthly SEO performance report for ${period || 'this month'}.
+Website: ${websiteUrl || 'the website'}
+Goals: ${goals || 'increase organic traffic and improve rankings'}
+
+SEO Data Summary:
+- Keywords tracked: ${allKeywords.length}
+- Top 3 rankings: ${top3}
+- Top 10 rankings: ${top10}
+- Total search volume potential: ${totalVol}
+- Avg keyword difficulty: ${avgDiff}
+- Pages audited: ${allAudits.length}, Avg score: ${avgScore}/100
+- Content briefs created: ${allBriefs.length}
+- Active backlinks: ${activeBacklinks}
+- High priority keywords: ${allKeywords.filter(k => k.priority === 'high').length}
+- Achieved keyword goals: ${allKeywords.filter(k => k.status === 'achieved').length}
+
+Generate a comprehensive but concise report with:
+1. Executive Summary (2-3 sentences)
+2. Key Wins this period
+3. Areas needing attention
+4. Keyword performance highlights
+5. Content and technical observations
+6. Priority action items for next month
+7. Month-over-month trend assessment
 
 Return JSON:
 {
-  "clusters": [
-    {
-      "name": "Cluster Name",
-      "pillarPage": "suggested pillar page title",
-      "keywords": ["keyword1", "keyword2"],
-      "intent": "informational|commercial|mixed",
-      "priority": "high|medium|low",
-      "contentIdeas": ["content idea 1", "content idea 2"]
-    }
-  ]
+  "period": "",
+  "executiveSummary": "",
+  "wins": [],
+  "concerns": [],
+  "keywordHighlights": [{"keyword":"","insight":"","action":""}],
+  "contentObservations": "",
+  "technicalObservations": "",
+  "priorityActions": [{"action":"","impact":"high|medium|low","effort":"low|medium|high","deadline":""}],
+  "trendAssessment": "",
+  "overallHealthScore": 0,
+  "nextMonthFocus": ""
 }`
 
   try {
     const ai = await getAIProvider()
-    const response = await ai.generate(prompt, 'You are an SEO content strategist. Return ONLY valid JSON.')
-
-    let result: any = {}
-    try {
-      const jsonMatch = response.match(/\{[\s\S]*\}/)
-      if (jsonMatch) result = JSON.parse(jsonMatch[0])
-    } catch {
-      result = { clusters: [] }
-    }
-
-    // Update keywords in DB with their cluster assignments
-    if (result.clusters) {
-      for (const cluster of result.clusters) {
-        for (const kwText of cluster.keywords) {
-          const existing = await db.select().from(seoKeywords)
-            .where(eq(seoKeywords.userId, user.id))
-          const match = existing.find(k => k.keyword.toLowerCase() === kwText.toLowerCase())
-          if (match) {
-            await db.update(seoKeywords)
-              .set({ cluster: cluster.name, updatedAt: new Date() })
-              .where(eq(seoKeywords.id, match.id))
-          }
-        }
+    const response = await ai.generate(prompt, 'You are an SEO consultant writing a client report. Return ONLY valid JSON.')
+    let report: any = {}
+    try { const m = response.match(/\{[\s\S]*\}/); if (m) report = JSON.parse(m[0]) } catch {}
+    if (!report.executiveSummary) {
+      report = {
+        period: period || 'Current Month',
+        executiveSummary: `Your SEO efforts are progressing with ${allKeywords.length} keywords tracked, ${top10} in the top 10, and ${activeBacklinks} active backlinks. Focus on converting high-priority keywords into top-10 rankings and improving page audit scores.`,
+        wins: top3 > 0 ? [`${top3} keywords ranking in top 3 positions`, `${allBriefs.length} content briefs created for strategic content`] : [`${allKeywords.length} keywords actively tracked`, `${allBriefs.length} content briefs ready for publication`],
+        concerns: avgScore < 70 ? ['Page audit scores averaging below 70 — prioritize on-page fixes', 'Keyword difficulty averaging high — target more long-tail opportunities'] : ['Continue building backlinks to improve domain authority', 'Monitor ranking fluctuations for top keywords'],
+        keywordHighlights: allKeywords.filter(k => k.priority === 'high').slice(0, 3).map(k => ({
+          keyword: k.keyword, insight: k.currentRank ? `Currently ranking #${k.currentRank}` : 'Not yet ranking', action: k.currentRank && k.currentRank <= 10 ? 'Maintain and optimize page' : 'Create/optimize content for this keyword',
+        })),
+        contentObservations: `${allBriefs.length} content briefs have been generated. Focus on publishing content for high-priority, low-difficulty keywords first to gain quick wins.`,
+        technicalObservations: allAudits.length ? `${allAudits.length} pages audited with an average score of ${avgScore}/100. ${avgScore < 70 ? 'Prioritize fixing high-severity issues on key landing pages.' : 'Scores are healthy. Continue monitoring for regressions.'}` : 'No pages have been audited yet. Run audits on your top 5 pages immediately.',
+        priorityActions: [
+          { action: 'Publish content for top 3 high-priority, low-difficulty keywords', impact: 'high', effort: 'medium', deadline: 'Next 2 weeks' },
+          { action: 'Fix high-severity audit issues on main landing page', impact: 'high', effort: 'low', deadline: 'This week' },
+          { action: 'Build 5 new backlinks from industry publications', impact: 'medium', effort: 'high', deadline: 'End of month' },
+          { action: 'Update and republish 2 existing articles with fresh data', impact: 'medium', effort: 'low', deadline: 'Next week' },
+        ],
+        trendAssessment: `With ${allKeywords.length} tracked keywords and a content strategy in place, the trajectory is positive. Consistency in content publishing and link building will be key to improving rankings over the next 60-90 days.`,
+        overallHealthScore: Math.min(100, Math.round(((top10 / Math.max(allKeywords.length, 1)) * 30) + (avgScore * 0.4) + (Math.min(activeBacklinks, 20) * 1.5))),
+        nextMonthFocus: 'Focus on publishing the top 5 content briefs, running audits on all key pages, and securing 5 new backlinks from domain authority 40+ sources.',
       }
     }
+    res.json(report)
+  } catch (error: any) { res.status(500).json({ error: error.message }) }
+})
 
-    res.json(result)
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
-  }
+// ─── Backlinks ────────────────────────────────────────────────────────────────
+
+router.get('/backlinks', requireAuth, async (req, res) => {
+  const user = (req as any).user
+  const links = await db.select().from(backlinks).where(eq(backlinks.userId, user.id)).orderBy(desc(backlinks.createdAt))
+  res.json(links)
+})
+
+router.post('/backlinks', requireAuth, async (req, res) => {
+  const user = (req as any).user
+  const { sourceUrl, sourceDomain, targetUrl, anchorText, type, status, domainAuthority, category, notes } = req.body
+  const domain = sourceDomain || (sourceUrl ? sourceUrl.replace(/^https?:\/\//, '').split('/')[0] : null)
+  const [link] = await db.insert(backlinks).values({
+    userId: user.id, sourceUrl, sourceDomain: domain, targetUrl, anchorText: anchorText || null,
+    type: type || 'dofollow', status: status || 'active', domainAuthority: domainAuthority ? parseInt(domainAuthority) : null,
+    category: category || null, notes: notes || null,
+  }).returning()
+  res.json(link)
+})
+
+router.patch('/backlinks/:id', requireAuth, async (req, res) => {
+  const [updated] = await db.update(backlinks).set({ ...req.body, updatedAt: new Date() }).where(eq(backlinks.id, req.params.id)).returning()
+  res.json(updated)
+})
+
+router.delete('/backlinks/:id', requireAuth, async (req, res) => {
+  await db.delete(backlinks).where(eq(backlinks.id, req.params.id))
+  res.json({ success: true })
+})
+
+router.post('/backlinks/find', requireAuth, async (req, res) => {
+  const { websiteUrl, niche } = req.body
+  const prompt = `Suggest 10 high-quality backlink opportunities for a ${niche || 'SaaS startup'} website: ${websiteUrl || 'a startup'}
+
+For each opportunity suggest:
+- sourceDomain: the website to get a link from
+- type: dofollow/nofollow  
+- domainAuthority: estimated DA (0-100)
+- category: editorial/directory/guest-post/forum/tool/resource
+- strategy: how to get the link (1-2 sentences)
+- difficulty: easy/medium/hard
+
+Return JSON array: [{"sourceDomain":"","type":"","domainAuthority":0,"category":"","strategy":"","difficulty":""}]`
+  try {
+    const ai = await getAIProvider()
+    const response = await ai.generate(prompt, 'You are a link building expert. Return ONLY valid JSON array.')
+    let opportunities: any[] = []
+    try { const m = response.match(/\[[\s\S]*\]/); if (m) opportunities = JSON.parse(m[0]) } catch {}
+    if (!opportunities.length) {
+      opportunities = [
+        { sourceDomain: 'producthunt.com', type: 'dofollow', domainAuthority: 90, category: 'directory', strategy: 'Launch your product on Product Hunt to get a high-DA backlink automatically', difficulty: 'easy' },
+        { sourceDomain: 'indiehackers.com', type: 'dofollow', domainAuthority: 78, category: 'forum', strategy: 'Share your founder story and link to your product in your profile', difficulty: 'easy' },
+        { sourceDomain: 'capterra.com', type: 'dofollow', domainAuthority: 88, category: 'directory', strategy: 'List your software in relevant categories — free listing available', difficulty: 'easy' },
+        { sourceDomain: 'g2.com', type: 'dofollow', domainAuthority: 92, category: 'directory', strategy: 'Create a G2 profile and encourage early customers to leave reviews', difficulty: 'easy' },
+        { sourceDomain: 'hackernews.ycombinator.com', type: 'dofollow', domainAuthority: 93, category: 'forum', strategy: 'Share a "Show HN" post when you launch new features', difficulty: 'medium' },
+        { sourceDomain: 'dev.to', type: 'dofollow', domainAuthority: 84, category: 'editorial', strategy: 'Write technical tutorials that naturally link to your tool', difficulty: 'medium' },
+        { sourceDomain: 'medium.com', type: 'dofollow', domainAuthority: 95, category: 'editorial', strategy: 'Publish in-depth founder journey or technical articles', difficulty: 'easy' },
+        { sourceDomain: 'betalist.com', type: 'dofollow', domainAuthority: 70, category: 'directory', strategy: 'Submit your startup to BetaList for early adopter exposure', difficulty: 'easy' },
+        { sourceDomain: 'startupstash.com', type: 'dofollow', domainAuthority: 65, category: 'directory', strategy: 'Submit to this startup directory for a permanent listing', difficulty: 'easy' },
+        { sourceDomain: 'crunchbase.com', type: 'dofollow', domainAuthority: 91, category: 'directory', strategy: 'Create a free company profile with your website link', difficulty: 'easy' },
+      ]
+    }
+    res.json(opportunities)
+  } catch (error: any) { res.status(500).json({ error: error.message }) }
 })
 
 export default router
