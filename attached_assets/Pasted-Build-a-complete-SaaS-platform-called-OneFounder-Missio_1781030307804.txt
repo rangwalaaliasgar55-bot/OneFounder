@@ -1,0 +1,842 @@
+Build a complete SaaS platform called OneFounder.
+Mission:
+Allow one person to run an entire company from one platform.
+A user should be able to:
+
+
+Discover business opportunities
+
+
+Validate ideas
+
+
+Build products
+
+
+Manage websites
+
+
+Manage WordPress
+
+
+Manage SEO
+
+
+Manage content
+
+
+Manage social media
+
+
+Manage leads
+
+
+Manage customers
+
+
+Manage finances
+
+
+Manage analytics
+
+
+Automate workflows
+
+
+Run operations
+
+
+without leaving OneFounder.
+
+IMPORTANT
+Use FREE and OPEN SOURCE AI initially.
+Everything else can use professional services and APIs.
+Examples:
+✅ Neon PostgreSQL
+✅ Better Auth
+✅ WordPress API
+✅ LinkedIn APIs
+✅ Google APIs
+✅ PostHog
+✅ Resend
+✅ Cloudflare
+✅ Vercel
+✅ GitHub
+❌ No Claude initially
+❌ No OpenAI initially
+❌ No Gemini initially
+
+AI STACK
+Use:
+Ollama
+Models:
+
+
+DeepSeek
+
+
+Qwen
+
+
+Llama
+
+
+Mistral
+
+
+Create a provider abstraction layer.
+Example:
+interface AIProvider {  generate()  chat()  summarize()  analyze()  research()}
+Future support:
+
+
+OpenAI
+
+
+Claude
+
+
+Gemini
+
+
+without changing business logic.
+
+CORE VISION
+OneFounder should become:
+
+"The operating system for building and running a company."
+
+Not another AI chatbot.
+Not another productivity app.
+Not another CRM.
+A complete business operating system.
+
+AUTHENTICATION
+Use:
+
+
+Better Auth
+
+
+Google Login
+
+
+GitHub Login
+
+
+Email Login
+
+
+
+DATABASE
+Use:
+
+
+Neon PostgreSQL
+
+
+Drizzle ORM
+
+
+Create scalable schema.
+
+MODULE 1 — BUSINESS DISCOVERY
+User enters:
+
+
+skills
+
+
+interests
+
+
+budget
+
+
+available time
+
+
+location
+
+
+experience
+
+
+Generate:
+
+
+startup ideas
+
+
+SaaS ideas
+
+
+agency ideas
+
+
+marketplace ideas
+
+
+AI ideas
+
+
+local business ideas
+
+
+For every idea:
+
+
+competition
+
+
+revenue potential
+
+
+market size
+
+
+difficulty
+
+
+roadmap
+
+
+
+MODULE 2 — MARKET RESEARCH
+Analyze:
+
+
+competitors
+
+
+trends
+
+
+opportunities
+
+
+market demand
+
+
+keywords
+
+
+Generate:
+
+
+SWOT
+
+
+risks
+
+
+strengths
+
+
+opportunities
+
+
+
+MODULE 3 — BUSINESS PLANNER
+Generate:
+
+
+business model
+
+
+pricing
+
+
+customer profile
+
+
+acquisition strategy
+
+
+launch strategy
+
+
+growth strategy
+
+
+Export:
+
+
+PDF
+
+
+DOCX
+
+
+
+MODULE 4 — PROJECT MANAGEMENT
+Create:
+
+
+projects
+
+
+milestones
+
+
+tasks
+
+
+roadmaps
+
+
+Track:
+
+
+progress
+
+
+completion
+
+
+deadlines
+
+
+
+MODULE 5 — WEBSITE COMMAND CENTER
+Connect:
+WordPress
+Capabilities:
+
+
+create blogs
+
+
+edit blogs
+
+
+create pages
+
+
+edit pages
+
+
+update metadata
+
+
+manage SEO
+
+
+schedule posts
+
+
+
+Webflow
+Connect and manage.
+
+Framer
+Connect and manage.
+
+Shopify
+Connect and manage.
+
+Custom Websites
+Connect via API.
+
+MODULE 6 — SEO OPERATING SYSTEM
+Features:
+
+
+keyword research
+
+
+competitor SEO analysis
+
+
+backlink opportunities
+
+
+content gap analysis
+
+
+technical SEO audits
+
+
+Generate:
+
+
+keyword plans
+
+
+article plans
+
+
+SEO reports
+
+
+Track:
+
+
+rankings
+
+
+traffic
+
+
+growth
+
+
+
+MODULE 7 — CONTENT COMMAND CENTER
+Generate:
+Blogs
+Landing Pages
+LinkedIn Posts
+Twitter Threads
+Newsletters
+Emails
+Ad Copy
+Product Descriptions
+Store everything.
+
+MODULE 8 — SOCIAL MEDIA COMMAND CENTER
+Connect:
+LinkedIn
+X
+Instagram
+Facebook
+Threads
+TikTok
+YouTube
+Capabilities:
+
+
+generate posts
+
+
+generate content calendars
+
+
+schedule posts
+
+
+track analytics
+
+
+track engagement
+
+
+
+MODULE 9 — CRM
+Manage:
+
+
+leads
+
+
+prospects
+
+
+clients
+
+
+companies
+
+
+Pipeline:
+
+
+lead
+
+
+qualified
+
+
+proposal
+
+
+negotiation
+
+
+won
+
+
+lost
+
+
+
+MODULE 10 — SALES SYSTEM
+Generate:
+
+
+cold emails
+
+
+follow-ups
+
+
+proposals
+
+
+outreach campaigns
+
+
+Track:
+
+
+replies
+
+
+opens
+
+
+conversions
+
+
+
+MODULE 11 — FINANCE SYSTEM
+Track:
+Revenue
+Expenses
+Profit
+Burn Rate
+Monthly Growth
+Generate:
+
+
+reports
+
+
+forecasts
+
+
+summaries
+
+
+
+MODULE 12 — ANALYTICS
+Track:
+
+
+traffic
+
+
+users
+
+
+engagement
+
+
+revenue
+
+
+SEO growth
+
+
+social growth
+
+
+Create dashboards.
+
+MODULE 13 — AUTOMATIONS
+Examples:
+When blog is created:
+
+
+generate LinkedIn post
+
+
+generate Twitter thread
+
+
+generate newsletter
+
+
+When lead is added:
+
+
+add to CRM
+
+
+create follow-up task
+
+
+When roadmap is generated:
+
+
+create milestones automatically
+
+
+
+MODULE 14 — AI AGENTS
+Create:
+CEO Agent
+Business strategy.
+Marketing Agent
+Growth and content.
+SEO Agent
+Search optimization.
+Sales Agent
+Lead generation.
+Research Agent
+Competitor analysis.
+Operations Agent
+Workflow optimization.
+Product Agent
+Product planning.
+
+MODULE 15 — KNOWLEDGE BASE
+Store:
+
+
+documents
+
+
+business plans
+
+
+research
+
+
+strategies
+
+
+notes
+
+
+Searchable.
+
+MODULE 16 — DASHBOARD
+Single command center.
+Show:
+
+
+company health
+
+
+revenue
+
+
+tasks
+
+
+SEO
+
+
+content
+
+
+social media
+
+
+sales
+
+
+analytics
+
+
+AI insights
+
+
+
+MODULE 17 — COLLABORATION
+Invite:
+
+
+co-founders
+
+
+employees
+
+
+contractors
+
+
+Permissions:
+
+
+admin
+
+
+editor
+
+
+viewer
+
+
+
+MODULE 18 — MARKETPLACE
+Install:
+
+
+templates
+
+
+workflows
+
+
+automations
+
+
+industry packs
+
+
+Examples:
+
+
+SaaS Pack
+
+
+Agency Pack
+
+
+E-commerce Pack
+
+
+Creator Pack
+
+
+
+MODULE 19 — INVESTOR MODE
+Generate:
+
+
+pitch decks
+
+
+KPI reports
+
+
+growth reports
+
+
+investor updates
+
+
+
+MODULE 20 — FUTURE EXPANSION
+Architecture must support future integration of:
+
+
+Claude
+
+
+OpenAI
+
+
+Gemini
+
+
+Custom Models
+
+
+without major rewrites.
+
+UI DESIGN
+Inspired by:
+
+
+Linear
+
+
+Notion
+
+
+Vercel
+
+
+Arc Browser
+
+
+Stripe
+
+
+Requirements:
+
+
+Dark Mode
+
+
+Light Mode
+
+
+Beautiful dashboards
+
+
+Glassmorphism
+
+
+Smooth animations
+
+
+Mobile responsive
+
+
+Premium feel
+
+
+
+MVP RELEASE STRATEGY
+Phase 1:
+
+
+Authentication
+
+
+Dashboard
+
+
+Startup Generator
+
+
+Research
+
+
+Business Planner
+
+
+Founder Chat
+
+
+Phase 2:
+
+
+Content
+
+
+SEO
+
+
+Social Media
+
+
+WordPress Integration
+
+
+Phase 3:
+
+
+CRM
+
+
+Sales
+
+
+Finance
+
+
+Analytics
+
+
+Phase 4:
+
+
+Automations
+
+
+Marketplace
+
+
+Investor Mode
+
+
+
+FINAL GOAL
+OneFounder should become:
+"The all-in-one operating system for founders, startups, creators, agencies, freelancers, and small businesses."
+A user should be able to build, launch, market, manage, and scale an entire company from a single platform.
