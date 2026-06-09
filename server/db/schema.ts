@@ -5,6 +5,9 @@ export const ideaStatusEnum = pgEnum('idea_status', ['draft', 'validated', 'buil
 export const taskStatusEnum = pgEnum('task_status', ['todo', 'in_progress', 'done', 'cancelled'])
 export const leadStatusEnum = pgEnum('lead_status', ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'])
 export const contentTypeEnum = pgEnum('content_type', ['blog', 'landing_page', 'linkedin', 'twitter', 'newsletter', 'email', 'ad_copy', 'product_description'])
+export const socialPostStatusEnum = pgEnum('social_post_status', ['draft', 'scheduled', 'published', 'failed'])
+export const socialPlatformEnum = pgEnum('social_platform', ['linkedin', 'twitter', 'instagram', 'tiktok', 'facebook'])
+export const financeEntryTypeEnum = pgEnum('finance_entry_type', ['revenue', 'expense', 'subscription'])
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -186,6 +189,51 @@ export const knowledgeBase = pgTable('knowledge_base', {
   title: text('title').notNull(),
   content: text('content'),
   type: text('type').default('note'),
+  tags: jsonb('tags'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+export const socialPosts = pgTable('social_posts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  platform: socialPlatformEnum('platform').notNull(),
+  content: text('content').notNull(),
+  status: socialPostStatusEnum('status').default('draft'),
+  hashtags: jsonb('hashtags'),
+  mediaUrls: jsonb('media_urls'),
+  metrics: jsonb('metrics'),
+  scheduledAt: timestamp('scheduled_at'),
+  publishedAt: timestamp('published_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+export const financeEntries = pgTable('finance_entries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: financeEntryTypeEnum('type').notNull(),
+  amount: integer('amount').notNull(),
+  currency: text('currency').default('USD'),
+  description: text('description').notNull(),
+  category: text('category'),
+  recurring: boolean('recurring').default(false),
+  recurringInterval: text('recurring_interval'),
+  date: timestamp('date').notNull().defaultNow(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+export const seoKeywords = pgTable('seo_keywords', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  keyword: text('keyword').notNull(),
+  targetUrl: text('target_url'),
+  volume: integer('volume'),
+  difficulty: integer('difficulty'),
+  currentRank: integer('current_rank'),
+  targetRank: integer('target_rank'),
+  notes: text('notes'),
   tags: jsonb('tags'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),

@@ -12,6 +12,9 @@ import { CRMPage } from './pages/CRMPage'
 import { ChatPage } from './pages/ChatPage'
 import { KnowledgePage } from './pages/KnowledgePage'
 import { SettingsPage } from './pages/SettingsPage'
+import { SocialPage } from './pages/SocialPage'
+import { FinancePage } from './pages/FinancePage'
+import { SeoPage } from './pages/SeoPage'
 
 type Page =
   | 'dashboard'
@@ -24,6 +27,9 @@ type Page =
   | 'chat'
   | 'knowledge'
   | 'settings'
+  | 'social'
+  | 'finance'
+  | 'seo'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -67,6 +73,9 @@ export default function App() {
     chat: <ChatPage />,
     knowledge: <KnowledgePage />,
     settings: <SettingsPage />,
+    social: <SocialPage />,
+    finance: <FinancePage />,
+    seo: <SeoPage />,
   }
 
   return (

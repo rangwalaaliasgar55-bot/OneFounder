@@ -15,6 +15,9 @@ import leadsRoutes from './routes/leads'
 import knowledgeRoutes from './routes/knowledge'
 import chatRoutes from './routes/chat'
 import dashboardRoutes from './routes/dashboard'
+import socialRoutes from './routes/social'
+import financeRoutes from './routes/finance'
+import seoRoutes from './routes/seo'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -44,6 +47,9 @@ app.use('/api/leads', leadsRoutes)
 app.use('/api/knowledge', knowledgeRoutes)
 app.use('/api/chat', chatRoutes)
 app.use('/api/dashboard', dashboardRoutes)
+app.use('/api/social', socialRoutes)
+app.use('/api/finance', financeRoutes)
+app.use('/api/seo', seoRoutes)
 
 app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', version: '1.0.0', name: 'OneFounder' })
