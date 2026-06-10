@@ -224,7 +224,6 @@ export const financeEntries = pgTable('finance_entries', {
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 
-// Enhanced SEO keywords with rank history, intent, cluster, priority, status
 export const seoKeywords = pgTable('seo_keywords', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -234,41 +233,39 @@ export const seoKeywords = pgTable('seo_keywords', {
   difficulty: integer('difficulty'),
   currentRank: integer('current_rank'),
   targetRank: integer('target_rank'),
-  intent: text('intent'),             // informational/commercial/transactional/navigational
-  cluster: text('cluster'),           // topic cluster label
-  priority: text('priority').default('medium'), // high/medium/low
-  status: text('status').default('tracking'),   // tracking/paused/achieved
-  rankHistory: jsonb('rank_history').default([]),  // [{date, rank}]
+  intent: text('intent'),
+  cluster: text('cluster'),
+  priority: text('priority').default('medium'),
+  status: text('status').default('tracking'),
+  rankHistory: jsonb('rank_history').default([]),
   notes: text('notes'),
   tags: jsonb('tags'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 
-// SEO Audits — on-page analysis for a URL
 export const seoAudits = pgTable('seo_audits', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   url: text('url').notNull(),
   score: integer('score'),
-  issues: jsonb('issues'),          // [{type, severity, message, fix}]
+  issues: jsonb('issues'),
   recommendations: jsonb('recommendations'),
-  metadata: jsonb('metadata'),      // {title, description, h1, wordCount, ...}
+  metadata: jsonb('metadata'),
   createdAt: timestamp('created_at').defaultNow(),
 })
 
-// Backlink tracker
 export const backlinks = pgTable('backlinks', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  sourceUrl: text('source_url').notNull(),         // page linking to you
-  sourceDomain: text('source_domain'),              // root domain
-  targetUrl: text('target_url').notNull(),          // your page being linked
+  sourceUrl: text('source_url').notNull(),
+  sourceDomain: text('source_domain'),
+  targetUrl: text('target_url').notNull(),
   anchorText: text('anchor_text'),
-  type: text('type').default('dofollow'),           // dofollow/nofollow/sponsored/ugc
-  status: text('status').default('active'),         // active/lost/pending/broken
-  domainAuthority: integer('domain_authority'),     // 0-100 DA estimate
-  category: text('category'),                      // editorial/directory/guest-post/forum/social/tool
+  type: text('type').default('dofollow'),
+  status: text('status').default('active'),
+  domainAuthority: integer('domain_authority'),
+  category: text('category'),
   notes: text('notes'),
   discoveredAt: timestamp('discovered_at').defaultNow(),
   lostAt: timestamp('lost_at'),
@@ -276,7 +273,6 @@ export const backlinks = pgTable('backlinks', {
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 
-// Founder Journey milestones
 export const journeyMilestones = pgTable('journey_milestones', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -294,7 +290,6 @@ export const journeyMilestones = pgTable('journey_milestones', {
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 
-// Saved content briefs
 export const seoBriefs = pgTable('seo_briefs', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -309,4 +304,32 @@ export const seoBriefs = pgTable('seo_briefs', {
   relatedKeywords: jsonb('related_keywords'),
   faqSection: jsonb('faq_section'),
   createdAt: timestamp('created_at').defaultNow(),
+})
+
+// WordPress / Website Manager
+export const wpSites = pgTable('wp_sites', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  siteUrl: text('site_url').notNull(),
+  siteName: text('site_name'),
+  applicationPassword: text('application_password'),
+  username: text('username'),
+  status: text('status').default('active'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+// Founder Profile
+export const founderProfiles = pgTable('founder_profiles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
+  riskTolerance: text('risk_tolerance').default('moderate'),
+  workStyle: text('work_style').default('builder'),
+  primaryGoal: text('primary_goal').default('get_first_customer'),
+  bio: text('bio'),
+  industry: text('industry'),
+  stage: text('stage').default('idea'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 })

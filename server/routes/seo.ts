@@ -34,19 +34,19 @@ router.post('/', requireAuth, async (req, res) => {
 router.patch('/:id', requireAuth, async (req, res) => {
   const updates: any = { ...req.body, updatedAt: new Date() }
   if (updates.currentRank !== undefined) {
-    const [existing] = await db.select().from(seoKeywords).where(eq(seoKeywords.id, req.params.id))
+    const [existing] = await db.select().from(seoKeywords).where(eq(seoKeywords.id, req.params.id as string))
     if (existing) {
       const history = (existing.rankHistory as any[]) || []
       history.push({ date: new Date().toISOString(), rank: updates.currentRank })
       updates.rankHistory = history
     }
   }
-  const [updated] = await db.update(seoKeywords).set(updates).where(eq(seoKeywords.id, req.params.id)).returning()
+  const [updated] = await db.update(seoKeywords).set(updates).where(eq(seoKeywords.id, req.params.id as string)).returning()
   res.json(updated)
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(seoKeywords).where(eq(seoKeywords.id, req.params.id))
+  await db.delete(seoKeywords).where(eq(seoKeywords.id, req.params.id as string))
   res.json({ success: true })
 })
 
@@ -171,7 +171,7 @@ router.get('/audits', requireAuth, async (req, res) => {
 })
 
 router.delete('/audits/:id', requireAuth, async (req, res) => {
-  await db.delete(seoAudits).where(eq(seoAudits.id, req.params.id))
+  await db.delete(seoAudits).where(eq(seoAudits.id, req.params.id as string))
   res.json({ success: true })
 })
 
@@ -228,7 +228,7 @@ Return JSON: { "titles":[],"metaDescription":"","outline":[{"heading":"","type":
 })
 
 router.delete('/briefs/:id', requireAuth, async (req, res) => {
-  await db.delete(seoBriefs).where(eq(seoBriefs.id, req.params.id))
+  await db.delete(seoBriefs).where(eq(seoBriefs.id, req.params.id as string))
   res.json({ success: true })
 })
 
@@ -448,12 +448,12 @@ router.post('/backlinks', requireAuth, async (req, res) => {
 })
 
 router.patch('/backlinks/:id', requireAuth, async (req, res) => {
-  const [updated] = await db.update(backlinks).set({ ...req.body, updatedAt: new Date() }).where(eq(backlinks.id, req.params.id)).returning()
+  const [updated] = await db.update(backlinks).set({ ...req.body, updatedAt: new Date() }).where(eq(backlinks.id, req.params.id as string)).returning()
   res.json(updated)
 })
 
 router.delete('/backlinks/:id', requireAuth, async (req, res) => {
-  await db.delete(backlinks).where(eq(backlinks.id, req.params.id))
+  await db.delete(backlinks).where(eq(backlinks.id, req.params.id as string))
   res.json({ success: true })
 })
 

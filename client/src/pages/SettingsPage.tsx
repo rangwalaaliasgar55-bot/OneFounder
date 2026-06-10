@@ -2,14 +2,46 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
+import { LoadingSpinner } from '../components/ui/LoadingSpinner'
+
+interface FounderProfile {
+  riskTolerance: string
+  workStyle: string
+  primaryGoal: string
+  bio: string
+  industry: string
+  stage: string
+}
 
 export function SettingsPage() {
   const { user, signOut } = useAuth()
   const [aiStatus, setAiStatus] = useState<any>(null)
+  const [profile, setProfile] = useState<FounderProfile>({
+    riskTolerance: 'moderate',
+    workStyle: 'builder',
+    primaryGoal: 'get_first_customer',
+    bio: '',
+    industry: '',
+    stage: 'idea',
+  })
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileSaved, setProfileSaved] = useState(false)
 
   useEffect(() => {
     api.get<any>('/ai/status').then(setAiStatus).catch(() => {})
+    api.get<FounderProfile | null>('/founder-profile').then(p => {
+      if (p) setProfile(p)
+    }).catch(() => {})
   }, [])
+
+  const saveProfile = async () => {
+    setProfileSaving(true)
+    try {
+      await api.put('/founder-profile', profile)
+      setProfileSaved(true)
+      setTimeout(() => setProfileSaved(false), 2000)
+    } catch {} finally { setProfileSaving(false) }
+  }
 
   const MODULES = [
     { icon: '💡', label: 'Idea Lab', status: 'active', desc: 'AI-powered startup idea generation' },
@@ -20,13 +52,46 @@ export function SettingsPage() {
     { icon: '👥', label: 'CRM', status: 'active', desc: 'Lead & customer management' },
     { icon: '🤖', label: 'AI Agents', status: 'active', desc: 'CEO, Marketing, Sales agents' },
     { icon: '📚', label: 'Knowledge Base', status: 'active', desc: 'Document management' },
-    { icon: '🌐', label: 'Website Manager', status: 'coming_soon', desc: 'WordPress, Webflow, Shopify' },
-    { icon: '📱', label: 'Social Media', status: 'coming_soon', desc: 'LinkedIn, X, Instagram scheduler' },
-    { icon: '💰', label: 'Finance Tracker', status: 'coming_soon', desc: 'Revenue, expenses, burn rate' },
+    { icon: '🌐', label: 'Website Manager', status: 'active', desc: 'WordPress integration & SEO' },
+    { icon: '📱', label: 'Social Media', status: 'active', desc: 'Schedule & manage posts' },
+    { icon: '💰', label: 'Finance Tracker', status: 'active', desc: 'Revenue, expenses, burn rate' },
     { icon: '📊', label: 'Analytics', status: 'coming_soon', desc: 'Traffic, engagement, growth' },
     { icon: '⚡', label: 'Automations', status: 'coming_soon', desc: 'Workflow automation engine' },
     { icon: '🛒', label: 'Marketplace', status: 'coming_soon', desc: 'Templates & industry packs' },
     { icon: '📈', label: 'Investor Mode', status: 'coming_soon', desc: 'Pitch decks & KPI reports' },
+  ]
+
+  const providerLabel = aiStatus?.available
+    ? aiStatus.provider === 'claude'
+      ? `Claude AI (${aiStatus.models?.[0] || 'Sonnet'})`
+      : `Ollama (${aiStatus.models?.join(', ') || 'connected'})`
+    : 'Demo Mode (No AI)'
+
+  const riskOptions = [
+    { value: 'conservative', label: 'Conservative', desc: 'Low risk, steady growth' },
+    { value: 'moderate', label: 'Moderate', desc: 'Balanced approach' },
+    { value: 'aggressive', label: 'Aggressive', desc: 'High risk, high reward' },
+  ]
+
+  const workStyleOptions = [
+    { value: 'builder', label: '🔨 Builder', desc: 'Focus on product & tech' },
+    { value: 'marketer', label: '📣 Marketer', desc: 'Focus on growth & brand' },
+    { value: 'operator', label: '⚙️ Operator', desc: 'Focus on systems & scale' },
+  ]
+
+  const goalOptions = [
+    { value: 'get_first_customer', label: 'Get first customer' },
+    { value: 'reach_10k_mrr', label: 'Reach $10k MRR' },
+    { value: 'raise_funding', label: 'Raise funding' },
+    { value: 'grow_team', label: 'Grow team' },
+  ]
+
+  const stageOptions = [
+    { value: 'idea', label: 'Idea stage' },
+    { value: 'mvp', label: 'Building MVP' },
+    { value: 'launched', label: 'Launched' },
+    { value: 'growing', label: 'Growing' },
+    { value: 'scaling', label: 'Scaling' },
   ]
 
   return (
@@ -52,6 +117,108 @@ export function SettingsPage() {
           </div>
         </div>
 
+        {/* Founder Profile */}
+        <div className="card">
+          <h2 className="text-base font-semibold text-white mb-4">🧬 Founder Profile</h2>
+          <p className="text-xs text-slate-500 mb-4">AI uses this context to personalise all responses to your goals and style.</p>
+
+          <div className="space-y-5">
+            <div>
+              <label className="text-xs font-medium text-slate-400 mb-2 block">Risk Tolerance</label>
+              <div className="grid grid-cols-3 gap-2">
+                {riskOptions.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setProfile(p => ({ ...p, riskTolerance: opt.value }))}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      profile.riskTolerance === opt.value
+                        ? 'border-brand-500/40 bg-brand-600/20 text-white'
+                        : 'border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
+                    }`}
+                  >
+                    <div className="text-xs font-semibold">{opt.label}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 rounded-full transition-all duration-500"
+                  style={{ width: profile.riskTolerance === 'conservative' ? '33%' : profile.riskTolerance === 'moderate' ? '66%' : '100%' }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-slate-400 mb-2 block">Work Style</label>
+              <div className="grid grid-cols-3 gap-2">
+                {workStyleOptions.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setProfile(p => ({ ...p, workStyle: opt.value }))}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      profile.workStyle === opt.value
+                        ? 'border-brand-500/40 bg-brand-600/20 text-white'
+                        : 'border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
+                    }`}
+                  >
+                    <div className="text-xs font-semibold">{opt.label}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-slate-400 mb-2 block">Primary Goal</label>
+                <select
+                  className="input w-full"
+                  value={profile.primaryGoal}
+                  onChange={e => setProfile(p => ({ ...p, primaryGoal: e.target.value }))}
+                >
+                  {goalOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-400 mb-2 block">Current Stage</label>
+                <select
+                  className="input w-full"
+                  value={profile.stage}
+                  onChange={e => setProfile(p => ({ ...p, stage: e.target.value }))}
+                >
+                  {stageOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-slate-400 mb-2 block">Industry</label>
+                <input
+                  className="input w-full"
+                  placeholder="e.g. SaaS, E-commerce, Fintech..."
+                  value={profile.industry}
+                  onChange={e => setProfile(p => ({ ...p, industry: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-400 mb-2 block">Bio / Context</label>
+                <input
+                  className="input w-full"
+                  placeholder="Brief description of your business..."
+                  value={profile.bio}
+                  onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <button onClick={saveProfile} disabled={profileSaving} className="btn-primary flex items-center gap-2">
+              {profileSaving ? <LoadingSpinner size="sm" /> : profileSaved ? '✓ Saved!' : 'Save Profile'}
+            </button>
+          </div>
+        </div>
+
         <div className="card">
           <h2 className="text-base font-semibold text-white mb-4">AI Provider</h2>
           <div className="space-y-4">
@@ -62,49 +229,29 @@ export function SettingsPage() {
             }`}>
               <div className={`w-3 h-3 rounded-full flex-shrink-0 ${aiStatus?.available ? 'bg-green-400' : 'bg-yellow-400'} animate-pulse`} />
               <div className="flex-1">
-                <div className="text-sm font-medium text-white">
-                  {aiStatus?.available ? 'Ollama Connected' : 'Demo Mode (No AI)'}
-                </div>
+                <div className="text-sm font-medium text-white">{providerLabel}</div>
                 <div className="text-xs text-slate-400 mt-0.5">
-                  {aiStatus?.available
-                    ? `Models: ${aiStatus.models?.join(', ') || 'none loaded'}`
-                    : 'Install Ollama to enable real AI responses'
-                  }
+                  {aiStatus?.provider === 'claude' && 'Powered by Anthropic Claude — set via ANTHROPIC_API_KEY'}
+                  {aiStatus?.provider === 'ollama' && `Models: ${aiStatus.models?.join(', ') || 'none loaded'}`}
+                  {!aiStatus?.available && 'Set ANTHROPIC_API_KEY or install Ollama to enable real AI'}
                 </div>
               </div>
-              {!aiStatus?.available && (
-                <a
-                  href="https://ollama.ai"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-primary text-sm py-1.5"
-                >
-                  Install Ollama →
-                </a>
-              )}
             </div>
 
             {!aiStatus?.available && (
               <div className="glass rounded-xl p-4 text-sm text-slate-400 space-y-2">
                 <p className="font-medium text-white">How to enable AI:</p>
-                <ol className="list-decimal list-inside space-y-1 text-slate-400">
-                  <li>Download and install <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">Ollama</a></li>
-                  <li>Open terminal and run: <code className="bg-white/10 px-2 py-0.5 rounded text-xs font-mono">ollama serve</code></li>
-                  <li>Pull a model: <code className="bg-white/10 px-2 py-0.5 rounded text-xs font-mono">ollama pull llama3.2</code></li>
-                  <li>Restart OneFounder</li>
-                </ol>
-                <p className="text-xs text-slate-500">Supported models: llama3.2, deepseek-r1, qwen2.5, mistral</p>
+                <p className="text-xs text-slate-400">Option 1: Set <code className="bg-white/10 px-2 py-0.5 rounded text-xs font-mono">ANTHROPIC_API_KEY</code> environment variable for Claude AI</p>
+                <p className="text-xs text-slate-400">Option 2: Install <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">Ollama</a> and run <code className="bg-white/10 px-1 rounded text-xs font-mono">ollama pull llama3.2</code></p>
               </div>
             )}
 
-            <div className="glass rounded-xl p-4 text-sm text-slate-400">
-              <p className="font-medium text-white mb-2">Future AI Providers (Coming Soon)</p>
-              <div className="flex flex-wrap gap-2">
-                {['OpenAI (GPT-4)', 'Claude (Anthropic)', 'Gemini (Google)', 'Custom Models'].map(p => (
-                  <span key={p} className="glass px-3 py-1 rounded-full text-xs text-slate-500">{p}</span>
-                ))}
+            {aiStatus?.available && aiStatus.provider !== 'claude' && (
+              <div className="glass rounded-xl p-4 text-sm text-slate-400">
+                <p className="font-medium text-white mb-1">Upgrade to Claude AI</p>
+                <p className="text-xs">Set <code className="bg-white/10 px-2 py-0.5 rounded text-xs font-mono">ANTHROPIC_API_KEY</code> to use claude-sonnet-4-20250514 for better results.</p>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -137,7 +284,7 @@ export function SettingsPage() {
         </div>
 
         <div className="text-center text-xs text-slate-600 py-4">
-          OneFounder v1.0.0 · The OS for Founders · Built with Ollama, Neon PostgreSQL, Better Auth
+          OneFounder v1.0.0 · The OS for Founders · Built with Claude AI, Neon PostgreSQL, Better Auth
         </div>
       </div>
     </div>

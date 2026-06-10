@@ -22,7 +22,7 @@ router.post('/', requireAuth, async (req, res) => {
 
 router.get('/:id', requireAuth, async (req, res) => {
   const user = (req as any).user
-  const [project] = await db.select().from(projects).where(eq(projects.id, req.params.id))
+  const [project] = await db.select().from(projects).where(eq(projects.id, req.params.id as string))
   if (!project || project.userId !== user.id) return res.status(404).json({ error: 'Not found' })
   const ms = await db.select().from(milestones).where(eq(milestones.projectId, project.id))
   const ts = await db.select().from(tasks).where(eq(tasks.projectId, project.id))
@@ -32,18 +32,18 @@ router.get('/:id', requireAuth, async (req, res) => {
 router.patch('/:id', requireAuth, async (req, res) => {
   const [updated] = await db.update(projects)
     .set({ ...req.body, updatedAt: new Date() })
-    .where(eq(projects.id, req.params.id))
+    .where(eq(projects.id, req.params.id as string))
     .returning()
   res.json(updated)
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(projects).where(eq(projects.id, req.params.id))
+  await db.delete(projects).where(eq(projects.id, req.params.id as string))
   res.json({ success: true })
 })
 
 router.get('/:id/tasks', requireAuth, async (req, res) => {
-  const ts = await db.select().from(tasks).where(eq(tasks.projectId, req.params.id)).orderBy(desc(tasks.createdAt))
+  const ts = await db.select().from(tasks).where(eq(tasks.projectId, req.params.id as string)).orderBy(desc(tasks.createdAt))
   res.json(ts)
 })
 
@@ -56,7 +56,7 @@ router.post('/:id/tasks', requireAuth, async (req, res) => {
 router.patch('/tasks/:taskId', requireAuth, async (req, res) => {
   const [task] = await db.update(tasks)
     .set({ ...req.body, updatedAt: new Date() })
-    .where(eq(tasks.id, req.params.taskId))
+    .where(eq(tasks.id, req.params.taskId as string))
     .returning()
   res.json(task)
 })

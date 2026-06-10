@@ -36,13 +36,13 @@ router.patch('/:id', requireAuth, async (req, res) => {
   if (updateData.amount) updateData.amount = Math.round(parseFloat(updateData.amount) * 100)
   const [updated] = await db.update(financeEntries)
     .set(updateData)
-    .where(eq(financeEntries.id, req.params.id))
+    .where(eq(financeEntries.id, req.params.id as string))
     .returning()
   res.json({ ...updated, amount: updated.amount / 100 })
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(financeEntries).where(eq(financeEntries.id, req.params.id))
+  await db.delete(financeEntries).where(eq(financeEntries.id, req.params.id as string))
   res.json({ success: true })
 })
 

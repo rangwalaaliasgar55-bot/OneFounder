@@ -1,55 +1,59 @@
 import { useState } from 'react'
-import type { User } from '../../hooks/useAuth'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 
 const NAV_SECTIONS = [
   {
     label: 'Core',
     items: [
-      { id: 'dashboard', icon: '⚡', label: 'Dashboard' },
-      { id: 'journey', icon: '🗺️', label: 'Founder Journey' },
-      { id: 'chat', icon: '🤖', label: 'AI Agents' },
+      { path: '/', icon: '⚡', label: 'Dashboard' },
+      { path: '/journey', icon: '🗺️', label: 'Founder Journey' },
+      { path: '/chat', icon: '🤖', label: 'AI Agents' },
     ],
   },
   {
     label: 'Build',
     items: [
-      { id: 'ideas', icon: '💡', label: 'Idea Lab' },
-      { id: 'research', icon: '🔍', label: 'Research' },
-      { id: 'planner', icon: '📋', label: 'Business Plan' },
-      { id: 'projects', icon: '🎯', label: 'Projects' },
+      { path: '/ideas', icon: '💡', label: 'Idea Lab' },
+      { path: '/research', icon: '🔍', label: 'Research' },
+      { path: '/planner', icon: '📋', label: 'Business Plan' },
+      { path: '/projects', icon: '🎯', label: 'Projects' },
     ],
   },
   {
     label: 'Grow',
     items: [
-      { id: 'content', icon: '✍️', label: 'Content Studio' },
-      { id: 'social', icon: '📱', label: 'Social Media' },
-      { id: 'seo', icon: '🔎', label: 'SEO OS' },
-      { id: 'crm', icon: '👥', label: 'CRM' },
+      { path: '/content', icon: '✍️', label: 'Content Studio' },
+      { path: '/social', icon: '📱', label: 'Social Media' },
+      { path: '/seo', icon: '🔎', label: 'SEO OS' },
+      { path: '/crm', icon: '👥', label: 'CRM' },
+      { path: '/wordpress', icon: '🌐', label: 'Website Manager' },
     ],
   },
   {
     label: 'Operate',
     items: [
-      { id: 'finance', icon: '💰', label: 'Finance' },
-      { id: 'knowledge', icon: '📚', label: 'Knowledge Base' },
-      { id: 'settings', icon: '⚙️', label: 'Settings' },
+      { path: '/finance', icon: '💰', label: 'Finance' },
+      { path: '/knowledge', icon: '📚', label: 'Knowledge Base' },
+      { path: '/settings', icon: '⚙️', label: 'Settings' },
     ],
   },
 ]
 
 interface AppShellProps {
-  currentPage: string
-  navigate: (page: any) => void
-  user: User
   children: React.ReactNode
 }
 
-export function AppShell({ currentPage, navigate, user, children }: AppShellProps) {
+export function AppShell({ children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const { signOut } = useAuth()
+  const { user, signOut } = useAuth()
+  const location = useLocation()
+
+  const isActive = (path: string) => {
+    if (path === '/') return location.pathname === '/' || location.pathname === '/dashboard'
+    return location.pathname === path
+  }
 
   return (
     <div className="flex h-screen bg-surface-950 overflow-hidden">
@@ -74,7 +78,7 @@ export function AppShell({ currentPage, navigate, user, children }: AppShellProp
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <div className="text-sm font-bold text-white">OneFounder</div>
-              <div className="text-xs text-slate-500 truncate">{user.email}</div>
+              <div className="text-xs text-slate-500 truncate">{user?.email}</div>
             </div>
           )}
           <button
@@ -98,12 +102,13 @@ export function AppShell({ currentPage, navigate, user, children }: AppShellProp
               )}
               <div className="space-y-0.5">
                 {section.items.map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => { navigate(item.id); setMobileOpen(false) }}
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setMobileOpen(false)}
                     className={`
                       w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
-                      ${currentPage === item.id
+                      ${isActive(item.path)
                         ? 'text-white bg-brand-600/20 border border-brand-500/20'
                         : 'text-slate-400 hover:text-white hover:bg-white/5'
                       }
@@ -113,7 +118,7 @@ export function AppShell({ currentPage, navigate, user, children }: AppShellProp
                   >
                     <span className="text-base flex-shrink-0">{item.icon}</span>
                     {!collapsed && <span>{item.label}</span>}
-                  </button>
+                  </Link>
                 ))}
               </div>
             </div>

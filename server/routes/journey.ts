@@ -55,7 +55,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
       notes: notes ?? undefined,
       updatedAt: new Date(),
     })
-    .where(eq(journeyMilestones.id, req.params.id))
+    .where(eq(journeyMilestones.id, req.params.id as string))
     .returning()
   res.json(updated)
 })

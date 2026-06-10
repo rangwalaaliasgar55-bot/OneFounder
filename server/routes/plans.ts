@@ -69,13 +69,13 @@ Return as JSON with keys: businessModel, customerProfile, pricing, acquisitionSt
 router.get('/:id', requireAuth, async (req, res) => {
   const user = (req as any).user
   const [plan] = await db.select().from(businessPlans)
-    .where(eq(businessPlans.id, req.params.id))
+    .where(eq(businessPlans.id, req.params.id as string))
   if (!plan || plan.userId !== user.id) return res.status(404).json({ error: 'Not found' })
   res.json(plan)
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(businessPlans).where(eq(businessPlans.id, req.params.id))
+  await db.delete(businessPlans).where(eq(businessPlans.id, req.params.id as string))
   res.json({ success: true })
 })
 

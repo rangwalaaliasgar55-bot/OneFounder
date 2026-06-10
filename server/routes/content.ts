@@ -56,13 +56,13 @@ router.post('/generate', requireAuth, async (req, res) => {
 router.patch('/:id', requireAuth, async (req, res) => {
   const [updated] = await db.update(contentPieces)
     .set({ ...req.body, updatedAt: new Date() })
-    .where(eq(contentPieces.id, req.params.id))
+    .where(eq(contentPieces.id, req.params.id as string))
     .returning()
   res.json(updated)
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(contentPieces).where(eq(contentPieces.id, req.params.id))
+  await db.delete(contentPieces).where(eq(contentPieces.id, req.params.id as string))
   res.json({ success: true })
 })
 

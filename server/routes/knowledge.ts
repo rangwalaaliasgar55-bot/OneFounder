@@ -23,13 +23,13 @@ router.post('/', requireAuth, async (req, res) => {
 router.patch('/:id', requireAuth, async (req, res) => {
   const [updated] = await db.update(knowledgeBase)
     .set({ ...req.body, updatedAt: new Date() })
-    .where(eq(knowledgeBase.id, req.params.id))
+    .where(eq(knowledgeBase.id, req.params.id as string))
     .returning()
   res.json(updated)
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(knowledgeBase).where(eq(knowledgeBase.id, req.params.id))
+  await db.delete(knowledgeBase).where(eq(knowledgeBase.id, req.params.id as string))
   res.json({ success: true })
 })
 

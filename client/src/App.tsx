@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { LoginPage } from './pages/LoginPage'
 import { AppShell } from './components/layout/AppShell'
@@ -16,36 +16,36 @@ import { SocialPage } from './pages/SocialPage'
 import { FinancePage } from './pages/FinancePage'
 import { SeoPage } from './pages/SeoPage'
 import { JourneyPage } from './pages/JourneyPage'
+import { WordPressPage } from './pages/WordPressPage'
 
-type Page =
-  | 'dashboard'
-  | 'ideas'
-  | 'research'
-  | 'planner'
-  | 'projects'
-  | 'content'
-  | 'crm'
-  | 'chat'
-  | 'knowledge'
-  | 'settings'
-  | 'social'
-  | 'finance'
-  | 'seo'
-  | 'journey'
+function AuthenticatedApp() {
+  return (
+    <AppShell>
+      <Routes>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/ideas" element={<IdeasPage />} />
+        <Route path="/research" element={<ResearchPage />} />
+        <Route path="/planner" element={<PlannerPage />} />
+        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/content" element={<ContentPage />} />
+        <Route path="/crm" element={<CRMPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/knowledge" element={<KnowledgePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/social" element={<SocialPage />} />
+        <Route path="/finance" element={<FinancePage />} />
+        <Route path="/seo" element={<SeoPage />} />
+        <Route path="/journey" element={<JourneyPage />} />
+        <Route path="/wordpress" element={<WordPressPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AppShell>
+  )
+}
 
 export default function App() {
   const { user, loading } = useAuth()
-  const [currentPage, setCurrentPage] = useState<Page>('dashboard')
-
-  useEffect(() => {
-    const hash = window.location.hash.replace('#', '') as Page
-    if (hash) setCurrentPage(hash)
-  }, [])
-
-  const navigate = (page: Page) => {
-    setCurrentPage(page)
-    window.location.hash = page
-  }
 
   if (loading) {
     return (
@@ -64,26 +64,9 @@ export default function App() {
     return <LoginPage onSuccess={() => window.location.reload()} />
   }
 
-  const pages: Record<Page, JSX.Element> = {
-    dashboard: <DashboardPage navigate={navigate} />,
-    ideas: <IdeasPage />,
-    research: <ResearchPage />,
-    planner: <PlannerPage />,
-    projects: <ProjectsPage />,
-    content: <ContentPage />,
-    crm: <CRMPage />,
-    chat: <ChatPage />,
-    knowledge: <KnowledgePage />,
-    settings: <SettingsPage />,
-    social: <SocialPage />,
-    finance: <FinancePage />,
-    seo: <SeoPage />,
-    journey: <JourneyPage />,
-  }
-
   return (
-    <AppShell currentPage={currentPage} navigate={navigate} user={user}>
-      {pages[currentPage]}
-    </AppShell>
+    <BrowserRouter>
+      <AuthenticatedApp />
+    </BrowserRouter>
   )
 }

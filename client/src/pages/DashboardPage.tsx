@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
 import { PageLoader, LoadingSpinner } from '../components/ui/LoadingSpinner'
@@ -22,8 +23,10 @@ interface DashboardData {
   }
 }
 
-interface DashboardPageProps {
-  navigate: (page: any) => void
+interface MorningInsight {
+  topOpportunity: string
+  biggestProblem: string
+  recommendedAction: string
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -60,20 +63,22 @@ function ScoreBar({ score }: { score: number }) {
   )
 }
 
-export function DashboardPage({ navigate }: DashboardPageProps) {
+export function DashboardPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [aiStatus, setAiStatus] = useState<{ available: boolean; provider: string; models?: string[] } | null>(null)
 
-  // Health Score
   const [healthScore, setHealthScore] = useState<any | null>(null)
   const [scoreLoading, setScoreLoading] = useState(false)
 
-  // CEO Brief
   const [brief, setBrief] = useState<any | null>(null)
   const [briefLoading, setBriefLoading] = useState(false)
   const [showBrief, setShowBrief] = useState(false)
+
+  const [morningInsights, setMorningInsights] = useState<MorningInsight | null>(null)
+  const [morningLoading, setMorningLoading] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -103,6 +108,24 @@ export function DashboardPage({ navigate }: DashboardPageProps) {
     } catch {} finally { setBriefLoading(false) }
   }
 
+  const loadMorningInsights = async () => {
+    setMorningLoading(true)
+    try {
+      const score = await api.get<any>('/ceo/health-score')
+      const dims = score.dimensions || []
+      const sorted = [...dims].sort((a: any, b: any) => a.score - b.score)
+      const weakest = sorted[0]
+      const strongest = sorted[dims.length - 1]
+      setMorningInsights({
+        topOpportunity: strongest ? `${strongest.icon} ${strongest.label}: ${strongest.insight}` : 'Start tracking your business metrics',
+        biggestProblem: weakest ? `${weakest.icon} ${weakest.label} (${weakest.score}/100): ${weakest.insight}` : 'No issues detected yet',
+        recommendedAction: score.overall < 50
+          ? `Focus on ${weakest?.label?.toLowerCase() || 'growth'} — it will have the biggest impact on your score`
+          : `Your business health is ${score.overall}/100. Keep building on your ${strongest?.label?.toLowerCase() || 'strengths'}`,
+      })
+    } catch {} finally { setMorningLoading(false) }
+  }
+
   useEffect(() => { loadHealthScore() }, [])
 
   if (loading) return <PageLoader />
@@ -115,60 +138,102 @@ export function DashboardPage({ navigate }: DashboardPageProps) {
   }
 
   const statCards = [
-    { label: 'Business Ideas', value: data?.stats.ideas ?? 0, icon: '💡', page: 'ideas', color: 'from-brand-600/20 to-brand-800/10' },
-    { label: 'Active Projects', value: data?.stats.projects ?? 0, icon: '🎯', page: 'projects', color: 'from-violet-600/20 to-violet-800/10' },
-    { label: 'Open Tasks', value: data?.stats.tasks ?? 0, icon: '✅', page: 'projects', color: 'from-emerald-600/20 to-emerald-800/10' },
-    { label: 'CRM Leads', value: data?.stats.leads ?? 0, icon: '👥', page: 'crm', color: 'from-orange-600/20 to-orange-800/10' },
-    { label: 'Content Pieces', value: data?.stats.content ?? 0, icon: '✍️', page: 'content', color: 'from-pink-600/20 to-pink-800/10' },
-    { label: 'Research Reports', value: data?.stats.reports ?? 0, icon: '🔍', page: 'research', color: 'from-cyan-600/20 to-cyan-800/10' },
-    { label: 'Business Plans', value: data?.stats.plans ?? 0, icon: '📋', page: 'planner', color: 'from-amber-600/20 to-amber-800/10' },
+    { label: 'Business Ideas', value: data?.stats.ideas ?? 0, icon: '💡', page: '/ideas', color: 'from-brand-600/20 to-brand-800/10' },
+    { label: 'Active Projects', value: data?.stats.projects ?? 0, icon: '🎯', page: '/projects', color: 'from-violet-600/20 to-violet-800/10' },
+    { label: 'Open Tasks', value: data?.stats.tasks ?? 0, icon: '✅', page: '/projects', color: 'from-emerald-600/20 to-emerald-800/10' },
+    { label: 'CRM Leads', value: data?.stats.leads ?? 0, icon: '👥', page: '/crm', color: 'from-orange-600/20 to-orange-800/10' },
+    { label: 'Content Pieces', value: data?.stats.content ?? 0, icon: '✍️', page: '/content', color: 'from-pink-600/20 to-pink-800/10' },
+    { label: 'Research Reports', value: data?.stats.reports ?? 0, icon: '🔍', page: '/research', color: 'from-cyan-600/20 to-cyan-800/10' },
+    { label: 'Business Plans', value: data?.stats.plans ?? 0, icon: '📋', page: '/planner', color: 'from-amber-600/20 to-amber-800/10' },
   ]
 
   const quickActions = [
-    { icon: '💡', label: 'Generate Ideas', desc: 'Discover startup opportunities', page: 'ideas' },
-    { icon: '🔍', label: 'Research Market', desc: 'Analyze competitors & trends', page: 'research' },
-    { icon: '📋', label: 'Create Business Plan', desc: 'Full plan with AI', page: 'planner' },
-    { icon: '🤖', label: 'Chat with AI Agent', desc: 'CEO, Marketing, Sales agents', page: 'chat' },
-    { icon: '✍️', label: 'Generate Content', desc: 'Blog, LinkedIn, newsletters', page: 'content' },
-    { icon: '🗺️', label: 'Founder Journey', desc: 'Track your startup milestones', page: 'journey' },
+    { icon: '💡', label: 'Generate Ideas', desc: 'Discover startup opportunities', page: '/ideas' },
+    { icon: '🔍', label: 'Research Market', desc: 'Analyze competitors & trends', page: '/research' },
+    { icon: '📋', label: 'Create Business Plan', desc: 'Full plan with AI', page: '/planner' },
+    { icon: '🤖', label: 'Chat with AI Agent', desc: 'CEO, Marketing, Sales agents', page: '/chat' },
+    { icon: '✍️', label: 'Generate Content', desc: 'Blog, LinkedIn, newsletters', page: '/content' },
+    { icon: '🗺️', label: 'Founder Journey', desc: 'Track your startup milestones', page: '/journey' },
   ]
 
   const urgencyColor = (u: string) => u === 'high' ? 'text-red-400' : u === 'medium' ? 'text-amber-400' : 'text-emerald-400'
   const urgencyBg = (u: string) => u === 'high' ? 'bg-red-500/10 border-red-500/20' : u === 'medium' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-emerald-500/10 border-emerald-500/20'
 
+  const providerLabel = aiStatus?.available
+    ? aiStatus.provider === 'claude'
+      ? `Claude (${aiStatus.models?.[0] || 'Sonnet'})`
+      : `Ollama (${aiStatus.models?.[0] || 'connected'})`
+    : 'Demo Mode'
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-8">
+      {/* Morning Briefing Card */}
+      <div className="mb-6 glass-strong rounded-2xl p-5 border border-brand-500/20 bg-gradient-to-br from-brand-600/10 to-violet-600/5">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-white">
               {greeting()}, {user?.name?.split(' ')[0] || 'Founder'} 👋
             </h1>
-            <p className="text-slate-400 mt-1">Here's your business operating system overview.</p>
+            <p className="text-slate-400 text-sm mt-0.5">Here's your business snapshot for today.</p>
           </div>
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
-            aiStatus?.available
-              ? 'bg-green-500/10 border border-green-500/20 text-green-400'
-              : 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400'
-          }`}>
-            <div className={`w-1.5 h-1.5 rounded-full ${aiStatus?.available ? 'bg-green-400' : 'bg-yellow-400'} animate-pulse`} />
-            {aiStatus?.available ? `Ollama (${aiStatus.models?.[0] || 'connected'})` : 'Demo Mode'}
+          <div className="flex items-center gap-2">
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
+              aiStatus?.available
+                ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+                : 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-400'
+            }`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${aiStatus?.available ? 'bg-green-400' : 'bg-yellow-400'} animate-pulse`} />
+              {providerLabel}
+            </div>
+            <button
+              onClick={loadMorningInsights}
+              disabled={morningLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-brand-600/20 border border-brand-500/20 text-brand-300 hover:bg-brand-600/30 transition-all"
+            >
+              {morningLoading ? <LoadingSpinner size="sm" /> : '↻'} Refresh
+            </button>
           </div>
         </div>
 
-        {!aiStatus?.available && (
-          <div className="mt-4 glass border border-yellow-500/20 rounded-xl p-4 flex items-start gap-3">
-            <span className="text-yellow-400 text-lg">⚠️</span>
-            <div>
-              <p className="text-yellow-400 text-sm font-medium">AI in Demo Mode</p>
-              <p className="text-slate-400 text-xs mt-0.5">
-                Install <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">Ollama</a>{' '}
-                and run <code className="bg-white/10 px-1 rounded text-xs">ollama pull llama3.2</code> to enable real AI responses.
-              </p>
+        {morningLoading ? (
+          <div className="mt-4 flex items-center gap-2 text-slate-400 text-sm">
+            <LoadingSpinner size="sm" /> Analyzing your business...
+          </div>
+        ) : morningInsights ? (
+          <div className="mt-4 grid sm:grid-cols-3 gap-3">
+            <div className="glass rounded-xl p-3 border border-emerald-500/15">
+              <div className="text-xs font-semibold text-emerald-400 mb-1">💡 Top Opportunity</div>
+              <p className="text-xs text-slate-300 leading-relaxed">{morningInsights.topOpportunity}</p>
+            </div>
+            <div className="glass rounded-xl p-3 border border-red-500/15">
+              <div className="text-xs font-semibold text-red-400 mb-1">⚠️ Biggest Problem</div>
+              <p className="text-xs text-slate-300 leading-relaxed">{morningInsights.biggestProblem}</p>
+            </div>
+            <div className="glass rounded-xl p-3 border border-brand-500/15">
+              <div className="text-xs font-semibold text-brand-400 mb-1">🎯 Today's Action</div>
+              <p className="text-xs text-slate-300 leading-relaxed">{morningInsights.recommendedAction}</p>
             </div>
           </div>
+        ) : (
+          <button onClick={loadMorningInsights} className="mt-4 text-sm text-brand-400 hover:text-brand-300 flex items-center gap-1">
+            ✨ Generate morning insights →
+          </button>
         )}
       </div>
+
+      {!aiStatus?.available && (
+        <div className="mb-6 glass border border-yellow-500/20 rounded-xl p-4 flex items-start gap-3">
+          <span className="text-yellow-400 text-lg">⚠️</span>
+          <div>
+            <p className="text-yellow-400 text-sm font-medium">AI in Demo Mode</p>
+            <p className="text-slate-400 text-xs mt-0.5">
+              Set <code className="bg-white/10 px-1 rounded text-xs">ANTHROPIC_API_KEY</code> for Claude AI, or install{' '}
+              <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">Ollama</a>{' '}
+              and run <code className="bg-white/10 px-1 rounded text-xs">ollama pull llama3.2</code> to enable real AI.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-8">
@@ -187,7 +252,6 @@ export function DashboardPage({ navigate }: DashboardPageProps) {
 
       {/* Business Health Score + CEO Brief row */}
       <div className="grid lg:grid-cols-5 gap-6 mb-6">
-        {/* Business Health Score */}
         <div className="lg:col-span-2 card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-white">🏥 Business Health Score</h2>
@@ -331,7 +395,7 @@ export function DashboardPage({ navigate }: DashboardPageProps) {
                         </div>
                         {t.module && (
                           <button
-                            onClick={() => navigate(t.module)}
+                            onClick={() => navigate(`/${t.module}`)}
                             className="text-xs text-brand-400 hover:text-brand-300 flex-shrink-0 underline"
                           >
                             Open →
@@ -377,7 +441,7 @@ export function DashboardPage({ navigate }: DashboardPageProps) {
             <div className="card">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-base font-semibold text-white">Recent Ideas</h2>
-                <button onClick={() => navigate('ideas')} className="text-xs text-brand-400 hover:text-brand-300">View all →</button>
+                <button onClick={() => navigate('/ideas')} className="text-xs text-brand-400 hover:text-brand-300">View all →</button>
               </div>
               <div className="space-y-2">
                 {data.recent.ideas.slice(0, 4).map((idea: any) => (
@@ -402,7 +466,7 @@ export function DashboardPage({ navigate }: DashboardPageProps) {
             <div className="card">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-base font-semibold text-white">Recent Tasks</h2>
-                <button onClick={() => navigate('projects')} className="text-xs text-brand-400 hover:text-brand-300">View all →</button>
+                <button onClick={() => navigate('/projects')} className="text-xs text-brand-400 hover:text-brand-300">View all →</button>
               </div>
               <div className="space-y-2">
                 {data.recent.tasks.slice(0, 5).map((task: any) => (
@@ -421,7 +485,7 @@ export function DashboardPage({ navigate }: DashboardPageProps) {
             <div className="card">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-base font-semibold text-white">Recent Leads</h2>
-                <button onClick={() => navigate('crm')} className="text-xs text-brand-400 hover:text-brand-300">View all →</button>
+                <button onClick={() => navigate('/crm')} className="text-xs text-brand-400 hover:text-brand-300">View all →</button>
               </div>
               <div className="space-y-2">
                 {data.recent.leads.slice(0, 5).map((lead: any) => (
@@ -446,7 +510,7 @@ export function DashboardPage({ navigate }: DashboardPageProps) {
             <div className="text-2xl mb-2">🤖</div>
             <h3 className="text-sm font-semibold text-white mb-1">Chat with your AI</h3>
             <p className="text-xs text-slate-400 mb-3">CEO Agent, Marketing, Sales — all ready to help.</p>
-            <button onClick={() => navigate('chat')} className="btn-primary text-sm py-1.5">
+            <button onClick={() => navigate('/chat')} className="btn-primary text-sm py-1.5">
               Open AI Chat →
             </button>
           </div>

@@ -52,7 +52,7 @@ router.get('/health-score', requireAuth, async (req, res) => {
 
     // Lead Generation (15 pts)
     const wonLeads = allLeads.filter(l => l.status === 'won').length
-    const activeLeads = allLeads.filter(l => !['won', 'lost'].includes(l.status)).length
+    const activeLeads = allLeads.filter(l => !['won', 'lost'].includes(l.status ?? '')).length
     const leadsScore = Math.min(100, Math.round((allLeads.length > 0 ? 20 : 0) + Math.min(40, wonLeads * 15) + Math.min(30, activeLeads * 6) + (allLeads.length >= 5 ? 10 : 0)))
 
     // Product Activity (15 pts) — tasks + ideas + projects
@@ -119,7 +119,7 @@ router.post('/brief', requireAuth, async (req, res) => {
     ])
 
     const pendingTasks = allTasks.filter(t => t.status !== 'done')
-    const activeLeads = allLeads.filter(l => !['won', 'lost'].includes(l.status))
+    const activeLeads = allLeads.filter(l => !['won', 'lost'].includes(l.status ?? ''))
     const highPrioKws = allKeywords.filter(k => k.priority === 'high')
     const mrr = allFinance.filter(f => f.type === 'subscription' && f.recurring).reduce((s, f) => s + f.amount, 0)
 

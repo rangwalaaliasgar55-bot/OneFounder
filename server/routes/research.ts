@@ -67,13 +67,13 @@ Return as valid JSON with keys: competitors, trends, opportunities, keywords, sw
 router.get('/:id', requireAuth, async (req, res) => {
   const user = (req as any).user
   const [report] = await db.select().from(researchReports)
-    .where(eq(researchReports.id, req.params.id))
+    .where(eq(researchReports.id, req.params.id as string))
   if (!report || report.userId !== user.id) return res.status(404).json({ error: 'Not found' })
   res.json(report)
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(researchReports).where(eq(researchReports.id, req.params.id))
+  await db.delete(researchReports).where(eq(researchReports.id, req.params.id as string))
   res.json({ success: true })
 })
 

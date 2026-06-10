@@ -87,7 +87,7 @@ Format as JSON array with fields: title, type, description, competition, revenue
 router.get('/:id', requireAuth, async (req, res) => {
   const user = (req as any).user
   const [idea] = await db.select().from(businessIdeas)
-    .where(eq(businessIdeas.id, req.params.id))
+    .where(eq(businessIdeas.id, req.params.id as string))
   if (!idea || idea.userId !== user.id) return res.status(404).json({ error: 'Not found' })
   res.json(idea)
 })
@@ -96,13 +96,13 @@ router.patch('/:id', requireAuth, async (req, res) => {
   const user = (req as any).user
   const [updated] = await db.update(businessIdeas)
     .set({ ...req.body, updatedAt: new Date() })
-    .where(eq(businessIdeas.id, req.params.id))
+    .where(eq(businessIdeas.id, req.params.id as string))
     .returning()
   res.json(updated)
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(businessIdeas).where(eq(businessIdeas.id, req.params.id))
+  await db.delete(businessIdeas).where(eq(businessIdeas.id, req.params.id as string))
   res.json({ success: true })
 })
 

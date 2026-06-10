@@ -34,7 +34,7 @@ router.get('/:sessionId', requireAuth, async (req, res) => {
   const messages = await db.select().from(chatMessages)
     .where(and(
       eq(chatMessages.userId, user.id),
-      eq(chatMessages.sessionId, req.params.sessionId)
+      eq(chatMessages.sessionId, req.params.sessionId as string)
     ))
     .orderBy(chatMessages.createdAt)
   res.json(messages)

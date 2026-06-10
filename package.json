@@ -13,6 +13,12 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
+  "overrides": {
+    "zod": "^3.25.76",
+    "better-call": {
+      "zod": "^3.25.76"
+    }
+  },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
     "better-auth": "^1.2.8",
@@ -24,8 +30,9 @@
     "node-fetch": "^3.3.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.1",
     "uuid": "^11.1.0",
-    "zod": "^3.24.2"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -34,6 +41,7 @@
     "@types/node": "^22.14.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/react-router-dom": "^5.3.3",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.21",

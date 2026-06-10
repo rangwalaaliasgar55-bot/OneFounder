@@ -79,13 +79,13 @@ router.patch('/:id', requireAuth, async (req, res) => {
   const user = (req as any).user
   const [updated] = await db.update(socialPosts)
     .set({ ...req.body, updatedAt: new Date() })
-    .where(eq(socialPosts.id, req.params.id))
+    .where(eq(socialPosts.id, req.params.id as string))
     .returning()
   res.json(updated)
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(socialPosts).where(eq(socialPosts.id, req.params.id))
+  await db.delete(socialPosts).where(eq(socialPosts.id, req.params.id as string))
   res.json({ success: true })
 })
 

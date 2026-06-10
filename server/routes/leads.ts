@@ -23,13 +23,13 @@ router.post('/', requireAuth, async (req, res) => {
 router.patch('/:id', requireAuth, async (req, res) => {
   const [updated] = await db.update(leads)
     .set({ ...req.body, updatedAt: new Date() })
-    .where(eq(leads.id, req.params.id))
+    .where(eq(leads.id, req.params.id as string))
     .returning()
   res.json(updated)
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(leads).where(eq(leads.id, req.params.id))
+  await db.delete(leads).where(eq(leads.id, req.params.id as string))
   res.json({ success: true })
 })
 

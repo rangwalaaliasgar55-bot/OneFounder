@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import path from 'path'
 import { toNodeHandler } from 'better-auth/node'
 import { auth } from './auth'
 import dotenv from 'dotenv'
@@ -20,6 +21,8 @@ import financeRoutes from './routes/finance'
 import seoRoutes from './routes/seo'
 import ceoRoutes from './routes/ceo'
 import journeyRoutes from './routes/journey'
+import wordpressRoutes from './routes/wordpress'
+import founderProfileRoutes from './routes/founderProfile'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -27,6 +30,7 @@ const PORT = process.env.PORT || 3001
 app.use(cors({
   origin: [
     'http://localhost:5173',
+    'http://localhost:5000',
     process.env.CLIENT_URL || '',
     /\.replit\.dev$/,
     /\.repl\.co$/,
@@ -54,10 +58,21 @@ app.use('/api/finance', financeRoutes)
 app.use('/api/seo', seoRoutes)
 app.use('/api/ceo', ceoRoutes)
 app.use('/api/journey', journeyRoutes)
+app.use('/api/wordpress', wordpressRoutes)
+app.use('/api/founder-profile', founderProfileRoutes)
 
 app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', version: '1.0.0', name: 'OneFounder' })
 })
+
+// Serve built client in production
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = path.resolve(__dirname, '../client')
+  app.use(express.static(clientDist))
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'))
+  })
+}
 
 app.listen(PORT, () => {
   console.log(`🚀 OneFounder server running on port ${PORT}`)
