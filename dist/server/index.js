@@ -6,7 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const path_1 = __importDefault(require("path"));
-const node_1 = require("better-auth/node");
 const auth_1 = require("./auth");
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
@@ -41,9 +40,48 @@ app.use((0, cors_1.default)({
     ].filter(Boolean),
     credentials: true,
 }));
-app.all('/auth/*', (0, node_1.toNodeHandler)(auth_1.auth));
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true }));
+app.all('/auth/*', async (req, res, next) => {
+    try {
+        const authUrl = `http://localhost:3000${req.url}`;
+        const headers = new Headers();
+        Object.entries(req.headers).forEach(([key, value]) => {
+            if (value === undefined)
+                return;
+            if (Array.isArray(value))
+                value.forEach(v => headers.append(key, v));
+            else
+                headers.set(key, value);
+        });
+        const body = req.method !== 'GET' && req.method !== 'HEAD'
+            ? JSON.stringify(req.body || {})
+            : undefined;
+        const request = new Request(authUrl, {
+            method: req.method,
+            headers,
+            body,
+        });
+        const response = await auth_1.auth.handler(request);
+        response.headers.forEach((value, key) => {
+            if (key.toLowerCase() === 'set-cookie') {
+                const cookies = response.headers.get('set-cookie');
+                if (cookies) {
+                    res.setHeader('Set-Cookie', cookies);
+                }
+            }
+            else {
+                res.setHeader(key, value);
+            }
+        });
+        res.status(response.status);
+        const responseBody = await response.arrayBuffer();
+        res.send(Buffer.from(responseBody));
+    }
+    catch (error) {
+        next(error);
+    }
+});
 app.use('/api/ai', ai_1.default);
 app.use('/api/ideas', ideas_1.default);
 app.use('/api/research', research_1.default);

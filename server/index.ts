@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import path from 'path'
+import { fileURLToPath } from 'node:url'
 import { toNodeHandler } from 'better-auth/node'
 import { auth } from './auth'
 import dotenv from 'dotenv'
@@ -26,7 +27,7 @@ import founderProfileRoutes from './routes/founderProfile'
 import intelligenceRoutes from './routes/intelligence'
 
 const app = express()
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 3000
 
 app.use(cors({
   origin: [
@@ -40,8 +41,7 @@ app.use(cors({
   credentials: true,
 }))
 
-app.all('/auth/*', toNodeHandler(auth))
-
+app.use('/auth', toNodeHandler(auth))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
 
@@ -77,6 +77,14 @@ if (process.env.NODE_ENV === 'production') {
   })
 }
 
-app.listen(PORT, () => {
-  console.log(`🚀 OneFounder server running on port ${PORT}`)
-})
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const isMain = process.argv[1] === __filename
+
+if (isMain && !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 OneFounder server running on port ${PORT}`)
+  })
+}
+
+export default app
