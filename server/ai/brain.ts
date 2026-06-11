@@ -4,7 +4,6 @@ import { getAIProvider } from './index'
 import { assembleFounderContext, type FounderContext } from './context'
 import { extractAndStoreMemories } from './memory'
 import { gatherWebContext, formatWebContextForPrompt } from './webSearch'
-import { ClaudeProvider } from './claude'
 import { db } from '../db'
 import { chatMessages } from '../db/schema'
 import { eq, and } from 'drizzle-orm'
@@ -239,28 +238,7 @@ export class OneFounderBrain {
         // Ollama not available — fall through to next provider
       }
 
-      // --- Try Claude native streaming (when Ollama is unavailable) ---
-      if (!ollamaStreamed) {
-        const claudeKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY
-        if (claudeKey) {
-          try {
-            const claude = new ClaudeProvider(
-              claudeKey,
-              process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-              'claude-haiku-4-5'
-            )
-            for await (const token of claude.stream(messages)) {
-              fullResponse += token
-              yield { type: 'token', data: token }
-            }
-            ollamaStreamed = true
-          } catch {
-            // Fall through to non-streaming fallback
-          }
-        }
-      }
-
-      // --- Non-streaming fallback (mock or any provider) ---
+      // --- Non-streaming fallback (demo mode) ---
       if (!ollamaStreamed) {
         const response = await ai.chat(messages)
         fullResponse = response

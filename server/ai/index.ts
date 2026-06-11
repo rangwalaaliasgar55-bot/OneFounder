@@ -1,6 +1,5 @@
 import { OllamaProvider } from './ollama'
 import { MockAIProvider } from './mock'
-import { ClaudeProvider } from './claude'
 import type { AIProvider } from './provider'
 
 let aiProvider: AIProvider | null = null
@@ -17,7 +16,7 @@ export async function getAIProvider(): Promise<AIProvider> {
 
   lastProviderCheck = now
 
-  // 1. Try Ollama first — free, local, open-source
+  // Try Ollama — free, local, open-source
   const ollama = new OllamaProvider(
     process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
     process.env.OLLAMA_MODEL || 'llama3.2'
@@ -33,24 +32,9 @@ export async function getAIProvider(): Promise<AIProvider> {
     return aiProvider
   }
 
-  // 2. Fall back to Claude via Replit AI integration (auto-provisioned, no key required from user)
-  const claudeKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY
-  if (claudeKey) {
-    if (activeProviderName !== 'claude') {
-      console.log('🧠 OneFounder AI — engine online (Claude via Replit)')
-    }
-    activeProviderName = 'claude'
-    aiProvider = new ClaudeProvider(
-      claudeKey,
-      process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-      'claude-haiku-4-5'
-    )
-    return aiProvider
-  }
-
-  // 3. Demo mode — no AI available
+  // Demo mode — no AI available
   if (activeProviderName !== 'mock') {
-    console.log('⚠️  OneFounder AI — demo mode (no Ollama or Claude). Run: ollama serve && ollama pull llama3.2')
+    console.log('⚠️  OneFounder AI — demo mode. Run: ollama serve && ollama pull llama3.2')
   }
   activeProviderName = 'mock'
   aiProvider = new MockAIProvider()
@@ -72,15 +56,6 @@ export async function getAIStatus(): Promise<{
   if (ollamaAvailable) {
     const models = await ollama.listModels()
     return { available: true, provider: 'OneFounder AI (Ollama)', models }
-  }
-
-  const claudeKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY
-  if (claudeKey) {
-    return {
-      available: true,
-      provider: 'OneFounder AI (Claude)',
-      models: ['claude-haiku-4-5'],
-    }
   }
 
   return {
