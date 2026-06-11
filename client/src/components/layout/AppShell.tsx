@@ -31,6 +31,12 @@ const NAV_SECTIONS = [
     ],
   },
   {
+    label: 'Raise',
+    items: [
+      { path: '/investor', icon: '💎', label: 'Investor Mode' },
+    ],
+  },
+  {
     label: 'Operate',
     items: [
       { path: '/finance', icon: '💰', label: 'Finance' },
@@ -42,9 +48,10 @@ const NAV_SECTIONS = [
 
 interface AppShellProps {
   children: React.ReactNode
+  onCmdK?: () => void
 }
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, onCmdK }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const { user, signOut } = useAuth()
@@ -98,6 +105,29 @@ export function AppShell({ children }: AppShellProps) {
             </svg>
           </button>
         </div>
+
+        {/* Cmd+K search button */}
+        {onCmdK && (
+          <div className={`px-1.5 pb-1.5 ${collapsed ? 'flex justify-center' : ''}`}>
+            <button
+              onClick={onCmdK}
+              title="Search & navigate (⌘K)"
+              className={`flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] text-slate-600 hover:text-slate-400 hover:border-white/10 hover:bg-white/[0.05] transition-all ${
+                collapsed ? 'w-8 h-8 justify-center' : 'w-full px-2.5 py-1.5'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              {!collapsed && (
+                <>
+                  <span className="text-xs flex-1 text-left">Search…</span>
+                  <kbd className="text-[10px] border border-white/[0.08] rounded px-1 py-0.5 font-mono">⌘K</kbd>
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-2 px-1.5 space-y-4">

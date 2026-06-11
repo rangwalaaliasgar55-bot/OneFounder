@@ -1,0 +1,71 @@
+Fix all build, CI, and deployment issues in this project completely.
+
+Current problems:
+1. GitHub Actions CI is failing (Install, Type-check & Build step fails)
+2. Vercel deployment is failing
+3. Push is blocked previously due to .github/workflows permission issues
+4. Node 22 environment compatibility issues suspected
+5. Possible TypeScript / dependency / build script errors
+
+I want a FULL production-ready fix.
+
+---
+
+TASKS YOU MUST DO:
+
+## 1. Fix CI pipeline (.github/workflows/ci.yml)
+- Ensure workflow uses correct Node version (change Node 22 → Node 18 or 20)
+- Ensure proper install step:
+  npm ci OR npm install (choose correct one based on lockfile)
+- Add correct build step:
+  npm run build
+- Add typecheck step if needed:
+  npm run type-check
+- Ensure no failing strict TypeScript errors block CI unless real issues exist
+
+---
+
+## 2. Fix package.json issues
+- Ensure scripts are correct:
+  "build": must correctly compile project (tsc / next build / vite build depending on framework)
+  "start": must run production build correctly
+- Ensure dependencies are complete (no missing packages causing CI crash)
+- Lock dependency versions properly
+
+---
+
+## 3. Fix TypeScript errors (if any)
+- Resolve all "implicit any", "cannot find module", and import issues
+- Fix ESM vs CommonJS conflicts if present
+- Ensure tsconfig.json is CI-safe (no overly strict breaking rules unless necessary)
+
+---
+
+## 4. Fix Vercel deployment
+- Ensure correct build command is set for Vercel
+- Ensure output directory is correct (dist / build / .next depending on framework)
+- Ensure no missing environment variables break build
+- Make sure project builds successfully locally and in CI
+
+---
+
+## 5. Node version stability fix
+- Force Node version to 18.x or 20.x (NOT 22)
+- Update CI workflow + Vercel compatibility
+
+---
+
+## 6. GitHub workflow permission issue (important)
+- Ensure .github/workflows/ci.yml does NOT require extra OAuth scopes to push
+- Keep workflow valid and standard so GitHub Actions runs without rejection
+
+---
+
+FINAL GOAL:
+After your fixes:
+- git push should succeed
+- GitHub Actions CI should pass (green check)
+- Vercel deployment should succeed
+- npm install + npm run build should work without errors locally and in CI
+
+If anything is unclear, inspect full logs and fix root cause instead of patching symptoms.

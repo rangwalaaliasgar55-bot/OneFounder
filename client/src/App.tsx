@@ -1,8 +1,9 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { LoginPage } from './pages/LoginPage'
 import { AppShell } from './components/layout/AppShell'
+import { CommandPalette } from './components/CommandPalette'
 
 const DashboardPage  = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const IdeasPage      = lazy(() => import('./pages/IdeasPage').then(m => ({ default: m.IdeasPage })))
@@ -19,6 +20,7 @@ const FinancePage    = lazy(() => import('./pages/FinancePage').then(m => ({ def
 const SeoPage        = lazy(() => import('./pages/SeoPage').then(m => ({ default: m.SeoPage })))
 const JourneyPage    = lazy(() => import('./pages/JourneyPage').then(m => ({ default: m.JourneyPage })))
 const WordPressPage  = lazy(() => import('./pages/WordPressPage').then(m => ({ default: m.WordPressPage })))
+const InvestorPage   = lazy(() => import('./pages/InvestorPage').then(m => ({ default: m.InvestorPage })))
 
 // Prefetch a list of dynamic import functions after the browser goes idle.
 // Falls back to a 200 ms setTimeout on browsers without requestIdleCallback.
@@ -82,9 +84,23 @@ function PageFallback() {
 }
 
 function AuthenticatedApp() {
+  const [cmdOpen, setCmdOpen] = useState(false)
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setCmdOpen(o => !o)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
   return (
-    <AppShell>
+    <AppShell onCmdK={() => setCmdOpen(true)}>
       <AppPrefetch />
+      <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
       <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/"          element={<DashboardPage />} />
@@ -103,6 +119,7 @@ function AuthenticatedApp() {
           <Route path="/seo"       element={<SeoPage />} />
           <Route path="/journey"   element={<JourneyPage />} />
           <Route path="/wordpress" element={<WordPressPage />} />
+          <Route path="/investor"  element={<InvestorPage />} />
           <Route path="*"          element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
