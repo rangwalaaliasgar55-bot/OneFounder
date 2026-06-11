@@ -1,15 +1,10 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.extractAndStoreMemories = extractAndStoreMemories;
-exports.getTopMemories = getTopMemories;
-exports.upsertMemory = upsertMemory;
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-const index_1 = require("./index");
-async function extractAndStoreMemories(userId, userMessage, assistantResponse, source = 'chat') {
+import { db } from '../db';
+import { aiMemories } from '../db/schema';
+import { eq, desc } from 'drizzle-orm';
+import { getAIProvider } from './index';
+export async function extractAndStoreMemories(userId, userMessage, assistantResponse, source = 'chat') {
     try {
-        const ai = await (0, index_1.getAIProvider)();
+        const ai = await getAIProvider();
         const extractionPrompt = `Analyze this conversation and extract any durable, important facts about this founder that should be remembered for future conversations.
 
 User said: "${userMessage}"
@@ -42,9 +37,9 @@ Return ONLY the JSON array, nothing else.`;
         catch { }
         if (!Array.isArray(memories) || memories.length === 0)
             return;
-        const existing = await db_1.db.select({ content: schema_1.aiMemories.content })
-            .from(schema_1.aiMemories)
-            .where((0, drizzle_orm_1.eq)(schema_1.aiMemories.userId, userId))
+        const existing = await db.select({ content: aiMemories.content })
+            .from(aiMemories)
+            .where(eq(aiMemories.userId, userId))
             .limit(50);
         const existingContents = existing.map(e => e.content.toLowerCase());
         for (const mem of memories) {
@@ -54,7 +49,7 @@ Return ONLY the JSON array, nothing else.`;
                 mem.content.toLowerCase().includes(e.substring(0, 30)));
             if (isDuplicate)
                 continue;
-            await db_1.db.insert(schema_1.aiMemories).values({
+            await db.insert(aiMemories).values({
                 userId,
                 type: mem.type || 'fact',
                 content: mem.content,
@@ -66,22 +61,22 @@ Return ONLY the JSON array, nothing else.`;
     }
     catch { }
 }
-async function getTopMemories(userId, limit = 10) {
-    const memories = await db_1.db.select()
-        .from(schema_1.aiMemories)
-        .where((0, drizzle_orm_1.eq)(schema_1.aiMemories.userId, userId))
-        .orderBy((0, drizzle_orm_1.desc)(schema_1.aiMemories.importance))
+export async function getTopMemories(userId, limit = 10) {
+    const memories = await db.select()
+        .from(aiMemories)
+        .where(eq(aiMemories.userId, userId))
+        .orderBy(desc(aiMemories.importance))
         .limit(limit);
-    await Promise.all(memories.map(m => db_1.db.update(schema_1.aiMemories)
+    await Promise.all(memories.map(m => db.update(aiMemories)
         .set({
         referenceCount: (m.referenceCount || 0) + 1,
         lastReferencedAt: new Date(),
     })
-        .where((0, drizzle_orm_1.eq)(schema_1.aiMemories.id, m.id))));
+        .where(eq(aiMemories.id, m.id))));
     return memories.map(m => `[${m.type}] ${m.content}`);
 }
-async function upsertMemory(userId, type, content, source, importance = 5) {
-    await db_1.db.insert(schema_1.aiMemories).values({
+export async function upsertMemory(userId, type, content, source, importance = 5) {
+    await db.insert(aiMemories).values({
         userId,
         type,
         content,

@@ -1,9 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ClaudeProvider = void 0;
-class ClaudeProvider {
-    apiKey;
-    model;
+export class ClaudeProvider {
     constructor(apiKey, model = 'claude-sonnet-4-20250514') {
         this.apiKey = apiKey;
         this.model = model;
@@ -55,4 +50,3 @@ class ClaudeProvider {
         return this.generate(`Research and provide comprehensive insights about: ${topic}`, 'You are a business research expert. Provide data-driven insights, market analysis, and strategic recommendations.');
     }
 }
-exports.ClaudeProvider = ClaudeProvider;

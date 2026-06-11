@@ -1,18 +1,16 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-const router = (0, express_1.Router)();
-router.post('/sites', auth_1.requireAuth, async (req, res) => {
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { db } from '../db';
+import { wpSites } from '../db/schema';
+import { eq, and } from 'drizzle-orm';
+const router = Router();
+router.post('/sites', requireAuth, async (req, res) => {
     const user = req.user;
     const { siteUrl, siteName, username, applicationPassword } = req.body;
     if (!siteUrl)
         return res.status(400).json({ error: 'siteUrl is required' });
     try {
-        const [site] = await db_1.db.insert(schema_1.wpSites).values({
+        const [site] = await db.insert(wpSites).values({
             userId: user.id,
             siteUrl: siteUrl.replace(/\/$/, ''),
             siteName: siteName || siteUrl,
@@ -25,21 +23,21 @@ router.post('/sites', auth_1.requireAuth, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-router.get('/sites', auth_1.requireAuth, async (req, res) => {
+router.get('/sites', requireAuth, async (req, res) => {
     const user = req.user;
     try {
-        const sites = await db_1.db.select().from(schema_1.wpSites).where((0, drizzle_orm_1.eq)(schema_1.wpSites.userId, user.id));
+        const sites = await db.select().from(wpSites).where(eq(wpSites.userId, user.id));
         res.json(sites);
     }
     catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
-router.get('/sites/:id/posts', auth_1.requireAuth, async (req, res) => {
+router.get('/sites/:id/posts', requireAuth, async (req, res) => {
     const user = req.user;
     const id = req.params.id;
     try {
-        const [site] = await db_1.db.select().from(schema_1.wpSites).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.wpSites.id, id), (0, drizzle_orm_1.eq)(schema_1.wpSites.userId, user.id)));
+        const [site] = await db.select().from(wpSites).where(and(eq(wpSites.id, id), eq(wpSites.userId, user.id)));
         if (!site)
             return res.status(404).json({ error: 'Site not found' });
         const headers = { 'Content-Type': 'application/json' };
@@ -59,12 +57,12 @@ router.get('/sites/:id/posts', auth_1.requireAuth, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-router.post('/sites/:id/posts', auth_1.requireAuth, async (req, res) => {
+router.post('/sites/:id/posts', requireAuth, async (req, res) => {
     const user = req.user;
     const id = req.params.id;
     const { title, content, status = 'draft' } = req.body;
     try {
-        const [site] = await db_1.db.select().from(schema_1.wpSites).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.wpSites.id, id), (0, drizzle_orm_1.eq)(schema_1.wpSites.userId, user.id)));
+        const [site] = await db.select().from(wpSites).where(and(eq(wpSites.id, id), eq(wpSites.userId, user.id)));
         if (!site)
             return res.status(404).json({ error: 'Site not found' });
         if (!site.username || !site.applicationPassword)
@@ -87,15 +85,15 @@ router.post('/sites/:id/posts', auth_1.requireAuth, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-router.delete('/sites/:id', auth_1.requireAuth, async (req, res) => {
+router.delete('/sites/:id', requireAuth, async (req, res) => {
     const user = req.user;
     const id = req.params.id;
     try {
-        await db_1.db.delete(schema_1.wpSites).where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.wpSites.id, id), (0, drizzle_orm_1.eq)(schema_1.wpSites.userId, user.id)));
+        await db.delete(wpSites).where(and(eq(wpSites.id, id), eq(wpSites.userId, user.id)));
         res.json({ success: true });
     }
     catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
-exports.default = router;
+export default router;

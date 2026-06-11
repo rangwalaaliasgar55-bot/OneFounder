@@ -1,25 +1,23 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-const ai_1 = require("../ai");
-const router = (0, express_1.Router)();
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { db } from '../db';
+import { seoKeywords, seoAudits, seoBriefs, backlinks } from '../db/schema';
+import { eq, desc } from 'drizzle-orm';
+import { getAIProvider } from '../ai';
+const router = Router();
 // ─── Keywords ──────────────────────────────────────────────────────────────
-router.get('/', auth_1.requireAuth, async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
     const user = req.user;
-    const keywords = await db_1.db.select().from(schema_1.seoKeywords)
-        .where((0, drizzle_orm_1.eq)(schema_1.seoKeywords.userId, user.id))
-        .orderBy((0, drizzle_orm_1.desc)(schema_1.seoKeywords.createdAt));
+    const keywords = await db.select().from(seoKeywords)
+        .where(eq(seoKeywords.userId, user.id))
+        .orderBy(desc(seoKeywords.createdAt));
     res.json(keywords);
 });
-router.post('/', auth_1.requireAuth, async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
     const user = req.user;
     const { keyword, targetUrl, volume, difficulty, currentRank, targetRank, notes, intent, cluster, priority, status } = req.body;
     const rankHistory = currentRank ? [{ date: new Date().toISOString(), rank: parseInt(currentRank) }] : [];
-    const [kw] = await db_1.db.insert(schema_1.seoKeywords).values({
+    const [kw] = await db.insert(seoKeywords).values({
         userId: user.id, keyword, targetUrl: targetUrl || null,
         volume: volume ? parseInt(volume) : null, difficulty: difficulty ? parseInt(difficulty) : null,
         currentRank: currentRank ? parseInt(currentRank) : null, targetRank: targetRank ? parseInt(targetRank) : null,
@@ -28,25 +26,25 @@ router.post('/', auth_1.requireAuth, async (req, res) => {
     }).returning();
     res.json(kw);
 });
-router.patch('/:id', auth_1.requireAuth, async (req, res) => {
+router.patch('/:id', requireAuth, async (req, res) => {
     const updates = { ...req.body, updatedAt: new Date() };
     if (updates.currentRank !== undefined) {
-        const [existing] = await db_1.db.select().from(schema_1.seoKeywords).where((0, drizzle_orm_1.eq)(schema_1.seoKeywords.id, req.params.id));
+        const [existing] = await db.select().from(seoKeywords).where(eq(seoKeywords.id, req.params.id));
         if (existing) {
             const history = existing.rankHistory || [];
             history.push({ date: new Date().toISOString(), rank: updates.currentRank });
             updates.rankHistory = history;
         }
     }
-    const [updated] = await db_1.db.update(schema_1.seoKeywords).set(updates).where((0, drizzle_orm_1.eq)(schema_1.seoKeywords.id, req.params.id)).returning();
+    const [updated] = await db.update(seoKeywords).set(updates).where(eq(seoKeywords.id, req.params.id)).returning();
     res.json(updated);
 });
-router.delete('/:id', auth_1.requireAuth, async (req, res) => {
-    await db_1.db.delete(schema_1.seoKeywords).where((0, drizzle_orm_1.eq)(schema_1.seoKeywords.id, req.params.id));
+router.delete('/:id', requireAuth, async (req, res) => {
+    await db.delete(seoKeywords).where(eq(seoKeywords.id, req.params.id));
     res.json({ success: true });
 });
 // ─── AI Keyword Suggest ─────────────────────────────────────────────────────
-router.post('/suggest', auth_1.requireAuth, async (req, res) => {
+router.post('/suggest', requireAuth, async (req, res) => {
     const user = req.user;
     const { niche, seedKeyword, count = 10 } = req.body;
     const prompt = `Generate ${count} high-opportunity SEO keyword ideas for a "${niche}" business, starting from: "${seedKeyword}".
@@ -54,7 +52,7 @@ Focus on long-tail keywords. For each keyword:
 - keyword (string), volume (integer monthly searches), difficulty (0-100), intent (informational|commercial|transactional|navigational), cluster (2-3 word topic label), priority (high|medium|low based on opportunity)
 Return ONLY valid JSON array: [{ "keyword":"","volume":0,"difficulty":0,"intent":"","cluster":"","priority":"" }]`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are an expert SEO strategist. Return ONLY valid JSON array.');
         let suggestions = [];
         try {
@@ -78,7 +76,7 @@ Return ONLY valid JSON array: [{ "keyword":"","volume":0,"difficulty":0,"intent"
             ];
         }
         const saved = await Promise.all(suggestions.slice(0, count).map(async (s) => {
-            const [kw] = await db_1.db.insert(schema_1.seoKeywords).values({
+            const [kw] = await db.insert(seoKeywords).values({
                 userId: user.id, keyword: s.keyword, volume: s.volume || null, difficulty: s.difficulty || null,
                 intent: s.intent || null, cluster: s.cluster || null, priority: s.priority || 'medium', status: 'tracking', rankHistory: [],
             }).returning();
@@ -91,13 +89,13 @@ Return ONLY valid JSON array: [{ "keyword":"","volume":0,"difficulty":0,"intent"
     }
 });
 // ─── Competitor Analysis ─────────────────────────────────────────────────────
-router.post('/competitor', auth_1.requireAuth, async (req, res) => {
+router.post('/competitor', requireAuth, async (req, res) => {
     const { competitorUrl, niche, yourKeywords = [] } = req.body;
     const prompt = `Perform competitive SEO analysis for: ${competitorUrl} (Niche: ${niche || 'SaaS'})
 My keywords: ${yourKeywords.slice(0, 15).join(', ') || 'none'}
 Return JSON: { "competitorKeywords":[{"keyword":"","volume":0,"difficulty":0,"intent":"","estimatedRank":0}], "contentStrategy":"", "strengths":[], "keywordGaps":[{"keyword":"","volume":0,"difficulty":0,"opportunity":""}], "quickWins":[], "actionPlan":[] }`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are a senior SEO strategist. Return ONLY valid JSON.');
         let analysis = {};
         try {
@@ -131,14 +129,14 @@ Return JSON: { "competitorKeywords":[{"keyword":"","volume":0,"difficulty":0,"in
     }
 });
 // ─── SEO Audit ───────────────────────────────────────────────────────────────
-router.post('/audit', auth_1.requireAuth, async (req, res) => {
+router.post('/audit', requireAuth, async (req, res) => {
     const user = req.user;
     const { url, pageContent, pageTitle, metaDescription, h1, wordCount, internalLinks, externalLinks } = req.body;
     const prompt = `Technical SEO audit for: ${url}
 Title: ${pageTitle || 'missing'} | Meta: ${metaDescription || 'missing'} | H1: ${h1 || 'missing'} | Words: ${wordCount || '?'} | Internal links: ${internalLinks || '?'}
 Return JSON: { "score":0,"grade":"A|B|C|D|F","issues":[{"type":"error|warning|info","category":"","message":"","fix":""}],"strengths":[],"recommendations":[{"priority":"high|medium|low","action":"","impact":""}],"scores":{"title":0,"meta":0,"content":0,"technical":0,"links":0,"schema":0} }`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are an SEO technical auditor. Return ONLY valid JSON.');
         let audit = {};
         try {
@@ -167,7 +165,7 @@ Return JSON: { "score":0,"grade":"A|B|C|D|F","issues":[{"type":"error|warning|in
                 scores: { title: 50, meta: 40, content: 65, technical: 70, links: 60, schema: 20 },
             };
         }
-        const [saved] = await db_1.db.insert(schema_1.seoAudits).values({
+        const [saved] = await db.insert(seoAudits).values({
             userId: user.id, url, score: audit.score, issues: audit.issues, recommendations: audit.recommendations,
             metadata: { grade: audit.grade, scores: audit.scores, strengths: audit.strengths, pageTitle, metaDescription, h1, wordCount },
         }).returning();
@@ -177,29 +175,29 @@ Return JSON: { "score":0,"grade":"A|B|C|D|F","issues":[{"type":"error|warning|in
         res.status(500).json({ error: error.message });
     }
 });
-router.get('/audits', auth_1.requireAuth, async (req, res) => {
+router.get('/audits', requireAuth, async (req, res) => {
     const user = req.user;
-    const audits = await db_1.db.select().from(schema_1.seoAudits).where((0, drizzle_orm_1.eq)(schema_1.seoAudits.userId, user.id)).orderBy((0, drizzle_orm_1.desc)(schema_1.seoAudits.createdAt));
+    const audits = await db.select().from(seoAudits).where(eq(seoAudits.userId, user.id)).orderBy(desc(seoAudits.createdAt));
     res.json(audits);
 });
-router.delete('/audits/:id', auth_1.requireAuth, async (req, res) => {
-    await db_1.db.delete(schema_1.seoAudits).where((0, drizzle_orm_1.eq)(schema_1.seoAudits.id, req.params.id));
+router.delete('/audits/:id', requireAuth, async (req, res) => {
+    await db.delete(seoAudits).where(eq(seoAudits.id, req.params.id));
     res.json({ success: true });
 });
 // ─── Content Briefs ───────────────────────────────────────────────────────────
-router.get('/briefs', auth_1.requireAuth, async (req, res) => {
+router.get('/briefs', requireAuth, async (req, res) => {
     const user = req.user;
-    const briefs = await db_1.db.select().from(schema_1.seoBriefs).where((0, drizzle_orm_1.eq)(schema_1.seoBriefs.userId, user.id)).orderBy((0, drizzle_orm_1.desc)(schema_1.seoBriefs.createdAt));
+    const briefs = await db.select().from(seoBriefs).where(eq(seoBriefs.userId, user.id)).orderBy(desc(seoBriefs.createdAt));
     res.json(briefs);
 });
-router.post('/brief', auth_1.requireAuth, async (req, res) => {
+router.post('/brief', requireAuth, async (req, res) => {
     const user = req.user;
     const { keyword, targetAudience, businessContext } = req.body;
     const prompt = `Create a comprehensive SEO content brief for: "${keyword}"
 Audience: ${targetAudience || 'startup founders'} | Context: ${businessContext || 'SaaS startup'}
 Return JSON: { "titles":[],"metaDescription":"","outline":[{"heading":"","type":"h2","notes":""}],"wordCount":0,"keyPoints":[],"relatedKeywords":[],"faqSection":[{"question":"","answer":""}],"internalLinkingIdeas":[],"cta":"" }`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are an SEO content strategist. Return ONLY valid JSON.');
         let brief = {};
         try {
@@ -232,7 +230,7 @@ Return JSON: { "titles":[],"metaDescription":"","outline":[{"heading":"","type":
                 cta: `Ready to implement ${keyword}? Start your free trial today →`,
             };
         }
-        const [saved] = await db_1.db.insert(schema_1.seoBriefs).values({
+        const [saved] = await db.insert(seoBriefs).values({
             userId: user.id, keyword, targetAudience: targetAudience || null, businessContext: businessContext || null,
             titles: brief.titles, metaDescription: brief.metaDescription, outline: brief.outline,
             wordCount: brief.wordCount, keyPoints: brief.keyPoints, relatedKeywords: brief.relatedKeywords, faqSection: brief.faqSection || [],
@@ -243,12 +241,12 @@ Return JSON: { "titles":[],"metaDescription":"","outline":[{"heading":"","type":
         res.status(500).json({ error: error.message });
     }
 });
-router.delete('/briefs/:id', auth_1.requireAuth, async (req, res) => {
-    await db_1.db.delete(schema_1.seoBriefs).where((0, drizzle_orm_1.eq)(schema_1.seoBriefs.id, req.params.id));
+router.delete('/briefs/:id', requireAuth, async (req, res) => {
+    await db.delete(seoBriefs).where(eq(seoBriefs.id, req.params.id));
     res.json({ success: true });
 });
 // ─── Keyword Clustering ───────────────────────────────────────────────────────
-router.post('/cluster', auth_1.requireAuth, async (req, res) => {
+router.post('/cluster', requireAuth, async (req, res) => {
     const user = req.user;
     const { keywords: keywordList } = req.body;
     if (!keywordList?.length)
@@ -256,7 +254,7 @@ router.post('/cluster', auth_1.requireAuth, async (req, res) => {
     const prompt = `Group these keywords into topic clusters: ${keywordList.join(', ')}
 Create 3-6 meaningful clusters. Return JSON: { "clusters":[{"name":"","pillarPage":"","keywords":[],"intent":"informational|commercial|mixed","priority":"high|medium|low","contentIdeas":[]}] }`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are an SEO strategist. Return ONLY valid JSON.');
         let result = {};
         try {
@@ -268,10 +266,10 @@ Create 3-6 meaningful clusters. Return JSON: { "clusters":[{"name":"","pillarPag
         if (result.clusters) {
             for (const cluster of result.clusters) {
                 for (const kwText of cluster.keywords) {
-                    const existing = await db_1.db.select().from(schema_1.seoKeywords).where((0, drizzle_orm_1.eq)(schema_1.seoKeywords.userId, user.id));
+                    const existing = await db.select().from(seoKeywords).where(eq(seoKeywords.userId, user.id));
                     const match = existing.find(k => k.keyword.toLowerCase() === kwText.toLowerCase());
                     if (match)
-                        await db_1.db.update(schema_1.seoKeywords).set({ cluster: cluster.name, updatedAt: new Date() }).where((0, drizzle_orm_1.eq)(schema_1.seoKeywords.id, match.id));
+                        await db.update(seoKeywords).set({ cluster: cluster.name, updatedAt: new Date() }).where(eq(seoKeywords.id, match.id));
                 }
             }
         }
@@ -282,10 +280,10 @@ Create 3-6 meaningful clusters. Return JSON: { "clusters":[{"name":"","pillarPag
     }
 });
 // ─── Cannibalization Check ────────────────────────────────────────────────────
-router.post('/cannibalization', auth_1.requireAuth, async (req, res) => {
+router.post('/cannibalization', requireAuth, async (req, res) => {
     const user = req.user;
     const { pages } = req.body; // [{url, keywords: []}]
-    const allKws = await db_1.db.select().from(schema_1.seoKeywords).where((0, drizzle_orm_1.eq)(schema_1.seoKeywords.userId, user.id));
+    const allKws = await db.select().from(seoKeywords).where(eq(seoKeywords.userId, user.id));
     const prompt = `Detect keyword cannibalization issues from these page/keyword mappings:
 ${JSON.stringify(pages || [])}
 Also consider these tracked keywords: ${allKws.map(k => `"${k.keyword}" (${k.targetUrl || 'no URL'})`).slice(0, 30).join(', ')}
@@ -298,7 +296,7 @@ Return JSON: {
   "affectedPages": 0
 }`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are a technical SEO expert. Return ONLY valid JSON.');
         let result = {};
         try {
@@ -325,7 +323,7 @@ Return JSON: {
     }
 });
 // ─── Schema Markup Generator ──────────────────────────────────────────────────
-router.post('/schema', auth_1.requireAuth, async (req, res) => {
+router.post('/schema', requireAuth, async (req, res) => {
     const { schemaType, data } = req.body;
     const prompt = `Generate valid JSON-LD schema markup for schema type: ${schemaType}
 Data provided: ${JSON.stringify(data)}
@@ -333,7 +331,7 @@ Return a single, complete, valid JSON-LD object with @context and @type.
 For FAQPage include all FAQ pairs. For Article include all fields.
 Return ONLY the raw JSON-LD object, no explanation, no markdown fences.`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are a schema markup expert. Return ONLY valid JSON-LD. No code fences, no explanation.');
         let schema = {};
         try {
@@ -365,15 +363,15 @@ function generateFallbackSchema(type, data) {
     }
 }
 // ─── SEO Report Generator ─────────────────────────────────────────────────────
-router.post('/report', auth_1.requireAuth, async (req, res) => {
+router.post('/report', requireAuth, async (req, res) => {
     const user = req.user;
     const { period, websiteUrl, goals } = req.body;
     // Fetch all user's SEO data
     const [allKeywords, allAudits, allBriefs, allBacklinks] = await Promise.all([
-        db_1.db.select().from(schema_1.seoKeywords).where((0, drizzle_orm_1.eq)(schema_1.seoKeywords.userId, user.id)),
-        db_1.db.select().from(schema_1.seoAudits).where((0, drizzle_orm_1.eq)(schema_1.seoAudits.userId, user.id)),
-        db_1.db.select().from(schema_1.seoBriefs).where((0, drizzle_orm_1.eq)(schema_1.seoBriefs.userId, user.id)),
-        db_1.db.select().from(schema_1.backlinks).where((0, drizzle_orm_1.eq)(schema_1.backlinks.userId, user.id)),
+        db.select().from(seoKeywords).where(eq(seoKeywords.userId, user.id)),
+        db.select().from(seoAudits).where(eq(seoAudits.userId, user.id)),
+        db.select().from(seoBriefs).where(eq(seoBriefs.userId, user.id)),
+        db.select().from(backlinks).where(eq(backlinks.userId, user.id)),
     ]);
     const top10 = allKeywords.filter(k => k.currentRank && k.currentRank <= 10).length;
     const top3 = allKeywords.filter(k => k.currentRank && k.currentRank <= 3).length;
@@ -422,7 +420,7 @@ Return JSON:
   "nextMonthFocus": ""
 }`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are an SEO consultant writing a client report. Return ONLY valid JSON.');
         let report = {};
         try {
@@ -460,31 +458,31 @@ Return JSON:
     }
 });
 // ─── Backlinks ────────────────────────────────────────────────────────────────
-router.get('/backlinks', auth_1.requireAuth, async (req, res) => {
+router.get('/backlinks', requireAuth, async (req, res) => {
     const user = req.user;
-    const links = await db_1.db.select().from(schema_1.backlinks).where((0, drizzle_orm_1.eq)(schema_1.backlinks.userId, user.id)).orderBy((0, drizzle_orm_1.desc)(schema_1.backlinks.createdAt));
+    const links = await db.select().from(backlinks).where(eq(backlinks.userId, user.id)).orderBy(desc(backlinks.createdAt));
     res.json(links);
 });
-router.post('/backlinks', auth_1.requireAuth, async (req, res) => {
+router.post('/backlinks', requireAuth, async (req, res) => {
     const user = req.user;
     const { sourceUrl, sourceDomain, targetUrl, anchorText, type, status, domainAuthority, category, notes } = req.body;
     const domain = sourceDomain || (sourceUrl ? sourceUrl.replace(/^https?:\/\//, '').split('/')[0] : null);
-    const [link] = await db_1.db.insert(schema_1.backlinks).values({
+    const [link] = await db.insert(backlinks).values({
         userId: user.id, sourceUrl, sourceDomain: domain, targetUrl, anchorText: anchorText || null,
         type: type || 'dofollow', status: status || 'active', domainAuthority: domainAuthority ? parseInt(domainAuthority) : null,
         category: category || null, notes: notes || null,
     }).returning();
     res.json(link);
 });
-router.patch('/backlinks/:id', auth_1.requireAuth, async (req, res) => {
-    const [updated] = await db_1.db.update(schema_1.backlinks).set({ ...req.body, updatedAt: new Date() }).where((0, drizzle_orm_1.eq)(schema_1.backlinks.id, req.params.id)).returning();
+router.patch('/backlinks/:id', requireAuth, async (req, res) => {
+    const [updated] = await db.update(backlinks).set({ ...req.body, updatedAt: new Date() }).where(eq(backlinks.id, req.params.id)).returning();
     res.json(updated);
 });
-router.delete('/backlinks/:id', auth_1.requireAuth, async (req, res) => {
-    await db_1.db.delete(schema_1.backlinks).where((0, drizzle_orm_1.eq)(schema_1.backlinks.id, req.params.id));
+router.delete('/backlinks/:id', requireAuth, async (req, res) => {
+    await db.delete(backlinks).where(eq(backlinks.id, req.params.id));
     res.json({ success: true });
 });
-router.post('/backlinks/find', auth_1.requireAuth, async (req, res) => {
+router.post('/backlinks/find', requireAuth, async (req, res) => {
     const { websiteUrl, niche } = req.body;
     const prompt = `Suggest 10 high-quality backlink opportunities for a ${niche || 'SaaS startup'} website: ${websiteUrl || 'a startup'}
 
@@ -498,7 +496,7 @@ For each opportunity suggest:
 
 Return JSON array: [{"sourceDomain":"","type":"","domainAuthority":0,"category":"","strategy":"","difficulty":""}]`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are a link building expert. Return ONLY valid JSON array.');
         let opportunities = [];
         try {
@@ -528,7 +526,7 @@ Return JSON array: [{"sourceDomain":"","type":"","domainAuthority":0,"category":
     }
 });
 // ─── Content Gap Engine ───────────────────────────────────────────────────────
-router.post('/content-gap', auth_1.requireAuth, async (req, res) => {
+router.post('/content-gap', requireAuth, async (req, res) => {
     const user = req.user;
     const { competitorUrls, yourUrl, niche, yourKeywords } = req.body;
     const trackedKeywords = yourKeywords || [];
@@ -567,7 +565,7 @@ Return JSON:
   ]
 }`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are an SEO strategist. Return ONLY valid JSON.');
         let result = {};
         try {
@@ -605,7 +603,7 @@ Return JSON:
     }
 });
 // ─── Programmatic SEO Generator ───────────────────────────────────────────────
-router.post('/programmatic', auth_1.requireAuth, async (req, res) => {
+router.post('/programmatic', requireAuth, async (req, res) => {
     const { template, variable, values, productName, niche, targetUrl } = req.body;
     const templateStr = template || 'Best {product} for {variable}';
     const variableList = values || ['startups', 'agencies', 'freelancers', 'dentists', 'lawyers', 'restaurants', 'ecommerce', 'SaaS companies', 'coaches', 'consultants'];
@@ -646,7 +644,7 @@ Return JSON:
   "implementationSteps": ["Step 1", "Step 2", "Step 3"]
 }`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are a programmatic SEO expert. Return ONLY valid JSON.');
         let result = {};
         try {
@@ -693,4 +691,4 @@ Return JSON:
         res.status(500).json({ error: error.message });
     }
 });
-exports.default = router;
+export default router;

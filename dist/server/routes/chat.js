@@ -1,21 +1,19 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-const ai_1 = require("../ai");
-const uuid_1 = require("uuid");
-const context_1 = require("../ai/context");
-const memory_1 = require("../ai/memory");
-const activity_1 = require("../ai/activity");
-const router = (0, express_1.Router)();
-router.get('/sessions', auth_1.requireAuth, async (req, res) => {
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { db } from '../db';
+import { chatMessages } from '../db/schema';
+import { eq, desc, and } from 'drizzle-orm';
+import { getAIProvider } from '../ai';
+import { v4 as uuidv4 } from 'uuid';
+import { assembleFounderContext, buildSystemPromptWithContext } from '../ai/context';
+import { extractAndStoreMemories } from '../ai/memory';
+import { logActivity } from '../ai/activity';
+const router = Router();
+router.get('/sessions', requireAuth, async (req, res) => {
     const user = req.user;
-    const messages = await db_1.db.select().from(schema_1.chatMessages)
-        .where((0, drizzle_orm_1.eq)(schema_1.chatMessages.userId, user.id))
-        .orderBy((0, drizzle_orm_1.desc)(schema_1.chatMessages.createdAt));
+    const messages = await db.select().from(chatMessages)
+        .where(eq(chatMessages.userId, user.id))
+        .orderBy(desc(chatMessages.createdAt));
     const sessions = new Map();
     messages.forEach(m => {
         if (!sessions.has(m.sessionId)) {
@@ -29,29 +27,29 @@ router.get('/sessions', auth_1.requireAuth, async (req, res) => {
     });
     res.json(Array.from(sessions.values()));
 });
-router.get('/:sessionId', auth_1.requireAuth, async (req, res) => {
+router.get('/:sessionId', requireAuth, async (req, res) => {
     const user = req.user;
-    const messages = await db_1.db.select().from(schema_1.chatMessages)
-        .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.chatMessages.userId, user.id), (0, drizzle_orm_1.eq)(schema_1.chatMessages.sessionId, req.params.sessionId)))
-        .orderBy(schema_1.chatMessages.createdAt);
+    const messages = await db.select().from(chatMessages)
+        .where(and(eq(chatMessages.userId, user.id), eq(chatMessages.sessionId, req.params.sessionId)))
+        .orderBy(chatMessages.createdAt);
     res.json(messages);
 });
-router.post('/send', auth_1.requireAuth, async (req, res) => {
+router.post('/send', requireAuth, async (req, res) => {
     const user = req.user;
     const { message, sessionId, agentType } = req.body;
     if (!message)
         return res.status(400).json({ error: 'Message required' });
-    const session = sessionId || (0, uuid_1.v4)();
-    await db_1.db.insert(schema_1.chatMessages).values({
+    const session = sessionId || uuidv4();
+    await db.insert(chatMessages).values({
         userId: user.id,
         sessionId: session,
         role: 'user',
         content: message,
     });
-    await (0, activity_1.logActivity)(user.id, 'sent_message', 'chat', session, { agentType });
-    const history = await db_1.db.select().from(schema_1.chatMessages)
-        .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.chatMessages.userId, user.id), (0, drizzle_orm_1.eq)(schema_1.chatMessages.sessionId, session)))
-        .orderBy(schema_1.chatMessages.createdAt);
+    await logActivity(user.id, 'sent_message', 'chat', session, { agentType });
+    const history = await db.select().from(chatMessages)
+        .where(and(eq(chatMessages.userId, user.id), eq(chatMessages.sessionId, session)))
+        .orderBy(chatMessages.createdAt);
     const agentBasePrompts = {
         ceo: 'You are the CEO Agent for OneFounder. You help with business strategy, decision-making, prioritization, and high-level planning. Be strategic, decisive, and results-focused. Always reference the founder context below to give specific, not generic, advice.',
         marketing: 'You are the Marketing Agent. You help with growth strategies, content marketing, brand positioning, and customer acquisition. Be creative and data-driven. Use the founder context to make your recommendations specific to their stage and industry.',
@@ -65,8 +63,8 @@ router.post('/send', auth_1.requireAuth, async (req, res) => {
     const basePrompt = agentBasePrompts[agentType] || agentBasePrompts.founder;
     let systemPrompt = basePrompt;
     try {
-        const context = await (0, context_1.assembleFounderContext)(user.id);
-        systemPrompt = (0, context_1.buildSystemPromptWithContext)(basePrompt, context);
+        const context = await assembleFounderContext(user.id);
+        systemPrompt = buildSystemPromptWithContext(basePrompt, context);
     }
     catch { }
     const messages = [
@@ -74,20 +72,20 @@ router.post('/send', auth_1.requireAuth, async (req, res) => {
         ...history.map(m => ({ role: m.role, content: m.content }))
     ];
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.chat(messages);
-        const [saved] = await db_1.db.insert(schema_1.chatMessages).values({
+        const [saved] = await db.insert(chatMessages).values({
             userId: user.id,
             sessionId: session,
             role: 'assistant',
             content: response,
             model: agentType || 'founder',
         }).returning();
-        (0, memory_1.extractAndStoreMemories)(user.id, message, response, `chat:${agentType || 'founder'}`).catch(() => { });
+        extractAndStoreMemories(user.id, message, response, `chat:${agentType || 'founder'}`).catch(() => { });
         res.json({ message: saved, sessionId: session });
     }
     catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
-exports.default = router;
+export default router;

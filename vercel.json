@@ -1,26 +1,23 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
   "builds": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
+      "src": "dist/server/index.js",
+      "use": "@vercel/node",
       "config": {
-        "distDir": "dist/client"
+        "runtime": "nodejs20.x"
       }
-    },
-    {
-      "src": "server/index.ts",
-      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/auth/(.*)",
-      "dest": "/server/index.ts"
+      "dest": "/dist/server/index.js"
     },
     {
       "src": "/api/(.*)",
-      "dest": "/server/index.ts"
+      "dest": "/dist/server/index.js"
     },
     {
       "handle": "filesystem"

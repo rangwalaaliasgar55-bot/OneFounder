@@ -1,11 +1,9 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-const router = (0, express_1.Router)();
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { db } from '../db';
+import { journeyMilestones } from '../db/schema';
+import { eq } from 'drizzle-orm';
+const router = Router();
 const DEFAULT_MILESTONES = [
     { key: 'idea', stage: 'Idea', title: 'First Business Idea', description: 'You had your first startup idea', icon: '💡', xp: 50, order: 1 },
     { key: 'validation', stage: 'Validation', title: 'Idea Validated', description: 'Validated demand with real people', icon: '✅', xp: 100, order: 2 },
@@ -23,15 +21,15 @@ const DEFAULT_MILESTONES = [
     { key: 'mrr_10k', stage: 'Scale', title: '$10K MRR', description: 'Reached $10,000 monthly recurring revenue', icon: '🏆', xp: 1000, order: 14 },
     { key: 'mrr_100k', stage: 'Success', title: '$100K MRR', description: 'Reached $100K monthly recurring revenue', icon: '🦄', xp: 5000, order: 15 },
 ];
-router.get('/', auth_1.requireAuth, async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
     const user = req.user;
-    let milestones = await db_1.db.select().from(schema_1.journeyMilestones)
-        .where((0, drizzle_orm_1.eq)(schema_1.journeyMilestones.userId, user.id))
-        .orderBy(schema_1.journeyMilestones.order);
+    let milestones = await db.select().from(journeyMilestones)
+        .where(eq(journeyMilestones.userId, user.id))
+        .orderBy(journeyMilestones.order);
     // Seed defaults if none exist
     if (milestones.length === 0) {
         const inserted = await Promise.all(DEFAULT_MILESTONES.map(async (m) => {
-            const [row] = await db_1.db.insert(schema_1.journeyMilestones).values({
+            const [row] = await db.insert(journeyMilestones).values({
                 userId: user.id, key: m.key, stage: m.stage, title: m.title,
                 description: m.description, icon: m.icon, xp: m.xp, order: m.order,
                 completed: false,
@@ -42,17 +40,17 @@ router.get('/', auth_1.requireAuth, async (req, res) => {
     }
     res.json(milestones);
 });
-router.patch('/:id', auth_1.requireAuth, async (req, res) => {
+router.patch('/:id', requireAuth, async (req, res) => {
     const { completed, notes } = req.body;
-    const [updated] = await db_1.db.update(schema_1.journeyMilestones)
+    const [updated] = await db.update(journeyMilestones)
         .set({
         completed: completed ?? undefined,
         completedAt: completed ? new Date() : null,
         notes: notes ?? undefined,
         updatedAt: new Date(),
     })
-        .where((0, drizzle_orm_1.eq)(schema_1.journeyMilestones.id, req.params.id))
+        .where(eq(journeyMilestones.id, req.params.id))
         .returning();
     res.json(updated);
 });
-exports.default = router;
+export default router;

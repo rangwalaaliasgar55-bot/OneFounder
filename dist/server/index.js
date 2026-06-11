@@ -1,36 +1,31 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const cors_1 = __importDefault(require("cors"));
-const path_1 = __importDefault(require("path"));
-const node_1 = require("better-auth/node");
-const auth_1 = require("./auth");
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
-const ai_1 = __importDefault(require("./routes/ai"));
-const ideas_1 = __importDefault(require("./routes/ideas"));
-const research_1 = __importDefault(require("./routes/research"));
-const plans_1 = __importDefault(require("./routes/plans"));
-const projects_1 = __importDefault(require("./routes/projects"));
-const content_1 = __importDefault(require("./routes/content"));
-const leads_1 = __importDefault(require("./routes/leads"));
-const knowledge_1 = __importDefault(require("./routes/knowledge"));
-const chat_1 = __importDefault(require("./routes/chat"));
-const dashboard_1 = __importDefault(require("./routes/dashboard"));
-const social_1 = __importDefault(require("./routes/social"));
-const finance_1 = __importDefault(require("./routes/finance"));
-const seo_1 = __importDefault(require("./routes/seo"));
-const ceo_1 = __importDefault(require("./routes/ceo"));
-const journey_1 = __importDefault(require("./routes/journey"));
-const wordpress_1 = __importDefault(require("./routes/wordpress"));
-const founderProfile_1 = __importDefault(require("./routes/founderProfile"));
-const intelligence_1 = __importDefault(require("./routes/intelligence"));
-const app = (0, express_1.default)();
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import { toNodeHandler } from 'better-auth/node';
+import { auth } from './auth';
+import dotenv from 'dotenv';
+dotenv.config();
+import aiRoutes from './routes/ai';
+import ideasRoutes from './routes/ideas';
+import researchRoutes from './routes/research';
+import plansRoutes from './routes/plans';
+import projectsRoutes from './routes/projects';
+import contentRoutes from './routes/content';
+import leadsRoutes from './routes/leads';
+import knowledgeRoutes from './routes/knowledge';
+import chatRoutes from './routes/chat';
+import dashboardRoutes from './routes/dashboard';
+import socialRoutes from './routes/social';
+import financeRoutes from './routes/finance';
+import seoRoutes from './routes/seo';
+import ceoRoutes from './routes/ceo';
+import journeyRoutes from './routes/journey';
+import wordpressRoutes from './routes/wordpress';
+import founderProfileRoutes from './routes/founderProfile';
+import intelligenceRoutes from './routes/intelligence';
+const app = express();
 const PORT = process.env.PORT || 3000;
-app.use((0, cors_1.default)({
+app.use(cors({
     origin: [
         'http://localhost:5173',
         'http://localhost:5000',
@@ -41,41 +36,56 @@ app.use((0, cors_1.default)({
     ].filter(Boolean),
     credentials: true,
 }));
-app.use('/auth', (0, node_1.toNodeHandler)(auth_1.auth));
-app.use(express_1.default.json({ limit: '10mb' }));
-app.use(express_1.default.urlencoded({ extended: true }));
-app.use('/api/ai', ai_1.default);
-app.use('/api/ideas', ideas_1.default);
-app.use('/api/research', research_1.default);
-app.use('/api/plans', plans_1.default);
-app.use('/api/projects', projects_1.default);
-app.use('/api/content', content_1.default);
-app.use('/api/leads', leads_1.default);
-app.use('/api/knowledge', knowledge_1.default);
-app.use('/api/chat', chat_1.default);
-app.use('/api/dashboard', dashboard_1.default);
-app.use('/api/social', social_1.default);
-app.use('/api/finance', finance_1.default);
-app.use('/api/seo', seo_1.default);
-app.use('/api/ceo', ceo_1.default);
-app.use('/api/journey', journey_1.default);
-app.use('/api/wordpress', wordpress_1.default);
-app.use('/api/founder-profile', founderProfile_1.default);
-app.use('/api/intelligence', intelligence_1.default);
+app.use('/auth', toNodeHandler(auth));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use('/api/ai', aiRoutes);
+app.use('/api/ideas', ideasRoutes);
+app.use('/api/research', researchRoutes);
+app.use('/api/plans', plansRoutes);
+app.use('/api/projects', projectsRoutes);
+app.use('/api/content', contentRoutes);
+app.use('/api/leads', leadsRoutes);
+app.use('/api/knowledge', knowledgeRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/social', socialRoutes);
+app.use('/api/finance', financeRoutes);
+app.use('/api/seo', seoRoutes);
+app.use('/api/ceo', ceoRoutes);
+app.use('/api/journey', journeyRoutes);
+app.use('/api/wordpress', wordpressRoutes);
+app.use('/api/founder-profile', founderProfileRoutes);
+app.use('/api/intelligence', intelligenceRoutes);
 app.get('/api/health', (_, res) => {
     res.json({ status: 'ok', version: '1.0.0', name: 'OneFounder' });
 });
 // Serve built client in production
 if (process.env.NODE_ENV === 'production') {
-    const clientDist = path_1.default.resolve(process.cwd(), 'dist/client');
-    app.use(express_1.default.static(clientDist));
+    const clientDist = path.resolve(process.cwd(), 'dist/client');
+    app.use(express.static(clientDist));
     app.get('*', (_req, res) => {
-        res.sendFile(path_1.default.join(clientDist, 'index.html'));
+        res.sendFile(path.join(clientDist, 'index.html'));
     });
 }
 if (!process.env.VERCEL) {
-    app.listen(PORT, () => {
-        console.log(`🚀 OneFounder server running on port ${PORT}`);
-    });
+    const maxAttempts = 5;
+    const startServer = (port, attempt = 1) => {
+        const server = app.listen(port, () => {
+            console.log(`🚀 OneFounder server running on port ${port}`);
+        });
+        server.on('error', (err) => {
+            if (err && err.code === 'EADDRINUSE' && attempt < maxAttempts) {
+                const nextPort = port + 1;
+                console.warn(`Port ${port} in use, trying ${nextPort} (attempt ${attempt + 1})`);
+                startServer(nextPort, attempt + 1);
+            }
+            else {
+                console.error('Failed to start server:', err);
+                process.exit(1);
+            }
+        });
+    };
+    startServer(Number(PORT));
 }
-exports.default = app;
+export default app;

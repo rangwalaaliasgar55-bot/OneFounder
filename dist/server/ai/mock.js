@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.MockAIProvider = void 0;
-class MockAIProvider {
+export class MockAIProvider {
     async generate(prompt, systemPrompt) {
         await new Promise(r => setTimeout(r, 800));
         return `[AI Demo Mode] Response to: "${prompt.substring(0, 60)}..."\n\nTo enable real AI, install Ollama (ollama.ai) and run: ollama pull llama3.2`;
@@ -24,4 +21,3 @@ class MockAIProvider {
         return `[Demo Research] Topic: ${topic}\n\nMarket Overview:\n• Growing market with 15-25% YoY growth\n• Multiple underserved niches available\n• Digital-first approach provides competitive advantage\n\nOpportunities:\n• B2B SaaS positioning\n• Recurring revenue model\n• Clear target customer segment`;
     }
 }
-exports.MockAIProvider = MockAIProvider;

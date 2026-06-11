@@ -1,9 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.OllamaProvider = void 0;
-class OllamaProvider {
-    baseUrl;
-    model;
+export class OllamaProvider {
     constructor(baseUrl = 'http://localhost:11434', model = 'llama3.2') {
         this.baseUrl = baseUrl;
         this.model = model;
@@ -75,4 +70,3 @@ class OllamaProvider {
         }
     }
 }
-exports.OllamaProvider = OllamaProvider;

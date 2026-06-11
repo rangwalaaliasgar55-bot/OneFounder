@@ -1,22 +1,20 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-const router = (0, express_1.Router)();
-router.get('/', auth_1.requireAuth, async (req, res) => {
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { db } from '../db';
+import { financeEntries } from '../db/schema';
+import { eq, desc } from 'drizzle-orm';
+const router = Router();
+router.get('/', requireAuth, async (req, res) => {
     const user = req.user;
-    const entries = await db_1.db.select().from(schema_1.financeEntries)
-        .where((0, drizzle_orm_1.eq)(schema_1.financeEntries.userId, user.id))
-        .orderBy((0, drizzle_orm_1.desc)(schema_1.financeEntries.date));
+    const entries = await db.select().from(financeEntries)
+        .where(eq(financeEntries.userId, user.id))
+        .orderBy(desc(financeEntries.date));
     res.json(entries);
 });
-router.post('/', auth_1.requireAuth, async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
     const user = req.user;
     const { type, amount, description, category, recurring, recurringInterval, date } = req.body;
-    const [entry] = await db_1.db.insert(schema_1.financeEntries).values({
+    const [entry] = await db.insert(financeEntries).values({
         userId: user.id,
         type,
         amount: Math.round(parseFloat(amount) * 100),
@@ -28,25 +26,25 @@ router.post('/', auth_1.requireAuth, async (req, res) => {
     }).returning();
     res.json({ ...entry, amount: entry.amount / 100 });
 });
-router.patch('/:id', auth_1.requireAuth, async (req, res) => {
+router.patch('/:id', requireAuth, async (req, res) => {
     const user = req.user;
     const updateData = { ...req.body, updatedAt: new Date() };
     if (updateData.amount)
         updateData.amount = Math.round(parseFloat(updateData.amount) * 100);
-    const [updated] = await db_1.db.update(schema_1.financeEntries)
+    const [updated] = await db.update(financeEntries)
         .set(updateData)
-        .where((0, drizzle_orm_1.eq)(schema_1.financeEntries.id, req.params.id))
+        .where(eq(financeEntries.id, req.params.id))
         .returning();
     res.json({ ...updated, amount: updated.amount / 100 });
 });
-router.delete('/:id', auth_1.requireAuth, async (req, res) => {
-    await db_1.db.delete(schema_1.financeEntries).where((0, drizzle_orm_1.eq)(schema_1.financeEntries.id, req.params.id));
+router.delete('/:id', requireAuth, async (req, res) => {
+    await db.delete(financeEntries).where(eq(financeEntries.id, req.params.id));
     res.json({ success: true });
 });
-router.get('/summary', auth_1.requireAuth, async (req, res) => {
+router.get('/summary', requireAuth, async (req, res) => {
     const user = req.user;
-    const entries = await db_1.db.select().from(schema_1.financeEntries)
-        .where((0, drizzle_orm_1.eq)(schema_1.financeEntries.userId, user.id));
+    const entries = await db.select().from(financeEntries)
+        .where(eq(financeEntries.userId, user.id));
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -65,4 +63,4 @@ router.get('/summary', auth_1.requireAuth, async (req, res) => {
         totalEntries: entries.length,
     });
 });
-exports.default = router;
+export default router;

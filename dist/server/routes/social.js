@@ -1,23 +1,21 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-const ai_1 = require("../ai");
-const router = (0, express_1.Router)();
-router.get('/', auth_1.requireAuth, async (req, res) => {
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { db } from '../db';
+import { socialPosts } from '../db/schema';
+import { eq, desc } from 'drizzle-orm';
+import { getAIProvider } from '../ai';
+const router = Router();
+router.get('/', requireAuth, async (req, res) => {
     const user = req.user;
-    const posts = await db_1.db.select().from(schema_1.socialPosts)
-        .where((0, drizzle_orm_1.eq)(schema_1.socialPosts.userId, user.id))
-        .orderBy((0, drizzle_orm_1.desc)(schema_1.socialPosts.createdAt));
+    const posts = await db.select().from(socialPosts)
+        .where(eq(socialPosts.userId, user.id))
+        .orderBy(desc(socialPosts.createdAt));
     res.json(posts);
 });
-router.post('/', auth_1.requireAuth, async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
     const user = req.user;
     const { platform, content, hashtags, scheduledAt } = req.body;
-    const [post] = await db_1.db.insert(schema_1.socialPosts).values({
+    const [post] = await db.insert(socialPosts).values({
         userId: user.id,
         platform,
         content,
@@ -26,7 +24,7 @@ router.post('/', auth_1.requireAuth, async (req, res) => {
     }).returning();
     res.json(post);
 });
-router.post('/generate', auth_1.requireAuth, async (req, res) => {
+router.post('/generate', requireAuth, async (req, res) => {
     const user = req.user;
     const { platform, topic, tone, businessContext } = req.body;
     const platformGuides = {
@@ -43,7 +41,7 @@ Platform guide: ${platformGuides[platform] || 'engaging and on-brand'}
 
 Return JSON: { "content": "post text", "hashtags": ["tag1", "tag2"] }`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are a social media expert. Return ONLY valid JSON.');
         let result = { content: '', hashtags: [] };
         try {
@@ -57,7 +55,7 @@ Return JSON: { "content": "post text", "hashtags": ["tag1", "tag2"] }`;
                 hashtags: ['startup', 'founder', 'entrepreneurship'],
             };
         }
-        const [post] = await db_1.db.insert(schema_1.socialPosts).values({
+        const [post] = await db.insert(socialPosts).values({
             userId: user.id,
             platform: platform,
             content: result.content,
@@ -69,16 +67,16 @@ Return JSON: { "content": "post text", "hashtags": ["tag1", "tag2"] }`;
         res.status(500).json({ error: error.message });
     }
 });
-router.patch('/:id', auth_1.requireAuth, async (req, res) => {
+router.patch('/:id', requireAuth, async (req, res) => {
     const user = req.user;
-    const [updated] = await db_1.db.update(schema_1.socialPosts)
+    const [updated] = await db.update(socialPosts)
         .set({ ...req.body, updatedAt: new Date() })
-        .where((0, drizzle_orm_1.eq)(schema_1.socialPosts.id, req.params.id))
+        .where(eq(socialPosts.id, req.params.id))
         .returning();
     res.json(updated);
 });
-router.delete('/:id', auth_1.requireAuth, async (req, res) => {
-    await db_1.db.delete(schema_1.socialPosts).where((0, drizzle_orm_1.eq)(schema_1.socialPosts.id, req.params.id));
+router.delete('/:id', requireAuth, async (req, res) => {
+    await db.delete(socialPosts).where(eq(socialPosts.id, req.params.id));
     res.json({ success: true });
 });
-exports.default = router;
+export default router;

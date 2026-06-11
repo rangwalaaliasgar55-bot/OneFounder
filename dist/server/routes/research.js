@@ -1,20 +1,18 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-const ai_1 = require("../ai");
-const router = (0, express_1.Router)();
-router.get('/', auth_1.requireAuth, async (req, res) => {
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { db } from '../db';
+import { researchReports } from '../db/schema';
+import { eq, desc } from 'drizzle-orm';
+import { getAIProvider } from '../ai';
+const router = Router();
+router.get('/', requireAuth, async (req, res) => {
     const user = req.user;
-    const reports = await db_1.db.select().from(schema_1.researchReports)
-        .where((0, drizzle_orm_1.eq)(schema_1.researchReports.userId, user.id))
-        .orderBy((0, drizzle_orm_1.desc)(schema_1.researchReports.createdAt));
+    const reports = await db.select().from(researchReports)
+        .where(eq(researchReports.userId, user.id))
+        .orderBy(desc(researchReports.createdAt));
     res.json(reports);
 });
-router.post('/analyze', auth_1.requireAuth, async (req, res) => {
+router.post('/analyze', requireAuth, async (req, res) => {
     const user = req.user;
     const { niche, ideaId } = req.body;
     if (!niche)
@@ -33,7 +31,7 @@ Provide detailed analysis including:
 
 Return as valid JSON with keys: competitors, trends, opportunities, keywords, swot, risks, marketSize`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are a market research expert. Return ONLY valid JSON.');
         let data = {};
         try {
@@ -44,7 +42,7 @@ Return as valid JSON with keys: competitors, trends, opportunities, keywords, sw
         catch {
             data = {};
         }
-        const [report] = await db_1.db.insert(schema_1.researchReports).values({
+        const [report] = await db.insert(researchReports).values({
             userId: user.id,
             ideaId: ideaId || null,
             title: `Market Research: ${niche}`,
@@ -63,16 +61,16 @@ Return as valid JSON with keys: competitors, trends, opportunities, keywords, sw
         res.status(500).json({ error: error.message });
     }
 });
-router.get('/:id', auth_1.requireAuth, async (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
     const user = req.user;
-    const [report] = await db_1.db.select().from(schema_1.researchReports)
-        .where((0, drizzle_orm_1.eq)(schema_1.researchReports.id, req.params.id));
+    const [report] = await db.select().from(researchReports)
+        .where(eq(researchReports.id, req.params.id));
     if (!report || report.userId !== user.id)
         return res.status(404).json({ error: 'Not found' });
     res.json(report);
 });
-router.delete('/:id', auth_1.requireAuth, async (req, res) => {
-    await db_1.db.delete(schema_1.researchReports).where((0, drizzle_orm_1.eq)(schema_1.researchReports.id, req.params.id));
+router.delete('/:id', requireAuth, async (req, res) => {
+    await db.delete(researchReports).where(eq(researchReports.id, req.params.id));
     res.json({ success: true });
 });
-exports.default = router;
+export default router;

@@ -1,23 +1,17 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.auth = void 0;
-const better_auth_1 = require("better-auth");
-const drizzle_1 = require("better-auth/adapters/drizzle");
-const db_1 = require("./db");
-const schema_1 = require("./db/schema");
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
-exports.auth = (0, better_auth_1.betterAuth)({
-    database: (0, drizzle_1.drizzleAdapter)(db_1.db, {
+import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { db } from './db';
+import { users, sessions, accounts, verifications } from './db/schema';
+import dotenv from 'dotenv';
+dotenv.config();
+export const auth = betterAuth({
+    database: drizzleAdapter(db, {
         provider: 'pg',
         schema: {
-            user: schema_1.users,
-            session: schema_1.sessions,
-            account: schema_1.accounts,
-            verification: schema_1.verifications,
+            user: users,
+            session: sessions,
+            account: accounts,
+            verification: verifications,
         },
     }),
     baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',

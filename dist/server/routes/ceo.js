@@ -1,27 +1,25 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-const ai_1 = require("../ai");
-const router = (0, express_1.Router)();
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { db } from '../db';
+import { seoKeywords, financeEntries, contentPieces, leads, tasks, businessIdeas, backlinks, seoAudits, socialPosts } from '../db/schema';
+import { eq } from 'drizzle-orm';
+import { getAIProvider } from '../ai';
+const router = Router();
 // ─── Business Health Score ────────────────────────────────────────────────────
-router.get('/health-score', auth_1.requireAuth, async (req, res) => {
+router.get('/health-score', requireAuth, async (req, res) => {
     const user = req.user;
     const uid = user.id;
     try {
         const [allKeywords, allFinance, allContent, allLeads, allTasks, allIdeas, allBacklinks, allAudits, allSocial] = await Promise.all([
-            db_1.db.select().from(schema_1.seoKeywords).where((0, drizzle_orm_1.eq)(schema_1.seoKeywords.userId, uid)),
-            db_1.db.select().from(schema_1.financeEntries).where((0, drizzle_orm_1.eq)(schema_1.financeEntries.userId, uid)),
-            db_1.db.select().from(schema_1.contentPieces).where((0, drizzle_orm_1.eq)(schema_1.contentPieces.userId, uid)),
-            db_1.db.select().from(schema_1.leads).where((0, drizzle_orm_1.eq)(schema_1.leads.userId, uid)),
-            db_1.db.select().from(schema_1.tasks).where((0, drizzle_orm_1.eq)(schema_1.tasks.userId, uid)),
-            db_1.db.select().from(schema_1.businessIdeas).where((0, drizzle_orm_1.eq)(schema_1.businessIdeas.userId, uid)),
-            db_1.db.select().from(schema_1.backlinks).where((0, drizzle_orm_1.eq)(schema_1.backlinks.userId, uid)),
-            db_1.db.select().from(schema_1.seoAudits).where((0, drizzle_orm_1.eq)(schema_1.seoAudits.userId, uid)),
-            db_1.db.select().from(schema_1.socialPosts).where((0, drizzle_orm_1.eq)(schema_1.socialPosts.userId, uid)),
+            db.select().from(seoKeywords).where(eq(seoKeywords.userId, uid)),
+            db.select().from(financeEntries).where(eq(financeEntries.userId, uid)),
+            db.select().from(contentPieces).where(eq(contentPieces.userId, uid)),
+            db.select().from(leads).where(eq(leads.userId, uid)),
+            db.select().from(tasks).where(eq(tasks.userId, uid)),
+            db.select().from(businessIdeas).where(eq(businessIdeas.userId, uid)),
+            db.select().from(backlinks).where(eq(backlinks.userId, uid)),
+            db.select().from(seoAudits).where(eq(seoAudits.userId, uid)),
+            db.select().from(socialPosts).where(eq(socialPosts.userId, uid)),
         ]);
         // ─── Score Calculations (each 0-100, weighted) ───────────────────────
         // Revenue (20 pts)
@@ -70,7 +68,7 @@ router.get('/health-score', auth_1.requireAuth, async (req, res) => {
             { key: 'product', label: 'Product', score: productScore, icon: '🎯', insight: allTasks.length > 0 ? `${doneTasks}/${totalTasks} tasks done · ${allIdeas.length} ideas` : 'No tasks logged' },
         ];
         // ─── AI Explanation ───────────────────────────────────────────────────
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const weakest = dimensions.sort((a, b) => a.score - b.score)[0];
         const strongest = [...dimensions].sort((a, b) => b.score - a.score)[0];
         const explanationPrompt = `You are a startup advisor. Give a 2-sentence business health assessment for a founder with score ${overall}/100.
@@ -91,18 +89,18 @@ Be specific, direct, actionable. No fluff.`;
     }
 });
 // ─── AI CEO Daily Brief ───────────────────────────────────────────────────────
-router.post('/brief', auth_1.requireAuth, async (req, res) => {
+router.post('/brief', requireAuth, async (req, res) => {
     const user = req.user;
     const uid = user.id;
     const { businessContext, currentGoals } = req.body;
     try {
         const [allKeywords, allFinance, allContent, allLeads, allTasks, allIdeas] = await Promise.all([
-            db_1.db.select().from(schema_1.seoKeywords).where((0, drizzle_orm_1.eq)(schema_1.seoKeywords.userId, uid)),
-            db_1.db.select().from(schema_1.financeEntries).where((0, drizzle_orm_1.eq)(schema_1.financeEntries.userId, uid)),
-            db_1.db.select().from(schema_1.contentPieces).where((0, drizzle_orm_1.eq)(schema_1.contentPieces.userId, uid)),
-            db_1.db.select().from(schema_1.leads).where((0, drizzle_orm_1.eq)(schema_1.leads.userId, uid)),
-            db_1.db.select().from(schema_1.tasks).where((0, drizzle_orm_1.eq)(schema_1.tasks.userId, uid)),
-            db_1.db.select().from(schema_1.businessIdeas).where((0, drizzle_orm_1.eq)(schema_1.businessIdeas.userId, uid)),
+            db.select().from(seoKeywords).where(eq(seoKeywords.userId, uid)),
+            db.select().from(financeEntries).where(eq(financeEntries.userId, uid)),
+            db.select().from(contentPieces).where(eq(contentPieces.userId, uid)),
+            db.select().from(leads).where(eq(leads.userId, uid)),
+            db.select().from(tasks).where(eq(tasks.userId, uid)),
+            db.select().from(businessIdeas).where(eq(businessIdeas.userId, uid)),
         ]);
         const pendingTasks = allTasks.filter(t => t.status !== 'done');
         const activeLeads = allLeads.filter(l => !['won', 'lost'].includes(l.status ?? ''));
@@ -133,7 +131,7 @@ Return JSON:
   "metrics": {"headline":"","mrr":${mrr},"leadsToday":0,"contentScore":0},
   "quote": ""
 }`;
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are an AI CEO advisor. Return ONLY valid JSON.');
         let brief = {};
         try {
@@ -173,4 +171,4 @@ Return JSON:
         res.status(500).json({ error: error.message });
     }
 });
-exports.default = router;
+export default router;

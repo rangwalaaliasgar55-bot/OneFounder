@@ -1,21 +1,19 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-const ai_1 = require("../ai");
-const context_1 = require("../ai/context");
-const activity_1 = require("../ai/activity");
-const router = (0, express_1.Router)();
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { db } from '../db';
+import { aiMemories, aiInsights, userActivityLog, tasks, leads, } from '../db/schema';
+import { eq, desc, and, gte } from 'drizzle-orm';
+import { getAIProvider } from '../ai';
+import { assembleFounderContext } from '../ai/context';
+import { logActivity } from '../ai/activity';
+const router = Router();
 // ─── Get AI Memories ─────────────────────────────────────────────────────────
-router.get('/memories', auth_1.requireAuth, async (req, res) => {
+router.get('/memories', requireAuth, async (req, res) => {
     const user = req.user;
     try {
-        const memories = await db_1.db.select().from(schema_1.aiMemories)
-            .where((0, drizzle_orm_1.eq)(schema_1.aiMemories.userId, user.id))
-            .orderBy((0, drizzle_orm_1.desc)(schema_1.aiMemories.importance))
+        const memories = await db.select().from(aiMemories)
+            .where(eq(aiMemories.userId, user.id))
+            .orderBy(desc(aiMemories.importance))
             .limit(50);
         res.json(memories);
     }
@@ -23,13 +21,13 @@ router.get('/memories', auth_1.requireAuth, async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
-router.post('/memories', auth_1.requireAuth, async (req, res) => {
+router.post('/memories', requireAuth, async (req, res) => {
     const user = req.user;
     const { type, content, source, importance, tags } = req.body;
     if (!content || !type)
         return res.status(400).json({ error: 'type and content required' });
     try {
-        const [mem] = await db_1.db.insert(schema_1.aiMemories).values({
+        const [mem] = await db.insert(aiMemories).values({
             userId: user.id,
             type,
             content,
@@ -43,12 +41,12 @@ router.post('/memories', auth_1.requireAuth, async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
-router.delete('/memories/:id', auth_1.requireAuth, async (req, res) => {
+router.delete('/memories/:id', requireAuth, async (req, res) => {
     const user = req.user;
     const id = String(req.params.id);
     try {
-        await db_1.db.delete(schema_1.aiMemories)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.aiMemories.id, id), (0, drizzle_orm_1.eq)(schema_1.aiMemories.userId, user.id)));
+        await db.delete(aiMemories)
+            .where(and(eq(aiMemories.id, id), eq(aiMemories.userId, user.id)));
         res.json({ success: true });
     }
     catch (e) {
@@ -56,12 +54,12 @@ router.delete('/memories/:id', auth_1.requireAuth, async (req, res) => {
     }
 });
 // ─── Get AI Insights ──────────────────────────────────────────────────────────
-router.get('/insights', auth_1.requireAuth, async (req, res) => {
+router.get('/insights', requireAuth, async (req, res) => {
     const user = req.user;
     try {
-        const insights = await db_1.db.select().from(schema_1.aiInsights)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.aiInsights.userId, user.id), (0, drizzle_orm_1.eq)(schema_1.aiInsights.dismissed, false)))
-            .orderBy((0, drizzle_orm_1.desc)(schema_1.aiInsights.createdAt))
+        const insights = await db.select().from(aiInsights)
+            .where(and(eq(aiInsights.userId, user.id), eq(aiInsights.dismissed, false)))
+            .orderBy(desc(aiInsights.createdAt))
             .limit(20);
         res.json(insights);
     }
@@ -69,24 +67,24 @@ router.get('/insights', auth_1.requireAuth, async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
-router.patch('/insights/:id/read', auth_1.requireAuth, async (req, res) => {
+router.patch('/insights/:id/read', requireAuth, async (req, res) => {
     const user = req.user;
     const id = String(req.params.id);
     try {
-        await db_1.db.update(schema_1.aiInsights).set({ read: true })
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.aiInsights.id, id), (0, drizzle_orm_1.eq)(schema_1.aiInsights.userId, user.id)));
+        await db.update(aiInsights).set({ read: true })
+            .where(and(eq(aiInsights.id, id), eq(aiInsights.userId, user.id)));
         res.json({ success: true });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
-router.patch('/insights/:id/dismiss', auth_1.requireAuth, async (req, res) => {
+router.patch('/insights/:id/dismiss', requireAuth, async (req, res) => {
     const user = req.user;
     const id = String(req.params.id);
     try {
-        await db_1.db.update(schema_1.aiInsights).set({ dismissed: true })
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.aiInsights.id, id), (0, drizzle_orm_1.eq)(schema_1.aiInsights.userId, user.id)));
+        await db.update(aiInsights).set({ dismissed: true })
+            .where(and(eq(aiInsights.id, id), eq(aiInsights.userId, user.id)));
         res.json({ success: true });
     }
     catch (e) {
@@ -94,12 +92,12 @@ router.patch('/insights/:id/dismiss', auth_1.requireAuth, async (req, res) => {
     }
 });
 // ─── Generate Proactive Insights ─────────────────────────────────────────────
-router.post('/insights/generate', auth_1.requireAuth, async (req, res) => {
+router.post('/insights/generate', requireAuth, async (req, res) => {
     const user = req.user;
     const uid = user.id;
     try {
-        const context = await (0, context_1.assembleFounderContext)(uid);
-        const ai = await (0, ai_1.getAIProvider)();
+        const context = await assembleFounderContext(uid);
+        const ai = await getAIProvider();
         const prompt = `You are a proactive AI advisor for a founder. Analyze their current situation and generate 3-5 specific, actionable insights.
 
 ${context.businessSnapshot}
@@ -135,7 +133,7 @@ Return ONLY valid JSON array.`;
         if (!Array.isArray(insights) || insights.length === 0) {
             insights = buildFallbackInsights(context);
         }
-        const saved = await Promise.all(insights.slice(0, 5).map(ins => db_1.db.insert(schema_1.aiInsights).values({
+        const saved = await Promise.all(insights.slice(0, 5).map(ins => db.insert(aiInsights).values({
             userId: uid,
             type: ins.type || 'recommendation',
             title: ins.title || 'New Insight',
@@ -144,7 +142,7 @@ Return ONLY valid JSON array.`;
             priority: ins.priority || 'medium',
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         }).returning()));
-        await (0, activity_1.logActivity)(uid, 'generated_insights', 'intelligence');
+        await logActivity(uid, 'generated_insights', 'intelligence');
         res.json(saved.map(s => s[0]));
     }
     catch (e) {
@@ -152,21 +150,21 @@ Return ONLY valid JSON array.`;
     }
 });
 // ─── Behavioral Analysis ─────────────────────────────────────────────────────
-router.get('/behavior', auth_1.requireAuth, async (req, res) => {
+router.get('/behavior', requireAuth, async (req, res) => {
     const user = req.user;
     const uid = user.id;
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     try {
         const [recentActivity, allActivity, allTasks, allLeads] = await Promise.all([
-            db_1.db.select().from(schema_1.userActivityLog)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.userActivityLog.userId, uid), (0, drizzle_orm_1.gte)(schema_1.userActivityLog.createdAt, sevenDaysAgo)))
-                .orderBy((0, drizzle_orm_1.desc)(schema_1.userActivityLog.createdAt)),
-            db_1.db.select().from(schema_1.userActivityLog)
-                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.userActivityLog.userId, uid), (0, drizzle_orm_1.gte)(schema_1.userActivityLog.createdAt, thirtyDaysAgo)))
-                .orderBy((0, drizzle_orm_1.desc)(schema_1.userActivityLog.createdAt)),
-            db_1.db.select().from(schema_1.tasks).where((0, drizzle_orm_1.eq)(schema_1.tasks.userId, uid)),
-            db_1.db.select().from(schema_1.leads).where((0, drizzle_orm_1.eq)(schema_1.leads.userId, uid)),
+            db.select().from(userActivityLog)
+                .where(and(eq(userActivityLog.userId, uid), gte(userActivityLog.createdAt, sevenDaysAgo)))
+                .orderBy(desc(userActivityLog.createdAt)),
+            db.select().from(userActivityLog)
+                .where(and(eq(userActivityLog.userId, uid), gte(userActivityLog.createdAt, thirtyDaysAgo)))
+                .orderBy(desc(userActivityLog.createdAt)),
+            db.select().from(tasks).where(eq(tasks.userId, uid)),
+            db.select().from(leads).where(eq(leads.userId, uid)),
         ]);
         const moduleFrequency = {};
         allActivity.forEach(a => {
@@ -201,13 +199,13 @@ router.get('/behavior', auth_1.requireAuth, async (req, res) => {
     }
 });
 // ─── Log Activity ─────────────────────────────────────────────────────────────
-router.post('/log', auth_1.requireAuth, async (req, res) => {
+router.post('/log', requireAuth, async (req, res) => {
     const user = req.user;
     const { action, module, entityId, metadata } = req.body;
     if (!action || !module)
         return res.status(400).json({ error: 'action and module required' });
     try {
-        await (0, activity_1.logActivity)(user.id, action, module, entityId, metadata);
+        await logActivity(user.id, action, module, entityId, metadata);
         res.json({ success: true });
     }
     catch (e) {
@@ -215,11 +213,11 @@ router.post('/log', auth_1.requireAuth, async (req, res) => {
     }
 });
 // ─── Weekly Executive Review ──────────────────────────────────────────────────
-router.post('/weekly-review', auth_1.requireAuth, async (req, res) => {
+router.post('/weekly-review', requireAuth, async (req, res) => {
     const user = req.user;
     try {
-        const context = await (0, context_1.assembleFounderContext)(user.id);
-        const ai = await (0, ai_1.getAIProvider)();
+        const context = await assembleFounderContext(user.id);
+        const ai = await getAIProvider();
         const prompt = `Generate a weekly executive review for this founder.
 
 ${context.businessSnapshot}
@@ -303,4 +301,4 @@ function buildFallbackInsights(context) {
         },
     ];
 }
-exports.default = router;
+export default router;

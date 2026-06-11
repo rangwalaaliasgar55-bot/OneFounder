@@ -1,20 +1,18 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-const ai_1 = require("../ai");
-const router = (0, express_1.Router)();
-router.get('/', auth_1.requireAuth, async (req, res) => {
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { db } from '../db';
+import { businessPlans } from '../db/schema';
+import { eq, desc } from 'drizzle-orm';
+import { getAIProvider } from '../ai';
+const router = Router();
+router.get('/', requireAuth, async (req, res) => {
     const user = req.user;
-    const plans = await db_1.db.select().from(schema_1.businessPlans)
-        .where((0, drizzle_orm_1.eq)(schema_1.businessPlans.userId, user.id))
-        .orderBy((0, drizzle_orm_1.desc)(schema_1.businessPlans.createdAt));
+    const plans = await db.select().from(businessPlans)
+        .where(eq(businessPlans.userId, user.id))
+        .orderBy(desc(businessPlans.createdAt));
     res.json(plans);
 });
-router.post('/generate', auth_1.requireAuth, async (req, res) => {
+router.post('/generate', requireAuth, async (req, res) => {
     const user = req.user;
     const { title, businessType, targetMarket, uniqueValue, ideaId } = req.body;
     const prompt = `Create a comprehensive business plan for:
@@ -34,7 +32,7 @@ Include:
 
 Return as JSON with keys: businessModel, customerProfile, pricing, acquisitionStrategy, launchStrategy, growthStrategy, financialProjections`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are a startup business advisor. Return ONLY valid JSON.');
         let data = {};
         try {
@@ -45,7 +43,7 @@ Return as JSON with keys: businessModel, customerProfile, pricing, acquisitionSt
         catch {
             data = {};
         }
-        const [plan] = await db_1.db.insert(schema_1.businessPlans).values({
+        const [plan] = await db.insert(businessPlans).values({
             userId: user.id,
             ideaId: ideaId || null,
             title,
@@ -64,16 +62,16 @@ Return as JSON with keys: businessModel, customerProfile, pricing, acquisitionSt
         res.status(500).json({ error: error.message });
     }
 });
-router.get('/:id', auth_1.requireAuth, async (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
     const user = req.user;
-    const [plan] = await db_1.db.select().from(schema_1.businessPlans)
-        .where((0, drizzle_orm_1.eq)(schema_1.businessPlans.id, req.params.id));
+    const [plan] = await db.select().from(businessPlans)
+        .where(eq(businessPlans.id, req.params.id));
     if (!plan || plan.userId !== user.id)
         return res.status(404).json({ error: 'Not found' });
     res.json(plan);
 });
-router.delete('/:id', auth_1.requireAuth, async (req, res) => {
-    await db_1.db.delete(schema_1.businessPlans).where((0, drizzle_orm_1.eq)(schema_1.businessPlans.id, req.params.id));
+router.delete('/:id', requireAuth, async (req, res) => {
+    await db.delete(businessPlans).where(eq(businessPlans.id, req.params.id));
     res.json({ success: true });
 });
-exports.default = router;
+export default router;

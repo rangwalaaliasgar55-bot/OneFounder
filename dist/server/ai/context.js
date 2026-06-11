@@ -1,36 +1,32 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.assembleFounderContext = assembleFounderContext;
-exports.buildSystemPromptWithContext = buildSystemPromptWithContext;
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-async function assembleFounderContext(userId) {
+import { db } from '../db';
+import { founderProfiles, businessIdeas, projects, tasks, leads, contentPieces, financeEntries, aiMemories, userActivityLog, aiInsights, journeyMilestones, } from '../db/schema';
+import { eq, desc, and, gte } from 'drizzle-orm';
+export async function assembleFounderContext(userId) {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const [profile, allIdeas, allProjects, allTasks, allLeads, allContent, allFinance, memories, recentActivity, recentInsights, journey,] = await Promise.all([
-        db_1.db.select().from(schema_1.founderProfiles).where((0, drizzle_orm_1.eq)(schema_1.founderProfiles.userId, userId)).limit(1),
-        db_1.db.select().from(schema_1.businessIdeas).where((0, drizzle_orm_1.eq)(schema_1.businessIdeas.userId, userId)).orderBy((0, drizzle_orm_1.desc)(schema_1.businessIdeas.updatedAt)).limit(10),
-        db_1.db.select().from(schema_1.projects).where((0, drizzle_orm_1.eq)(schema_1.projects.userId, userId)).orderBy((0, drizzle_orm_1.desc)(schema_1.projects.updatedAt)).limit(10),
-        db_1.db.select().from(schema_1.tasks).where((0, drizzle_orm_1.eq)(schema_1.tasks.userId, userId)).orderBy((0, drizzle_orm_1.desc)(schema_1.tasks.updatedAt)).limit(20),
-        db_1.db.select().from(schema_1.leads).where((0, drizzle_orm_1.eq)(schema_1.leads.userId, userId)).orderBy((0, drizzle_orm_1.desc)(schema_1.leads.updatedAt)).limit(10),
-        db_1.db.select().from(schema_1.contentPieces).where((0, drizzle_orm_1.eq)(schema_1.contentPieces.userId, userId)).orderBy((0, drizzle_orm_1.desc)(schema_1.contentPieces.updatedAt)).limit(10),
-        db_1.db.select().from(schema_1.financeEntries).where((0, drizzle_orm_1.eq)(schema_1.financeEntries.userId, userId)).orderBy((0, drizzle_orm_1.desc)(schema_1.financeEntries.date)).limit(20),
-        db_1.db.select().from(schema_1.aiMemories)
-            .where((0, drizzle_orm_1.eq)(schema_1.aiMemories.userId, userId))
-            .orderBy((0, drizzle_orm_1.desc)(schema_1.aiMemories.importance))
+        db.select().from(founderProfiles).where(eq(founderProfiles.userId, userId)).limit(1),
+        db.select().from(businessIdeas).where(eq(businessIdeas.userId, userId)).orderBy(desc(businessIdeas.updatedAt)).limit(10),
+        db.select().from(projects).where(eq(projects.userId, userId)).orderBy(desc(projects.updatedAt)).limit(10),
+        db.select().from(tasks).where(eq(tasks.userId, userId)).orderBy(desc(tasks.updatedAt)).limit(20),
+        db.select().from(leads).where(eq(leads.userId, userId)).orderBy(desc(leads.updatedAt)).limit(10),
+        db.select().from(contentPieces).where(eq(contentPieces.userId, userId)).orderBy(desc(contentPieces.updatedAt)).limit(10),
+        db.select().from(financeEntries).where(eq(financeEntries.userId, userId)).orderBy(desc(financeEntries.date)).limit(20),
+        db.select().from(aiMemories)
+            .where(eq(aiMemories.userId, userId))
+            .orderBy(desc(aiMemories.importance))
             .limit(15),
-        db_1.db.select().from(schema_1.userActivityLog)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.userActivityLog.userId, userId), (0, drizzle_orm_1.gte)(schema_1.userActivityLog.createdAt, sevenDaysAgo)))
-            .orderBy((0, drizzle_orm_1.desc)(schema_1.userActivityLog.createdAt))
+        db.select().from(userActivityLog)
+            .where(and(eq(userActivityLog.userId, userId), gte(userActivityLog.createdAt, sevenDaysAgo)))
+            .orderBy(desc(userActivityLog.createdAt))
             .limit(30),
-        db_1.db.select().from(schema_1.aiInsights)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.aiInsights.userId, userId), (0, drizzle_orm_1.eq)(schema_1.aiInsights.dismissed, false)))
-            .orderBy((0, drizzle_orm_1.desc)(schema_1.aiInsights.createdAt))
+        db.select().from(aiInsights)
+            .where(and(eq(aiInsights.userId, userId), eq(aiInsights.dismissed, false)))
+            .orderBy(desc(aiInsights.createdAt))
             .limit(5),
-        db_1.db.select().from(schema_1.journeyMilestones)
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.journeyMilestones.userId, userId), (0, drizzle_orm_1.eq)(schema_1.journeyMilestones.completed, true)))
-            .orderBy((0, drizzle_orm_1.desc)(schema_1.journeyMilestones.completedAt))
+        db.select().from(journeyMilestones)
+            .where(and(eq(journeyMilestones.userId, userId), eq(journeyMilestones.completed, true)))
+            .orderBy(desc(journeyMilestones.completedAt))
             .limit(5),
     ]);
     const p = profile[0];
@@ -89,7 +85,7 @@ async function assembleFounderContext(userId) {
         financialContext,
     };
 }
-function buildSystemPromptWithContext(basePrompt, context) {
+export function buildSystemPromptWithContext(basePrompt, context) {
     return `${basePrompt}
 
 === FOUNDER CONTEXT (use this to personalize every response) ===

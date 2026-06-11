@@ -1,20 +1,18 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-const ai_1 = require("../ai");
-const router = (0, express_1.Router)();
-router.get('/', auth_1.requireAuth, async (req, res) => {
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { db } from '../db';
+import { contentPieces } from '../db/schema';
+import { eq, desc } from 'drizzle-orm';
+import { getAIProvider } from '../ai';
+const router = Router();
+router.get('/', requireAuth, async (req, res) => {
     const user = req.user;
-    const list = await db_1.db.select().from(schema_1.contentPieces)
-        .where((0, drizzle_orm_1.eq)(schema_1.contentPieces.userId, user.id))
-        .orderBy((0, drizzle_orm_1.desc)(schema_1.contentPieces.createdAt));
+    const list = await db.select().from(contentPieces)
+        .where(eq(contentPieces.userId, user.id))
+        .orderBy(desc(contentPieces.createdAt));
     res.json(list);
 });
-router.post('/generate', auth_1.requireAuth, async (req, res) => {
+router.post('/generate', requireAuth, async (req, res) => {
     const user = req.user;
     const { type, topic, tone, audience, keywords } = req.body;
     const prompts = {
@@ -29,9 +27,9 @@ router.post('/generate', auth_1.requireAuth, async (req, res) => {
     };
     const prompt = prompts[type] || prompts.blog;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const content = await ai.generate(prompt, `You are an expert copywriter and content strategist. Create high-quality, engaging content that converts.`);
-        const [piece] = await db_1.db.insert(schema_1.contentPieces).values({
+        const [piece] = await db.insert(contentPieces).values({
             userId: user.id,
             title: `${type.replace('_', ' ').toUpperCase()}: ${topic}`,
             type: type,
@@ -47,19 +45,19 @@ router.post('/generate', auth_1.requireAuth, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-router.patch('/:id', auth_1.requireAuth, async (req, res) => {
-    const [updated] = await db_1.db.update(schema_1.contentPieces)
+router.patch('/:id', requireAuth, async (req, res) => {
+    const [updated] = await db.update(contentPieces)
         .set({ ...req.body, updatedAt: new Date() })
-        .where((0, drizzle_orm_1.eq)(schema_1.contentPieces.id, req.params.id))
+        .where(eq(contentPieces.id, req.params.id))
         .returning();
     res.json(updated);
 });
-router.delete('/:id', auth_1.requireAuth, async (req, res) => {
-    await db_1.db.delete(schema_1.contentPieces).where((0, drizzle_orm_1.eq)(schema_1.contentPieces.id, req.params.id));
+router.delete('/:id', requireAuth, async (req, res) => {
+    await db.delete(contentPieces).where(eq(contentPieces.id, req.params.id));
     res.json({ success: true });
 });
 // ─── Multi-Platform Repurposer ────────────────────────────────────────────────
-router.post('/repurpose', auth_1.requireAuth, async (req, res) => {
+router.post('/repurpose', requireAuth, async (req, res) => {
     const { sourceContent, sourceTopic, sourceType, platforms, tone, audience } = req.body;
     const platformPrompts = {
         linkedin: `Create an engaging LinkedIn post from this content. Include a strong hook, 3-4 key insights, personal perspective, and 3-5 hashtags. Professional yet personable tone. Max 1300 chars.`,
@@ -85,7 +83,7 @@ Return JSON:
   ${requestedPlatforms.map((p) => `"${p}": {"content": "", "tips": ""}`).join(',\n  ')}
 }`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are an expert content repurposer. Return ONLY valid JSON.');
         let repurposed = {};
         try {
@@ -116,4 +114,4 @@ Return JSON:
         res.status(500).json({ error: error.message });
     }
 });
-exports.default = router;
+export default router;

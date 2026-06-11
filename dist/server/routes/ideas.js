@@ -1,20 +1,18 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const db_1 = require("../db");
-const schema_1 = require("../db/schema");
-const drizzle_orm_1 = require("drizzle-orm");
-const ai_1 = require("../ai");
-const router = (0, express_1.Router)();
-router.get('/', auth_1.requireAuth, async (req, res) => {
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { db } from '../db';
+import { businessIdeas } from '../db/schema';
+import { eq, desc } from 'drizzle-orm';
+import { getAIProvider } from '../ai';
+const router = Router();
+router.get('/', requireAuth, async (req, res) => {
     const user = req.user;
-    const ideas = await db_1.db.select().from(schema_1.businessIdeas)
-        .where((0, drizzle_orm_1.eq)(schema_1.businessIdeas.userId, user.id))
-        .orderBy((0, drizzle_orm_1.desc)(schema_1.businessIdeas.createdAt));
+    const ideas = await db.select().from(businessIdeas)
+        .where(eq(businessIdeas.userId, user.id))
+        .orderBy(desc(businessIdeas.createdAt));
     res.json(ideas);
 });
-router.post('/generate', auth_1.requireAuth, async (req, res) => {
+router.post('/generate', requireAuth, async (req, res) => {
     const user = req.user;
     const { skills, interests, budget, availableTime, location, experience } = req.body;
     const prompt = `Generate 5 unique business ideas based on this founder profile:
@@ -37,7 +35,7 @@ For each idea provide:
 
 Format as JSON array with fields: title, type, description, competition, revenuePotential, marketSize, difficulty, roadmap`;
     try {
-        const ai = await (0, ai_1.getAIProvider)();
+        const ai = await getAIProvider();
         const response = await ai.generate(prompt, 'You are an expert startup advisor. Return ONLY valid JSON.');
         let ideas = [];
         try {
@@ -59,7 +57,7 @@ Format as JSON array with fields: title, type, description, competition, revenue
                 }];
         }
         const saved = await Promise.all(ideas.map(async (idea) => {
-            const [saved] = await db_1.db.insert(schema_1.businessIdeas).values({
+            const [saved] = await db.insert(businessIdeas).values({
                 userId: user.id,
                 title: idea.title || 'Business Idea',
                 description: idea.description,
@@ -79,24 +77,24 @@ Format as JSON array with fields: title, type, description, competition, revenue
         res.status(500).json({ error: error.message });
     }
 });
-router.get('/:id', auth_1.requireAuth, async (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
     const user = req.user;
-    const [idea] = await db_1.db.select().from(schema_1.businessIdeas)
-        .where((0, drizzle_orm_1.eq)(schema_1.businessIdeas.id, req.params.id));
+    const [idea] = await db.select().from(businessIdeas)
+        .where(eq(businessIdeas.id, req.params.id));
     if (!idea || idea.userId !== user.id)
         return res.status(404).json({ error: 'Not found' });
     res.json(idea);
 });
-router.patch('/:id', auth_1.requireAuth, async (req, res) => {
+router.patch('/:id', requireAuth, async (req, res) => {
     const user = req.user;
-    const [updated] = await db_1.db.update(schema_1.businessIdeas)
+    const [updated] = await db.update(businessIdeas)
         .set({ ...req.body, updatedAt: new Date() })
-        .where((0, drizzle_orm_1.eq)(schema_1.businessIdeas.id, req.params.id))
+        .where(eq(businessIdeas.id, req.params.id))
         .returning();
     res.json(updated);
 });
-router.delete('/:id', auth_1.requireAuth, async (req, res) => {
-    await db_1.db.delete(schema_1.businessIdeas).where((0, drizzle_orm_1.eq)(schema_1.businessIdeas.id, req.params.id));
+router.delete('/:id', requireAuth, async (req, res) => {
+    await db.delete(businessIdeas).where(eq(businessIdeas.id, req.params.id));
     res.json({ success: true });
 });
-exports.default = router;
+export default router;
