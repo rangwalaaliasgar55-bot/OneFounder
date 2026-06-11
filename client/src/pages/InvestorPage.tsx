@@ -138,9 +138,9 @@ export function InvestorPage() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <PageHeader
         title="Investor Mode"
-        subtitle="KPIs, pitch deck, cap table & fundraising pipeline"
+        description="KPIs, pitch deck, cap table & fundraising pipeline"
         icon="💎"
-        actions={
+        action={
           <div className="flex items-center gap-2">
             <select
               value={stage}

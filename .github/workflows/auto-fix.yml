@@ -16,10 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20 LTS
         uses: actions/setup-node@v4
         with:
-          node-version: 22.x
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
@@ -39,16 +39,27 @@ jobs:
 
       - name: Type-check server
         id: ts-server
-        run: npx tsc --project server/tsconfig.json --noEmit 2>&1 | tee /tmp/ts-server.log; echo "exit=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        run: |
+          npx tsc --project server/tsconfig.json --noEmit 2>&1 | tee /tmp/ts-server.log
+          echo "exit=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         env:
           NEON_DATABASE_URL: postgresql://ci:ci@localhost/ci
           DATABASE_URL: postgresql://ci:ci@localhost/ci
           BETTER_AUTH_SECRET: ci-secret-for-type-check-only
         continue-on-error: true
 
+      - name: Type-check client
+        id: ts-client
+        run: |
+          npx tsc --project client/tsconfig.json --noEmit 2>&1 | tee /tmp/ts-client.log
+          echo "exit=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
       - name: Build client
         id: build
-        run: npm run build:client 2>&1 | tee /tmp/build.log; echo "exit=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        run: |
+          npm run build:client 2>&1 | tee /tmp/build.log
+          echo "exit=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         env:
           NODE_ENV: production
         continue-on-error: true
@@ -58,7 +69,8 @@ jobs:
         with:
           script: |
             const depStatus = '${{ steps.dep-check.outputs.status }}';
-            const tsExit = '${{ steps.ts-server.outputs.exit }}';
+            const tsServerExit = '${{ steps.ts-server.outputs.exit }}';
+            const tsClientExit = '${{ steps.ts-client.outputs.exit }}';
             const buildExit = '${{ steps.build.outputs.exit }}';
 
             const icon = (ok) => ok ? '✅' : '❌';
@@ -68,11 +80,13 @@ jobs:
               `| Check | Status |`,
               `|-------|--------|`,
               `| Dependencies | ${icon(depStatus === 'ok')} ${depStatus === 'ok' ? 'No conflicts' : 'Conflicts found'} |`,
-              `| TypeScript (server) | ${icon(tsExit === '0')} ${tsExit === '0' ? 'Passed' : 'Errors found'} |`,
+              `| TypeScript (server) | ${icon(tsServerExit === '0')} ${tsServerExit === '0' ? 'Passed' : 'Errors found'} |`,
+              `| TypeScript (client) | ${icon(tsClientExit === '0')} ${tsClientExit === '0' ? 'Passed' : 'Errors found'} |`,
               `| Client build | ${icon(buildExit === '0')} ${buildExit === '0' ? 'Passed' : 'Failed'} |`,
               '',
-              depStatus !== 'ok' ? '> ⚠️ **Action needed:** Run `npm install --legacy-peer-deps` and commit the updated `package-lock.json`.' : '',
-              tsExit !== '0' ? '> ⚠️ **Action needed:** Fix TypeScript errors before merging. Run `npx tsc --project server/tsconfig.json --noEmit` locally.' : '',
+              depStatus !== 'ok' ? '> ⚠️ **Action needed:** Run `npm ci` and commit the updated `package-lock.json`.' : '',
+              tsServerExit !== '0' ? '> ⚠️ **Action needed:** Fix server TypeScript errors. Run `npx tsc --project server/tsconfig.json --noEmit` locally.' : '',
+              tsClientExit !== '0' ? '> ⚠️ **Action needed:** Fix client TypeScript errors. Run `npx tsc --project client/tsconfig.json --noEmit` locally.' : '',
               buildExit !== '0' ? '> ⚠️ **Action needed:** Client build failed. Run `npm run build:client` locally to reproduce.' : '',
             ].filter(Boolean).join('\n');
 

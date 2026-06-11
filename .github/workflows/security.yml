@@ -14,10 +14,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20 LTS
         uses: actions/setup-node@v4
         with:
-          node-version: 22.x
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
@@ -50,10 +50,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20 LTS
         uses: actions/setup-node@v4
         with:
-          node-version: 22.x
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
@@ -68,4 +68,3 @@ jobs:
 
       - name: Type-check client
         run: npx tsc --project client/tsconfig.json --noEmit
-        continue-on-error: true

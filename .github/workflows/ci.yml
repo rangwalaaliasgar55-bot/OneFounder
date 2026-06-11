@@ -11,34 +11,30 @@ jobs:
     name: Install, Type-check & Build
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [22.x]
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js 20 LTS
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci
 
       - name: Type-check server
         run: npx tsc --project server/tsconfig.json --noEmit
         env:
           NEON_DATABASE_URL: postgresql://ci:ci@localhost/ci
           DATABASE_URL: postgresql://ci:ci@localhost/ci
+          BETTER_AUTH_SECRET: ci-secret-for-type-check-only
 
       - name: Type-check client
         run: npx tsc --project client/tsconfig.json --noEmit
-        continue-on-error: true
 
-      - name: Build client (Vercel build simulation)
+      - name: Build client
         run: npm run build:client
         env:
           NODE_ENV: production
@@ -52,20 +48,20 @@ jobs:
           echo "Build output verified:"
           ls -la dist/client/
 
-  lint-check:
+  dependency-audit:
     name: Dependency Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20 LTS
         uses: actions/setup-node@v4
         with:
-          node-version: 22.x
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci
 
       - name: Check for dependency conflicts
         run: |
@@ -76,3 +72,7 @@ jobs:
             exit 1
           fi
           echo "No dependency conflicts found"
+
+      - name: Security audit (high+)
+        run: npm audit --audit-level=high
+        continue-on-error: true
