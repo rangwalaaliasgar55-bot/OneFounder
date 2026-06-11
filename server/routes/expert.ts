@@ -212,6 +212,14 @@ router.post('/python/run', requireAuth, async (req, res) => {
     }
   }
 
+  // Python sandbox requires a real OS — not available on Vercel serverless
+  if (process.env.VERCEL) {
+    return res.status(501).json({
+      error: 'Python execution is not available in the deployed environment. Run OneFounder locally to use this feature.',
+      output: null,
+    })
+  }
+
   const { writeFile, unlink } = await import('fs/promises')
   const { exec } = await import('child_process')
   const { promisify } = await import('util')
