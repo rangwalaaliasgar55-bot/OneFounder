@@ -16,7 +16,6 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.104.1",
     "@neondatabase/serverless": "^0.10.4",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.5.0",
