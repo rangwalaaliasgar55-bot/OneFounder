@@ -3,7 +3,7 @@
   "buildCommand": "npm run build",
   "builds": [
     {
-      "src": "dist/server/index.js",
+      "src": "server/index.ts",
       "use": "@vercel/node",
       "config": {
         "runtime": "nodejs20.x"
@@ -13,11 +13,11 @@
   "routes": [
     {
       "src": "/auth/(.*)",
-      "dest": "/dist/server/index.js"
+      "dest": "/server/index.ts"
     },
     {
       "src": "/api/(.*)",
-      "dest": "/dist/server/index.js"
+      "dest": "/server/index.ts"
     },
     {
       "handle": "filesystem"
