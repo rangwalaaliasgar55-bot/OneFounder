@@ -8,6 +8,7 @@ import { FloatingAI } from './components/FloatingAI'
 import { OnboardingModal } from './components/OnboardingModal'
 import { ShortcutsModal } from './components/ShortcutsModal'
 import { ToastProvider } from './components/ui/ToastProvider'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 const DashboardPage  = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const IdeasPage      = lazy(() => import('./pages/IdeasPage').then(m => ({ default: m.IdeasPage })))
@@ -193,10 +194,14 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <ToastProvider>
-        <AuthenticatedApp />
-      </ToastProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <ToastProvider>
+          <ErrorBoundary>
+            <AuthenticatedApp />
+          </ErrorBoundary>
+        </ToastProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }

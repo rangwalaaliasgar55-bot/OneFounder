@@ -361,6 +361,21 @@ export const userActivityLog = pgTable('user_activity_log', {
   createdAt: timestamp('created_at').defaultNow(),
 })
 
+export const conversations = pgTable('conversations', {
+  id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
+  title: text('title').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+export const messages = pgTable('messages', {
+  id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
+  conversationId: integer('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
+  role: text('role').notNull(),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+})
+
 export const aiInsights = pgTable('ai_insights', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),

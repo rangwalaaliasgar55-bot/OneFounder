@@ -16,8 +16,7 @@
     "noUnusedParameters": false,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@shared/*": ["../shared/*"]
+      "@/*": ["src/*"]
     }
   },
   "include": ["./**/*.ts", "./**/*.tsx"]

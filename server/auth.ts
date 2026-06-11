@@ -16,7 +16,11 @@ export const auth = betterAuth({
       verification: verifications,
     },
   }),
-  secret: process.env.BETTER_AUTH_SECRET || 'onefoundr-secret-change-in-production',
+  secret: (() => {
+    const s = process.env.BETTER_AUTH_SECRET
+    if (!s) throw new Error('BETTER_AUTH_SECRET env var is required. Add it to your Replit Secrets.')
+    return s
+  })(),
   // Mount this router at /auth in Express, so internal Better Auth routes should use /auth as prefix.
   basePath: '/auth',
   emailAndPassword: {
