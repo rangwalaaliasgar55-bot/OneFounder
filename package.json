@@ -58,9 +58,5 @@
   },
   "engines": {
     "node": "22.x"
-  },
-  "overrides": {
-    "@esbuild-kit/core-utils": "npm:tsx@^4.22.4",
-    "@esbuild-kit/esm-loader": "npm:tsx@^4.22.4"
   }
 }
