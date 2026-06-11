@@ -4,21 +4,59 @@ import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 
+/* ─── OG modules ─────────────────────────────────────────────────── */
 const OG_MODULES = [
-  { key: 'ideas', icon: '💡', label: 'Idea Lab', title: 'Startup Idea Lab', description: 'AI-powered startup idea generation & validation' },
-  { key: 'research', icon: '🔬', label: 'Market Research', title: 'Market Research', description: 'Competitor analysis & trend discovery in real-time' },
-  { key: 'plans', icon: '📋', label: 'Business Planner', title: 'Business Planner', description: 'Full AI-generated business plans in minutes' },
-  { key: 'crm', icon: '👥', label: 'CRM', title: 'CRM Pipeline', description: 'Manage leads, customers & deals in one place' },
-  { key: 'content', icon: '✍️', label: 'Content Studio', title: 'Content Studio', description: 'Blog posts, LinkedIn, newsletters & ad copy' },
-  { key: 'seo', icon: '🔍', label: 'SEO OS', title: 'SEO OS', description: 'Keyword tracking, audits & AI content briefs' },
-  { key: 'finance', icon: '💰', label: 'Finance Tracker', title: 'Finance Tracker', description: 'MRR, revenue, expenses & profit tracking' },
-  { key: 'chat', icon: '🧠', label: 'AI Agents', title: 'OneFounder AI Agents', description: 'CEO, Marketing, Sales & Expert AI agents in one brain' },
+  { key: 'ideas',    icon: '💡', label: 'Idea Lab',          title: 'Startup Idea Lab',          description: 'AI-powered startup idea generation & validation' },
+  { key: 'research', icon: '🔬', label: 'Market Research',   title: 'Market Research',            description: 'Competitor analysis & trend discovery in real-time' },
+  { key: 'plans',    icon: '📋', label: 'Business Planner',  title: 'Business Planner',           description: 'Full AI-generated business plans in minutes' },
+  { key: 'crm',      icon: '👥', label: 'CRM',               title: 'CRM Pipeline',               description: 'Manage leads, customers & deals in one place' },
+  { key: 'content',  icon: '✍️', label: 'Content Studio',    title: 'Content Studio',             description: 'Blog posts, LinkedIn, newsletters & ad copy' },
+  { key: 'seo',      icon: '🔍', label: 'SEO OS',            title: 'SEO OS',                     description: 'Keyword tracking, audits & AI content briefs' },
+  { key: 'finance',  icon: '💰', label: 'Finance Tracker',   title: 'Finance Tracker',            description: 'MRR, revenue, expenses & profit tracking' },
+  { key: 'chat',     icon: '🧠', label: 'AI Agents',         title: 'OneFounder AI Agents',       description: 'CEO, Marketing, Sales & Expert AI agents in one brain' },
+]
+
+const MODULES = [
+  { icon: '💡', label: 'Idea Lab',         status: 'active',      desc: 'AI-powered startup idea generation' },
+  { icon: '🔍', label: 'Market Research',  status: 'active',      desc: 'Competitor & trend analysis' },
+  { icon: '📋', label: 'Business Planner', status: 'active',      desc: 'Full business plan generation' },
+  { icon: '🎯', label: 'Projects',         status: 'active',      desc: 'Kanban boards & task tracking' },
+  { icon: '✍️', label: 'Content Studio',   status: 'active',      desc: 'AI content generation' },
+  { icon: '👥', label: 'CRM',              status: 'active',      desc: 'Lead & customer management' },
+  { icon: '🤖', label: 'AI Agents',        status: 'active',      desc: 'CEO, Marketing, Sales agents' },
+  { icon: '📚', label: 'Knowledge Base',   status: 'active',      desc: 'Document management' },
+  { icon: '🌐', label: 'Website Manager',  status: 'active',      desc: 'WordPress integration & SEO' },
+  { icon: '📱', label: 'Social Media',     status: 'active',      desc: 'Schedule & manage posts' },
+  { icon: '💰', label: 'Finance Tracker',  status: 'active',      desc: 'Revenue, expenses, burn rate' },
+  { icon: '📊', label: 'Analytics',        status: 'coming_soon', desc: 'Traffic, engagement, growth' },
+  { icon: '⚡', label: 'Automations',      status: 'coming_soon', desc: 'Workflow automation engine' },
+  { icon: '🛒', label: 'Marketplace',      status: 'coming_soon', desc: 'Templates & industry packs' },
+  { icon: '📈', label: 'Investor Mode',    status: 'coming_soon', desc: 'Pitch decks & KPI reports' },
+]
+
+const AI_DOMAINS = [
+  { key: 'code',     icon: '💻', label: 'Web Dev & Coding',     desc: 'Full-stack, APIs, architecture' },
+  { key: 'seo',      icon: '🔍', label: 'SEO & Search',         desc: 'Rankings, keywords, content' },
+  { key: 'security', icon: '🔒', label: 'Cybersecurity',        desc: 'OWASP, pen-test, hardening' },
+  { key: 'startup',  icon: '🚀', label: 'Startup Strategy',     desc: 'GTM, fundraising, PMF' },
+  { key: 'data',     icon: '📊', label: 'Data & Analytics',     desc: 'Metrics, SQL, insights' },
+  { key: 'research', icon: '🔬', label: 'Market Research',      desc: 'Competitors, trends, sizing' },
+  { key: 'founder',  icon: '🧠', label: 'Founder Coaching',     desc: 'Mindset, decisions, growth' },
+]
+
+const PERSONALITY_OPTIONS = [
+  { value: 'tactical',   icon: '⚡', label: 'Tactical',   desc: 'Direct answers, no fluff, prioritised actions' },
+  { value: 'strategic',  icon: '🎯', label: 'Strategic',  desc: 'Big-picture thinking, long-term framing' },
+  { value: 'technical',  icon: '🔧', label: 'Technical',  desc: 'Deep technical detail, code-first' },
+  { value: 'balanced',   icon: '⚖️', label: 'Balanced',   desc: 'Mix of strategy, data, and execution' },
 ]
 
 function buildOgUrl(module: string, title: string, description: string): string {
   const base = typeof window !== 'undefined' ? window.location.origin : ''
   return `${base}/api/og?module=${encodeURIComponent(module)}&title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}`
 }
+
+type Tab = 'profile' | 'my-ai' | 'modules' | 'social' | 'account'
 
 interface FounderProfile {
   riskTolerance: string
@@ -29,8 +67,38 @@ interface FounderProfile {
   stage: string
 }
 
+interface AIConfig {
+  companyName: string
+  aiPersonality: string
+  activeDomains: string[]
+  defaultModel: string
+  promptPreviewOpen: boolean
+}
+
+const LS_KEY = 'onefoundr_ai_config'
+
+function loadAIConfig(): AIConfig {
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    if (raw) return { ...defaultAIConfig(), ...JSON.parse(raw) }
+  } catch {}
+  return defaultAIConfig()
+}
+
+function defaultAIConfig(): AIConfig {
+  return {
+    companyName: '',
+    aiPersonality: 'tactical',
+    activeDomains: ['code', 'seo', 'security', 'startup', 'data', 'research', 'founder'],
+    defaultModel: 'llama3.2',
+    promptPreviewOpen: false,
+  }
+}
+
+/* ─── Main Component ──────────────────────────────────────────────── */
 export function SettingsPage() {
   const { user, signOut } = useAuth()
+  const [tab, setTab] = useState<Tab>('my-ai')
   const [aiStatus, setAiStatus] = useState<any>(null)
   const [profile, setProfile] = useState<FounderProfile>({
     riskTolerance: 'moderate',
@@ -42,6 +110,8 @@ export function SettingsPage() {
   })
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
+  const [aiConfig, setAIConfig] = useState<AIConfig>(loadAIConfig())
+  const [aiSaved, setAISaved] = useState(false)
   const [copiedOgKey, setCopiedOgKey] = useState<string | null>(null)
   const [activeOgModule, setActiveOgModule] = useState(OG_MODULES[0])
 
@@ -61,6 +131,30 @@ export function SettingsPage() {
     } catch {} finally { setProfileSaving(false) }
   }
 
+  const saveAIConfig = () => {
+    const cfg = { ...aiConfig, promptPreviewOpen: false }
+    localStorage.setItem(LS_KEY, JSON.stringify(cfg))
+    // Also persist companyName/industry into founder profile
+    if (aiConfig.companyName || profile.industry) {
+      api.put('/founder-profile', {
+        ...profile,
+        industry: profile.industry,
+        bio: aiConfig.companyName
+          ? `${aiConfig.companyName}${profile.bio ? ` — ${profile.bio}` : ''}`
+          : profile.bio,
+      }).catch(() => {})
+    }
+    setAISaved(true)
+    setTimeout(() => setAISaved(false), 2000)
+  }
+
+  const updateDomain = (key: string, on: boolean) => {
+    setAIConfig(c => ({
+      ...c,
+      activeDomains: on ? [...c.activeDomains, key] : c.activeDomains.filter(d => d !== key),
+    }))
+  }
+
   const copyOgUrl = (mod: typeof OG_MODULES[0]) => {
     const url = buildOgUrl(mod.key, mod.title, mod.description)
     navigator.clipboard.writeText(url)
@@ -68,303 +162,498 @@ export function SettingsPage() {
     setTimeout(() => setCopiedOgKey(null), 2000)
   }
 
-  const MODULES = [
-    { icon: '💡', label: 'Idea Lab', status: 'active', desc: 'AI-powered startup idea generation' },
-    { icon: '🔍', label: 'Market Research', status: 'active', desc: 'Competitor & trend analysis' },
-    { icon: '📋', label: 'Business Planner', status: 'active', desc: 'Full business plan generation' },
-    { icon: '🎯', label: 'Project Management', status: 'active', desc: 'Kanban boards & task tracking' },
-    { icon: '✍️', label: 'Content Studio', status: 'active', desc: 'AI content generation' },
-    { icon: '👥', label: 'CRM', status: 'active', desc: 'Lead & customer management' },
-    { icon: '🤖', label: 'AI Agents', status: 'active', desc: 'CEO, Marketing, Sales agents' },
-    { icon: '📚', label: 'Knowledge Base', status: 'active', desc: 'Document management' },
-    { icon: '🌐', label: 'Website Manager', status: 'active', desc: 'WordPress integration & SEO' },
-    { icon: '📱', label: 'Social Media', status: 'active', desc: 'Schedule & manage posts' },
-    { icon: '💰', label: 'Finance Tracker', status: 'active', desc: 'Revenue, expenses, burn rate' },
-    { icon: '📊', label: 'Analytics', status: 'coming_soon', desc: 'Traffic, engagement, growth' },
-    { icon: '⚡', label: 'Automations', status: 'coming_soon', desc: 'Workflow automation engine' },
-    { icon: '🛒', label: 'Marketplace', status: 'coming_soon', desc: 'Templates & industry packs' },
-    { icon: '📈', label: 'Investor Mode', status: 'coming_soon', desc: 'Pitch decks & KPI reports' },
+  const TABS: { id: Tab; label: string; icon: string }[] = [
+    { id: 'my-ai',   label: 'My AI',    icon: '🧠' },
+    { id: 'profile', label: 'Profile',  icon: '🧬' },
+    { id: 'modules', label: 'Modules',  icon: '🧩' },
+    { id: 'social',  label: 'Social',   icon: '🖼️' },
+    { id: 'account', label: 'Account',  icon: '👤' },
   ]
 
-  const providerLabel = aiStatus?.available
-    ? `ONEFOUNDER AI — Ollama (${aiStatus.models?.join(', ') || 'connected'})`
-    : 'Demo Mode (No AI)'
+  const models = aiStatus?.models || []
+  const isOnline = !!aiStatus?.available
+
+  /* ── MASTER PROMPT PREVIEW (trimmed) ────────────────────────────── */
+  const promptPreview = `You are ONEFOUNDER AI — a powerful, multi-domain AI built for founders.
+
+ACTIVE DOMAINS: ${aiConfig.activeDomains.map(d => AI_DOMAINS.find(x => x.key === d)?.label).filter(Boolean).join(' · ')}
+
+PERSONALITY: ${PERSONALITY_OPTIONS.find(p => p.value === aiConfig.aiPersonality)?.label} — ${PERSONALITY_OPTIONS.find(p => p.value === aiConfig.aiPersonality)?.desc}
+
+BUSINESS CONTEXT:
+Company: ${aiConfig.companyName || '(not set)'}
+Industry: ${profile.industry || '(not set)'}
+Stage: ${profile.stage} | Goal: ${profile.primaryGoal}
+${profile.bio ? `Bio: ${profile.bio}` : ''}
+
+CORE RULES:
+1. Be direct — no filler phrases or padding
+2. Be specific — names, numbers, real examples, working code
+3. Be opinionated — pick the best option and defend it
+4. Prioritise — tell the founder what to do FIRST
+5. Challenge bad ideas with clear reasoning
+6. Think like an owner, not a consultant
+
+...and 300+ lines of deep expertise across all active domains.`
 
   const riskOptions = [
     { value: 'conservative', label: 'Conservative', desc: 'Low risk, steady growth' },
-    { value: 'moderate', label: 'Moderate', desc: 'Balanced approach' },
-    { value: 'aggressive', label: 'Aggressive', desc: 'High risk, high reward' },
+    { value: 'moderate',     label: 'Moderate',     desc: 'Balanced approach' },
+    { value: 'aggressive',   label: 'Aggressive',   desc: 'High risk, high reward' },
   ]
-
   const workStyleOptions = [
-    { value: 'builder', label: '🔨 Builder', desc: 'Focus on product & tech' },
-    { value: 'marketer', label: '📣 Marketer', desc: 'Focus on growth & brand' },
-    { value: 'operator', label: '⚙️ Operator', desc: 'Focus on systems & scale' },
+    { value: 'builder',   label: '🔨 Builder',   desc: 'Product & tech' },
+    { value: 'marketer',  label: '📣 Marketer',  desc: 'Growth & brand' },
+    { value: 'operator',  label: '⚙️ Operator',  desc: 'Systems & scale' },
   ]
-
   const goalOptions = [
     { value: 'get_first_customer', label: 'Get first customer' },
-    { value: 'reach_10k_mrr', label: 'Reach $10k MRR' },
-    { value: 'raise_funding', label: 'Raise funding' },
-    { value: 'grow_team', label: 'Grow team' },
+    { value: 'reach_10k_mrr',      label: 'Reach $10k MRR' },
+    { value: 'raise_funding',      label: 'Raise funding' },
+    { value: 'grow_team',          label: 'Grow team' },
   ]
-
   const stageOptions = [
-    { value: 'idea', label: 'Idea stage' },
-    { value: 'mvp', label: 'Building MVP' },
-    { value: 'launched', label: 'Launched' },
+    { value: 'idea',    label: 'Idea stage' },
+    { value: 'mvp',     label: 'Building MVP' },
+    { value: 'launched',label: 'Launched' },
     { value: 'growing', label: 'Growing' },
     { value: 'scaling', label: 'Scaling' },
   ]
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <PageHeader
-        icon="⚙️"
-        title="Settings"
-        description="Manage your OneFounder workspace and integrations"
-      />
+      <PageHeader icon="⚙️" title="Settings" description="Configure your OneFounder workspace and AI" />
 
-      <div className="space-y-6">
-        <div className="card">
-          <h2 className="text-base font-semibold text-white mb-4">Profile</h2>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-brand-600/30 flex items-center justify-center text-2xl font-bold text-brand-300">
-              {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
-            </div>
-            <div>
-              <div className="text-white font-semibold">{user?.name || 'Founder'}</div>
-              <div className="text-slate-400 text-sm">{user?.email}</div>
-              <div className="text-xs text-slate-600 mt-0.5">Free Plan</div>
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 p-1 glass rounded-xl w-fit">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
+              tab === t.id
+                ? 'bg-brand-600/30 text-white border border-brand-500/30'
+                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+            }`}
+          >
+            <span>{t.icon}</span>
+            <span className="hidden sm:inline">{t.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── MY AI TAB ──────────────────────────────────────────────── */}
+      {tab === 'my-ai' && (
+        <div className="space-y-5 animate-slide-up">
+
+          {/* Status banner */}
+          <div className={`rounded-2xl p-5 border ${isOnline
+            ? 'bg-gradient-to-br from-brand-600/10 to-violet-600/5 border-brand-500/20'
+            : 'bg-gradient-to-br from-yellow-600/8 to-amber-600/5 border-yellow-500/20'}`}>
+            <div className="flex items-start gap-4">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 ${
+                isOnline ? 'bg-brand-600/20 animate-pulse-glow' : 'bg-yellow-500/10'}`}>
+                🧠
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <h2 className="text-base font-bold text-white">OneFounder AI</h2>
+                  <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
+                    isOnline
+                      ? 'bg-green-500/15 text-green-400 border border-green-500/20'
+                      : 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/20'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-400' : 'bg-yellow-400'} animate-pulse`} />
+                    {isOnline ? 'Online' : 'Demo mode'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  {isOnline
+                    ? `Engine: Ollama · Model: ${models[0] || aiConfig.defaultModel} · ${models.length} model${models.length !== 1 ? 's' : ''} loaded`
+                    : 'Start Ollama to enable full AI: ollama serve && ollama pull llama3.2'}
+                </p>
+                {isOnline && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {['Auto-routing', 'Prompt enhancement', 'Web search', 'Memory', 'Founder context'].map(f => (
+                      <span key={f} className="text-xs bg-white/5 border border-white/8 text-slate-400 px-2 py-0.5 rounded-full">{f}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Founder Profile */}
-        <div className="card">
-          <h2 className="text-base font-semibold text-white mb-4">🧬 Founder Profile</h2>
-          <p className="text-xs text-slate-500 mb-4">AI uses this context to personalise all responses to your goals and style.</p>
-
-          <div className="space-y-5">
-            <div>
-              <label className="text-xs font-medium text-slate-400 mb-2 block">Risk Tolerance</label>
-              <div className="grid grid-cols-3 gap-2">
-                {riskOptions.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setProfile(p => ({ ...p, riskTolerance: opt.value }))}
-                    className={`p-3 rounded-xl border text-left transition-all ${
-                      profile.riskTolerance === opt.value
-                        ? 'border-brand-500/40 bg-brand-600/20 text-white'
-                        : 'border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
-                    }`}
-                  >
-                    <div className="text-xs font-semibold">{opt.label}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">{opt.desc}</div>
-                  </button>
-                ))}
-              </div>
-              <div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 rounded-full transition-all duration-500"
-                  style={{ width: profile.riskTolerance === 'conservative' ? '33%' : profile.riskTolerance === 'moderate' ? '66%' : '100%' }}
+          {/* Business Identity */}
+          <div className="card">
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold text-white">🏢 Business Identity</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Your AI uses this to personalise every response to your actual business.</p>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-slate-400 mb-1.5 block">Company / Project Name</label>
+                <input
+                  className="input"
+                  placeholder="e.g. Acme Inc., My SaaS..."
+                  value={aiConfig.companyName}
+                  onChange={e => setAIConfig(c => ({ ...c, companyName: e.target.value }))}
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-slate-400 mb-2 block">Work Style</label>
-              <div className="grid grid-cols-3 gap-2">
-                {workStyleOptions.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setProfile(p => ({ ...p, workStyle: opt.value }))}
-                    className={`p-3 rounded-xl border text-left transition-all ${
-                      profile.workStyle === opt.value
-                        ? 'border-brand-500/40 bg-brand-600/20 text-white'
-                        : 'border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
-                    }`}
-                  >
-                    <div className="text-xs font-semibold">{opt.label}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">{opt.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-medium text-slate-400 mb-2 block">Primary Goal</label>
-                <select
-                  className="input w-full"
-                  value={profile.primaryGoal}
-                  onChange={e => setProfile(p => ({ ...p, primaryGoal: e.target.value }))}
-                >
-                  {goalOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-400 mb-2 block">Current Stage</label>
-                <select
-                  className="input w-full"
-                  value={profile.stage}
-                  onChange={e => setProfile(p => ({ ...p, stage: e.target.value }))}
-                >
-                  {stageOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium text-slate-400 mb-2 block">Industry</label>
+                <label className="text-xs font-medium text-slate-400 mb-1.5 block">Industry</label>
                 <input
-                  className="input w-full"
+                  className="input"
                   placeholder="e.g. SaaS, E-commerce, Fintech..."
                   value={profile.industry}
                   onChange={e => setProfile(p => ({ ...p, industry: e.target.value }))}
                 />
               </div>
-              <div>
-                <label className="text-xs font-medium text-slate-400 mb-2 block">Bio / Context</label>
-                <input
-                  className="input w-full"
-                  placeholder="Brief description of your business..."
+              <div className="sm:col-span-2">
+                <label className="text-xs font-medium text-slate-400 mb-1.5 block">What does your business do? (elevator pitch)</label>
+                <textarea
+                  className="input resize-none"
+                  rows={2}
+                  placeholder="e.g. We build AI tools for solo founders to automate their marketing..."
                   value={profile.bio}
                   onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))}
                 />
               </div>
             </div>
-
-            <button onClick={saveProfile} disabled={profileSaving} className="btn-primary flex items-center gap-2">
-              {profileSaving ? <LoadingSpinner size="sm" /> : profileSaved ? '✓ Saved!' : 'Save Profile'}
-            </button>
           </div>
-        </div>
 
-        <div className="card">
-          <h2 className="text-base font-semibold text-white mb-4">AI Provider</h2>
-          <div className="space-y-4">
-            <div className={`flex items-center gap-4 p-4 rounded-xl border ${
-              aiStatus?.available
-                ? 'border-green-500/20 bg-green-500/5'
-                : 'border-yellow-500/20 bg-yellow-500/5'
-            }`}>
-              <div className={`w-3 h-3 rounded-full flex-shrink-0 ${aiStatus?.available ? 'bg-green-400' : 'bg-yellow-400'} animate-pulse`} />
-              <div className="flex-1">
-                <div className="text-sm font-medium text-white">{providerLabel}</div>
-                <div className="text-xs text-slate-400 mt-0.5">
-                  {aiStatus?.provider === 'ollama' && `Models: ${aiStatus.models?.join(', ') || 'none loaded'} · Local inference via Ollama`}
-                  {!aiStatus?.available && 'Install Ollama and run: ollama serve && ollama pull llama3.2'}
+          {/* AI Personality */}
+          <div className="card">
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold text-white">🎭 AI Personality</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Controls the tone and style of every response.</p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {PERSONALITY_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setAIConfig(c => ({ ...c, aiPersonality: opt.value }))}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    aiConfig.aiPersonality === opt.value
+                      ? 'border-brand-500/40 bg-brand-600/15 text-white shadow-[0_0_12px_rgba(99,102,241,0.15)]'
+                      : 'border-white/5 text-slate-400 hover:border-white/10 hover:text-slate-300'
+                  }`}
+                >
+                  <div className="text-xl mb-1.5">{opt.icon}</div>
+                  <div className="text-xs font-semibold">{opt.label}</div>
+                  <div className="text-xs text-slate-500 mt-0.5 leading-relaxed">{opt.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Active Domains */}
+          <div className="card">
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold text-white">🧩 Active AI Domains</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Your AI has deep expertise in all of these. Toggle to emphasise the ones most relevant to your work.</p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              {AI_DOMAINS.map(domain => {
+                const on = aiConfig.activeDomains.includes(domain.key)
+                return (
+                  <button
+                    key={domain.key}
+                    onClick={() => updateDomain(domain.key, !on)}
+                    className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition-all ${
+                      on
+                        ? 'border-brand-500/30 bg-brand-600/10 text-white'
+                        : 'border-white/5 text-slate-600 hover:border-white/10 opacity-50'
+                    }`}
+                  >
+                    <span className="text-lg leading-none flex-shrink-0 mt-0.5">{domain.icon}</span>
+                    <div>
+                      <div className="text-xs font-semibold">{domain.label}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{domain.desc}</div>
+                    </div>
+                    <div className={`ml-auto flex-shrink-0 w-3 h-3 rounded-full mt-0.5 ${on ? 'bg-brand-500' : 'bg-white/10'}`} />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Default Model */}
+          {isOnline && models.length > 0 && (
+            <div className="card">
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-white">⚙️ Default Model</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Which Ollama model powers your AI by default. You can also switch per-conversation in the chat.</p>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-2">
+                {models.map((m: string) => (
+                  <button
+                    key={m}
+                    onClick={() => setAIConfig(c => ({ ...c, defaultModel: m }))}
+                    className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+                      aiConfig.defaultModel === m
+                        ? 'border-brand-500/40 bg-brand-600/15 text-white'
+                        : 'border-white/5 text-slate-400 hover:border-white/10 hover:text-slate-300'
+                    }`}
+                  >
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${aiConfig.defaultModel === m ? 'bg-brand-400' : 'bg-white/20'}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-mono font-medium truncate">{m}</div>
+                    </div>
+                    {aiConfig.defaultModel === m && <span className="text-xs text-brand-400 flex-shrink-0">Active</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* System Prompt Preview */}
+          <div className="card">
+            <button
+              onClick={() => setAIConfig(c => ({ ...c, promptPreviewOpen: !c.promptPreviewOpen }))}
+              className="w-full flex items-center justify-between text-left"
+            >
+              <div>
+                <h3 className="text-sm font-semibold text-white">📜 System Prompt Preview</h3>
+                <p className="text-xs text-slate-500 mt-0.5">See exactly what your OneFounder AI is instructed to do.</p>
+              </div>
+              <svg className={`w-4 h-4 text-slate-500 transition-transform ${aiConfig.promptPreviewOpen ? 'rotate-180' : ''}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {aiConfig.promptPreviewOpen && (
+              <div className="mt-4 animate-slide-up">
+                <pre className="text-xs text-slate-400 bg-black/30 border border-white/5 rounded-xl p-4 overflow-x-auto whitespace-pre-wrap leading-relaxed font-mono max-h-64 overflow-y-auto">
+                  {promptPreview}
+                </pre>
+                <p className="text-xs text-slate-600 mt-2">
+                  This is a condensed preview. The full master prompt is ~400 lines covering all active domains.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Save */}
+          <div className="flex items-center gap-3">
+            <button onClick={saveAIConfig} className="btn-primary">
+              {aiSaved ? '✓ AI Config Saved!' : '💾 Save AI Configuration'}
+            </button>
+            <p className="text-xs text-slate-600">Changes take effect on the next conversation.</p>
+          </div>
+
+          {!isOnline && (
+            <div className="glass rounded-xl p-5 border border-yellow-500/15 space-y-3">
+              <p className="text-sm font-semibold text-white">Enable full AI in 3 steps</p>
+              <div className="space-y-2 text-xs text-slate-400">
+                <div className="flex items-start gap-2">
+                  <span className="text-brand-400 font-bold mt-0.5">1.</span>
+                  <span>Install Ollama from <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">ollama.ai</a></span>
                 </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-brand-400 font-bold mt-0.5">2.</span>
+                  <span>Start the engine: <code className="bg-white/10 px-2 py-0.5 rounded font-mono">ollama serve</code></span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-brand-400 font-bold mt-0.5">3.</span>
+                  <span>Pull a model: <code className="bg-white/10 px-2 py-0.5 rounded font-mono">ollama pull llama3.2</code></span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-600">Recommended: llama3.2 · mistral · deepseek-r1 · qwen2.5</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── PROFILE TAB ────────────────────────────────────────────── */}
+      {tab === 'profile' && (
+        <div className="space-y-5 animate-slide-up">
+          <div className="card">
+            <div className="flex items-center gap-4 mb-5 pb-5 border-b border-white/5">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-brand-500/30 to-violet-600/20 flex items-center justify-center text-2xl font-bold text-brand-300">
+                {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
+              </div>
+              <div>
+                <div className="text-white font-semibold">{user?.name || 'Founder'}</div>
+                <div className="text-slate-400 text-sm">{user?.email}</div>
+                <div className="text-xs text-slate-600 mt-0.5">Free Plan</div>
               </div>
             </div>
 
-            {!aiStatus?.available && (
-              <div className="glass rounded-xl p-4 text-sm text-slate-400 space-y-3">
-                <p className="font-medium text-white">Enable ONEFOUNDER AI (Local · Free · Private)</p>
-                <div className="space-y-2">
-                  <p className="text-xs text-slate-400">1. Install Ollama: <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">ollama.ai</a></p>
-                  <p className="text-xs text-slate-400">2. Start the engine: <code className="bg-white/10 px-2 py-0.5 rounded text-xs font-mono">ollama serve</code></p>
-                  <p className="text-xs text-slate-400">3. Pull a model: <code className="bg-white/10 px-2 py-0.5 rounded text-xs font-mono">ollama pull llama3.2</code></p>
-                </div>
-                <p className="text-xs text-slate-600">Recommended models: llama3.2, mistral, deepseek-r1, qwen2.5</p>
-              </div>
-            )}
+            <h3 className="text-sm font-semibold text-white mb-1">🧬 Founder Profile</h3>
+            <p className="text-xs text-slate-500 mb-4">AI uses this to personalise all responses to your goals and style.</p>
 
-            {aiStatus?.available && (
-              <div className="glass rounded-xl p-4 text-sm text-slate-400 space-y-1">
-                <p className="font-medium text-white mb-2">🧠 ONEFOUNDER AI Brain — Active</p>
-                <p className="text-xs">Auto-routing: detects intent and routes to the right expert (Code · SEO · Security · Data · Research · Startup)</p>
-                <p className="text-xs">Prompt enhancement: rewrites your question into expert-level prompts</p>
-                <p className="text-xs">Web search: injects live news and trends into research queries</p>
-                <p className="text-xs">Memory: learns your business context over time</p>
+            <div className="space-y-5">
+              <div>
+                <label className="text-xs font-medium text-slate-400 mb-2 block">Risk Tolerance</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {riskOptions.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setProfile(p => ({ ...p, riskTolerance: opt.value }))}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        profile.riskTolerance === opt.value
+                          ? 'border-brand-500/40 bg-brand-600/20 text-white'
+                          : 'border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
+                      }`}
+                    >
+                      <div className="text-xs font-semibold">{opt.label}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 rounded-full transition-all duration-500"
+                    style={{ width: profile.riskTolerance === 'conservative' ? '33%' : profile.riskTolerance === 'moderate' ? '66%' : '100%' }}
+                  />
+                </div>
               </div>
-            )}
+
+              <div>
+                <label className="text-xs font-medium text-slate-400 mb-2 block">Work Style</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {workStyleOptions.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setProfile(p => ({ ...p, workStyle: opt.value }))}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        profile.workStyle === opt.value
+                          ? 'border-brand-500/40 bg-brand-600/20 text-white'
+                          : 'border-white/5 text-slate-400 hover:border-white/10 hover:text-white'
+                      }`}
+                    >
+                      <div className="text-xs font-semibold">{opt.label}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-medium text-slate-400 mb-1.5 block">Primary Goal</label>
+                  <select className="input" value={profile.primaryGoal} onChange={e => setProfile(p => ({ ...p, primaryGoal: e.target.value }))}>
+                    {goalOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-400 mb-1.5 block">Current Stage</label>
+                  <select className="input" value={profile.stage} onChange={e => setProfile(p => ({ ...p, stage: e.target.value }))}>
+                    {stageOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <button onClick={saveProfile} disabled={profileSaving} className="btn-primary">
+                {profileSaving ? <LoadingSpinner size="sm" /> : profileSaved ? '✓ Saved!' : 'Save Profile'}
+              </button>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="card">
-          <h2 className="text-base font-semibold text-white mb-4">Platform Modules</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {MODULES.map(mod => (
-              <div key={mod.label} className={`glass rounded-xl p-3 border ${mod.status === 'active' ? 'border-green-500/20' : 'border-white/5 opacity-50'}`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-lg">{mod.icon}</span>
-                  <span className="text-xs font-medium text-white truncate">{mod.label}</span>
-                  {mod.status === 'coming_soon' && (
-                    <span className="ml-auto text-xs bg-brand-500/20 text-brand-400 px-1.5 py-0.5 rounded-full flex-shrink-0">soon</span>
-                  )}
-                  {mod.status === 'active' && (
-                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
-                  )}
+      {/* ── MODULES TAB ────────────────────────────────────────────── */}
+      {tab === 'modules' && (
+        <div className="animate-slide-up">
+          <div className="card">
+            <h2 className="text-sm font-semibold text-white mb-4">🧩 Platform Modules</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {MODULES.map(mod => (
+                <div key={mod.label} className={`glass rounded-xl p-3 border ${mod.status === 'active' ? 'border-green-500/15' : 'border-white/5 opacity-40'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{mod.icon}</span>
+                    <span className="text-xs font-medium text-white truncate flex-1">{mod.label}</span>
+                    {mod.status === 'coming_soon'
+                      ? <span className="text-xs bg-brand-500/20 text-brand-400 px-1.5 py-0.5 rounded-full flex-shrink-0">soon</span>
+                      : <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />}
+                  </div>
+                  <p className="text-xs text-slate-500 line-clamp-1">{mod.desc}</p>
                 </div>
-                <p className="text-xs text-slate-500 line-clamp-1">{mod.desc}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
+      )}
 
-        {/* OG Image Preview */}
-        <div className="card">
-          <h2 className="text-base font-semibold text-white mb-1">🖼️ Social Preview Cards</h2>
-          <p className="text-xs text-slate-500 mb-4">Copy these URLs as your <code className="bg-white/10 px-1 rounded">og:image</code> meta tags — LinkedIn and Twitter will render branded cards when your links are shared.</p>
-
-          <div className="flex gap-3 flex-wrap mb-4">
-            {OG_MODULES.map(mod => (
+      {/* ── SOCIAL TAB ─────────────────────────────────────────────── */}
+      {tab === 'social' && (
+        <div className="animate-slide-up">
+          <div className="card">
+            <h2 className="text-sm font-semibold text-white mb-1">🖼️ Social Preview Cards</h2>
+            <p className="text-xs text-slate-500 mb-4">
+              Copy these URLs as your <code className="bg-white/10 px-1 rounded">og:image</code> meta tags — LinkedIn and Twitter render branded cards when your links are shared.
+            </p>
+            <div className="flex gap-2 flex-wrap mb-4">
+              {OG_MODULES.map(mod => (
+                <button
+                  key={mod.key}
+                  onClick={() => setActiveOgModule(mod)}
+                  className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                    activeOgModule.key === mod.key
+                      ? 'bg-brand-600/20 border-brand-500/30 text-white'
+                      : 'border-white/5 text-slate-400 hover:text-white hover:border-white/10'
+                  }`}
+                >
+                  {mod.icon} {mod.label}
+                </button>
+              ))}
+            </div>
+            <div className="rounded-xl overflow-hidden border border-white/10 mb-3 bg-black/20">
+              <img
+                key={activeOgModule.key}
+                src={buildOgUrl(activeOgModule.key, activeOgModule.title, activeOgModule.description)}
+                alt={`OG preview for ${activeOgModule.label}`}
+                className="w-full"
+                style={{ aspectRatio: '1200/630' }}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-slate-400 truncate font-mono">
+                {buildOgUrl(activeOgModule.key, activeOgModule.title, activeOgModule.description)}
+              </code>
               <button
-                key={mod.key}
-                onClick={() => setActiveOgModule(mod)}
-                className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
-                  activeOgModule.key === mod.key
-                    ? 'bg-brand-600/20 border-brand-500/30 text-white'
-                    : 'border-white/5 text-slate-400 hover:text-white hover:border-white/10'
+                onClick={() => copyOgUrl(activeOgModule)}
+                className={`flex-shrink-0 text-xs px-3 py-2 rounded-lg border transition-all ${
+                  copiedOgKey === activeOgModule.key
+                    ? 'bg-green-500/20 border-green-500/30 text-green-400'
+                    : 'bg-white/5 border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
                 }`}
               >
-                {mod.icon} {mod.label}
+                {copiedOgKey === activeOgModule.key ? '✓ Copied!' : 'Copy URL'}
               </button>
-            ))}
+            </div>
           </div>
+        </div>
+      )}
 
-          {/* Live preview */}
-          <div className="rounded-xl overflow-hidden border border-white/10 mb-3 bg-black/20">
-            <img
-              key={activeOgModule.key}
-              src={buildOgUrl(activeOgModule.key, activeOgModule.title, activeOgModule.description)}
-              alt={`OG preview for ${activeOgModule.label}`}
-              className="w-full"
-              style={{ aspectRatio: '1200/630' }}
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <code className="flex-1 text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-slate-400 truncate font-mono">
-              {buildOgUrl(activeOgModule.key, activeOgModule.title, activeOgModule.description)}
-            </code>
-            <button
-              onClick={() => copyOgUrl(activeOgModule)}
-              className={`flex-shrink-0 text-xs px-3 py-2 rounded-lg border transition-all ${
-                copiedOgKey === activeOgModule.key
-                  ? 'bg-green-500/20 border-green-500/30 text-green-400'
-                  : 'bg-white/5 border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              {copiedOgKey === activeOgModule.key ? '✓ Copied!' : 'Copy URL'}
+      {/* ── ACCOUNT TAB ────────────────────────────────────────────── */}
+      {tab === 'account' && (
+        <div className="space-y-4 animate-slide-up">
+          <div className="card">
+            <h2 className="text-sm font-semibold text-white mb-4">👤 Account</h2>
+            <div className="flex items-center gap-4 p-4 glass rounded-xl border border-white/5 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500/30 to-violet-600/20 flex items-center justify-center text-xl font-bold text-brand-300 flex-shrink-0">
+                {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-white">{user?.name || 'Founder'}</div>
+                <div className="text-xs text-slate-400">{user?.email}</div>
+                <div className="mt-1 text-xs bg-brand-500/20 text-brand-400 px-2 py-0.5 rounded-full inline-block">Free Plan</div>
+              </div>
+            </div>
+            <button onClick={signOut} className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 px-3 py-2 rounded-lg hover:bg-red-500/10 transition-all">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Sign out of OneFounder
             </button>
           </div>
+          <div className="text-center text-xs text-slate-700 py-2">
+            OneFounder v2.0 · The OS for Founders · Powered by Ollama AI · Neon PostgreSQL · Better Auth
+          </div>
         </div>
-
-        <div className="card border border-red-500/10">
-          <h2 className="text-base font-semibold text-white mb-4">Account</h2>
-          <button onClick={signOut} className="btn-ghost text-red-400 hover:text-red-300 hover:bg-red-500/10">
-            🚪 Sign out of OneFounder
-          </button>
-        </div>
-
-        <div className="text-center text-xs text-slate-600 py-4">
-          ONEFOUNDER v2.0 · The OS for Founders · Powered by Ollama AI · Neon PostgreSQL · Better Auth
-        </div>
-      </div>
+      )}
     </div>
   )
 }
