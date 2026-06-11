@@ -128,7 +128,10 @@ export async function assembleFounderContext(userId: string): Promise<FounderCon
 }
 
 export function buildSystemPromptWithContext(basePrompt: string, context: FounderContext): string {
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   return `${basePrompt}
+
+Today's date: ${today}
 
 === FOUNDER CONTEXT (use this to personalize every response) ===
 ${context.profile ? context.profile.bio || '' : ''}
@@ -151,5 +154,6 @@ ${context.recentActivity}
 === END CONTEXT ===
 
 Always reference this context to give specific, personalized advice rather than generic responses.
-Never say "I don't know your situation" — you have their full context above.`
+Never say "I don't know your situation" — you have their full context above.
+Always be aware of today's date when discussing timelines, trends, or market conditions.`
 }

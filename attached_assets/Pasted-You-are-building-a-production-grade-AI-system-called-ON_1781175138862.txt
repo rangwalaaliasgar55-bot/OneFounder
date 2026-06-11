@@ -1,0 +1,165 @@
+You are building a production-grade AI system called ONEFOUNDER AI.
+
+CORE GOAL
+This project MUST become an independent AI platform.
+It is allowed to use Ollama ONLY as a local model runtime.
+ALL other AI providers must be completely removed:
+❌ OpenAI API (remove completely)
+❌ Claude / Anthropic API (remove completely)
+❌ Grok / xAI API (remove completely)
+No external AI inference APIs are allowed besides local Ollama.
+SYSTEM VISION
+
+ONEFOUNDER AI is not just a chatbot. It is a multi-expert autonomous intelligence system that learns and improves through modules.
+
+It must behave like a combined:
+
+Expert coder (all languages)
+SEO strategist
+Cybersecurity analyst
+Data analyst
+Product manager
+Startup advisor
+Web research assistant
+ARCHITECTURE REQUIREMENTS
+1. AI CORE (OLLAMA ONLY)
+Use Ollama as the ONLY inference engine
+Models loaded locally (LLaMA / Mistral / Phi / CodeLlama)
+No API calls outside localhost
+Create a clean wrapper:
+ai_engine.ts or ai_engine.py
+Handles prompt sending, streaming response, and model switching
+2. “OWN AI BRAIN” LAYER (VERY IMPORTANT)
+
+Build a system ABOVE Ollama that makes it feel like a custom AI:
+
+This layer must include:
+Prompt enhancer (rewrites user input into expert-level prompts)
+Role-based intelligence system:
+Code Expert Mode
+SEO Expert Mode
+Cybersecurity Expert Mode
+Data Analyst Mode
+Startup/Business Mode
+Auto routing system:
+Detect user intent automatically
+Choose correct expert mode
+Inject system prompt dynamically
+
+This is what makes it “our AI”, not Ollama.
+
+3. LEARNING SYSTEM (LOCAL ONLY)
+
+The AI must “learn” from interactions using:
+
+Local database (SQLite or PostgreSQL)
+Store:
+conversations
+user preferences
+successful answers
+improved prompt versions
+
+Optional (if possible locally):
+
+lightweight embeddings stored locally (no external vector DB)
+4. WEB + SKILL TRAINING MODULES
+
+Create internal modules that simulate expertise:
+
+SEO MODULE
+keyword analysis logic
+content optimization suggestions
+ranking structure generation
+CODING MODULE
+multi-language code generation
+debugging assistant
+architecture suggestions
+CYBERSECURITY MODULE
+vulnerability detection logic
+secure code review patterns
+threat explanation system
+DATA ANALYSIS MODULE
+CSV/JSON interpretation
+pattern detection logic
+simple statistical reasoning
+WEB RESEARCH MODULE
+optional HTTP fetch only
+no AI APIs
+summarize scraped content using local model
+5. ROUTER SYSTEM (CRITICAL)
+
+Create an intelligent request router:
+
+Input → classify intent → route to module → enhance prompt → send to Ollama
+
+Example routing:
+
+“fix my code” → Coding Expert
+“SEO for my website” → SEO Expert
+“is this secure?” → Cybersecurity Expert
+“analyze data” → Data Analyst
+6. MEMORY SYSTEM
+
+Implement long-term memory:
+
+user profile storage
+conversation summaries
+learned preferences
+project history
+
+Must be:
+
+persistent
+local
+fast
+7. TOOL SYSTEM (PLUGGABLE AI AGENT FEATURES)
+
+System must support tools:
+
+Code executor (Node + Python sandbox)
+File read/write system
+JSON analyzer
+Web fetcher (only raw HTTP requests)
+Log analyzer
+
+No external AI tools allowed.
+
+8. API STRUCTURE
+
+Build clean backend APIs:
+
+POST /chat → main AI response
+POST /memory/save
+GET /memory/load
+POST /tools/run
+POST /route/analyze
+
+All responses must support streaming.
+
+9. FRONTEND
+Modern chat UI
+Streaming tokens from backend
+Dark mode
+Mode indicator (SEO / Code / Cyber / etc.)
+
+No external AI SDKs in frontend.
+
+CRITICAL RULES
+Ollama is ONLY the model engine, not the intelligence
+NO Claude / OpenAI / external AI APIs
+ALL intelligence must come from:
+routing system
+prompt engineering
+modular expert systems
+memory layer
+System must be fully local-first and extensible
+FINAL GOAL
+
+Build ONEFOUNDER AI as a:
+
+self-hosted AI platform
+modular expert system
+intelligent router-based AI brain
+scalable foundation for future model replacement
+
+It should feel like a custom-built AI company product, not a wrapper.

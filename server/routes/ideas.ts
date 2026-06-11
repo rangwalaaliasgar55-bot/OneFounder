@@ -4,6 +4,7 @@ import { db } from '../db'
 import { businessIdeas } from '../db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { getAIProvider } from '../ai'
+import { getWebContextString } from '../ai/webSearch'
 
 const router = Router()
 
@@ -19,7 +20,14 @@ router.post('/generate', requireAuth, async (req, res) => {
   const user = (req as any).user
   const { skills, interests, budget, availableTime, location, experience } = req.body
 
-  const prompt = `Generate 5 unique business ideas based on this founder profile:
+  try {
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    const topic = interests || skills || 'technology startups'
+
+    // Fetch live market trends to ground the ideas in reality
+    const webContext = await getWebContextString(`${topic} startup trends 2025 business opportunities`)
+
+    const prompt = `Today is ${today}. Generate 5 unique, fundable business ideas for a founder with this profile:
 - Skills: ${skills || 'general'}
 - Interests: ${interests || 'technology'}
 - Budget: ${budget || '$1,000-$10,000'}
@@ -27,21 +35,23 @@ router.post('/generate', requireAuth, async (req, res) => {
 - Location: ${location || 'Remote/Global'}
 - Experience: ${experience || 'Beginner'}
 
-For each idea provide:
-1. Title
-2. Type (SaaS/Agency/Marketplace/AI/Local Business)
-3. Description (2-3 sentences)
-4. Competition level (Low/Medium/High)
-5. Revenue Potential (Monthly range)
-6. Market Size
-7. Difficulty (1-10)
-8. 30-60-90 day roadmap
+${webContext}
 
-Format as JSON array with fields: title, type, description, competition, revenuePotential, marketSize, difficulty, roadmap`
+Use the real-time trends above to make the ideas current and relevant. Return ONLY a JSON array:
+[{
+  "title": string,
+  "type": "SaaS|Agency|Marketplace|AI|Local Business|Creator",
+  "description": string (2-3 sentences, specific and compelling),
+  "competition": "Low|Medium|High",
+  "revenuePotential": string (monthly range),
+  "marketSize": string,
+  "difficulty": number (1-10),
+  "whyNow": string (1 sentence — why this is the right moment for this idea),
+  "roadmap": { "day30": string, "day60": string, "day90": string }
+}]`
 
-  try {
     const ai = await getAIProvider()
-    const response = await ai.generate(prompt, 'You are an expert startup advisor. Return ONLY valid JSON.')
+    const response = await ai.generate(prompt, `You are an expert startup advisor who knows what is trending right now (today is ${today}). Return ONLY valid JSON array.`)
 
     let ideas: any[] = []
     try {

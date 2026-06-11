@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import path from 'path'
+import helmet from 'helmet'
 import { toNodeHandler } from 'better-auth/node'
 import { auth } from './auth'
 import { rateLimit } from 'express-rate-limit'
@@ -45,6 +46,15 @@ const aiLimiter = rateLimit({
   message: { error: 'AI rate limit reached. Please wait a moment.' },
 })
 
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: false, // disabled so Vite dev proxy works; re-enable in hardened prod
+  crossOriginEmbedderPolicy: false,
+}))
+
+// Trust proxy for rate limiting behind Vercel / Replit reverse proxies
+app.set('trust proxy', 1)
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true)
@@ -70,8 +80,8 @@ app.use(cors({
 
 app.use(limiter)
 app.use('/auth', toNodeHandler(auth))
-app.use(express.json({ limit: '10mb' }))
-app.use(express.urlencoded({ extended: true }))
+app.use(express.json({ limit: '1mb' }))
+app.use(express.urlencoded({ extended: true, limit: '1mb' }))
 
 // Routes
 app.use('/api/ai', aiLimiter, aiRoutes)

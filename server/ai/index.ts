@@ -5,9 +5,20 @@ import type { AIProvider } from './provider'
 
 let aiProvider: AIProvider | null = null
 let activeProviderName: string = 'mock'
+// Re-check provider if it was cached as mock (Ollama may start later)
+let lastProviderCheck = 0
+const PROVIDER_CACHE_TTL = 60_000 // 1 min — re-check if mock is cached
 
 export async function getAIProvider(): Promise<AIProvider> {
-  if (aiProvider) return aiProvider
+  const now = Date.now()
+  // Return cached non-mock provider immediately
+  if (aiProvider && activeProviderName !== 'mock') return aiProvider
+  // Re-check if mock or cache is stale
+  if (aiProvider && activeProviderName === 'mock' && now - lastProviderCheck < PROVIDER_CACHE_TTL) {
+    return aiProvider
+  }
+
+  lastProviderCheck = now
 
   const anthropicKey = process.env.ANTHROPIC_API_KEY
   if (anthropicKey) {
@@ -28,7 +39,9 @@ export async function getAIProvider(): Promise<AIProvider> {
     activeProviderName = 'ollama'
     aiProvider = ollama
   } else {
-    console.log('⚠️  No AI provider available, using demo mode.')
+    if (activeProviderName !== 'mock') {
+      console.log('⚠️  No AI provider available, using demo mode.')
+    }
     activeProviderName = 'mock'
     aiProvider = new MockAIProvider()
   }
@@ -36,7 +49,7 @@ export async function getAIProvider(): Promise<AIProvider> {
   return aiProvider
 }
 
-export async function getAIStatus(): Promise<{ available: boolean; provider: string; models?: string[] }> {
+export async function getAIStatus(): Promise<{ available: boolean; provider: string; models?: string[]; note?: string }> {
   const anthropicKey = process.env.ANTHROPIC_API_KEY
   if (anthropicKey) {
     return { available: true, provider: 'claude', models: ['claude-sonnet-4-20250514'] }
@@ -51,7 +64,11 @@ export async function getAIStatus(): Promise<{ available: boolean; provider: str
     const models = await ollama.listModels()
     return { available: true, provider: 'ollama', models }
   }
-  return { available: false, provider: 'mock' }
+  return {
+    available: false,
+    provider: 'mock',
+    note: 'Start Ollama locally (ollama serve) or add ANTHROPIC_API_KEY to enable real AI.',
+  }
 }
 
 export { type AIProvider }

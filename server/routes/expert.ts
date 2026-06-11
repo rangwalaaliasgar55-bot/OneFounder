@@ -127,6 +127,7 @@ router.post('/chat', requireAuth, async (req, res) => {
   const { message, sessionId, mode } = req.body
 
   if (!message?.trim()) return res.status(400).json({ error: 'Message required' })
+  if (typeof message !== 'string' || message.length > 4000) return res.status(400).json({ error: 'Message too long (max 4000 chars)' })
   if (!mode || !EXPERT_MODES[mode]) return res.status(400).json({ error: 'Invalid expert mode' })
 
   const session = sessionId || uuidv4()
@@ -177,43 +178,75 @@ router.post('/chat', requireAuth, async (req, res) => {
 router.post('/python/run', requireAuth, async (req, res) => {
   const { code } = req.body
   if (!code?.trim()) return res.status(400).json({ error: 'No code provided' })
+  if (typeof code !== 'string' || code.length > 5000) {
+    return res.status(400).json({ error: 'Code too long (max 5000 chars)' })
+  }
 
-  const forbidden = [
-    /import\s+os/i, /import\s+subprocess/i, /import\s+sys/i,
-    /open\s*\(/i, /__import__/i, /exec\s*\(/i, /eval\s*\(/i,
-    /compile\s*\(/i, /globals\s*\(/i, /locals\s*\(/i,
+  // Strict blocklist — covers common sandbox-escape vectors
+  const forbidden: Array<{ pattern: RegExp; reason: string }> = [
+    { pattern: /\bimport\s+os\b/i, reason: 'os module not allowed' },
+    { pattern: /\bimport\s+subprocess\b/i, reason: 'subprocess not allowed' },
+    { pattern: /\bimport\s+sys\b/i, reason: 'sys module not allowed' },
+    { pattern: /\bimport\s+socket\b/i, reason: 'socket not allowed' },
+    { pattern: /\bimport\s+shutil\b/i, reason: 'shutil not allowed' },
+    { pattern: /\bimport\s+pathlib\b/i, reason: 'pathlib not allowed' },
+    { pattern: /\bimport\s+ctypes\b/i, reason: 'ctypes not allowed' },
+    { pattern: /\bimport\s+importlib\b/i, reason: 'importlib not allowed' },
+    { pattern: /\bopen\s*\(/i, reason: 'file I/O not allowed' },
+    { pattern: /\b__import__\s*\(/i, reason: '__import__ not allowed' },
+    { pattern: /\bexec\s*\(/i, reason: 'exec() not allowed' },
+    { pattern: /\beval\s*\(/i, reason: 'eval() not allowed' },
+    { pattern: /\bcompile\s*\(/i, reason: 'compile() not allowed' },
+    { pattern: /\bglobals\s*\(\s*\)/i, reason: 'globals() not allowed' },
+    { pattern: /\blocals\s*\(\s*\)/i, reason: 'locals() not allowed' },
+    { pattern: /\bgetattr\s*\(/i, reason: 'getattr() not allowed' },
+    { pattern: /\bsetattr\s*\(/i, reason: 'setattr() not allowed' },
+    { pattern: /\b__builtins__\b/i, reason: '__builtins__ not allowed' },
+    { pattern: /\b__class__\b/i, reason: '__class__ access not allowed' },
+    { pattern: /\bmro\s*\(\s*\)/i, reason: 'mro() not allowed' },
   ]
-  for (const pattern of forbidden) {
+
+  for (const { pattern, reason } of forbidden) {
     if (pattern.test(code)) {
-      return res.status(400).json({
-        error: 'Unsafe code detected. System access, file I/O, and eval are not allowed.',
-        output: null,
-      })
+      return res.status(400).json({ error: `Unsafe code: ${reason}`, output: null })
     }
   }
 
+  const { writeFile, unlink } = await import('fs/promises')
   const { exec } = await import('child_process')
   const { promisify } = await import('util')
+  const { tmpdir } = await import('os')
+  const { join } = await import('path')
   const execAsync = promisify(exec)
 
-  const safeCode = `
-import sys
-import io
-import contextlib
+  // Write to a temp file (avoids shell-injection via -c flag)
+  const tmpFile = join(tmpdir(), `sandbox_${Date.now()}_${Math.random().toString(36).slice(2)}.py`)
 
-_output = io.StringIO()
+  const wrapper = `import sys, io, contextlib, builtins
+
+# Remove dangerous builtins
+_safe_builtins = {k: v for k, v in vars(builtins).items()
+                  if k not in ('open','__import__','exec','eval','compile','input','breakpoint','memoryview')}
+_safe_globals = {'__builtins__': _safe_builtins}
+
+_out = io.StringIO()
+_err = io.StringIO()
 try:
-    with contextlib.redirect_stdout(_output):
-        exec(compile("""${code.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}""", '<sandbox>', 'exec'))
-    print(_output.getvalue(), end='')
+    with contextlib.redirect_stdout(_out), contextlib.redirect_stderr(_err):
+        exec(compile(${JSON.stringify(code)}, '<sandbox>', 'exec'), _safe_globals)
+    sys.stdout.write(_out.getvalue())
+    if _err.getvalue():
+        sys.stderr.write(_err.getvalue())
 except Exception as e:
-    print(f'Error: {type(e).__name__}: {e}', file=sys.stderr)
+    sys.stderr.write(f'{type(e).__name__}: {e}\\n')
 `
 
   try {
-    const { stdout, stderr } = await execAsync(`python3 -c "${safeCode.replace(/"/g, '\\"')}"`, {
-      timeout: 10000,
-      maxBuffer: 1024 * 256,
+    await writeFile(tmpFile, wrapper, 'utf8')
+    const { stdout, stderr } = await execAsync(`python3 ${tmpFile}`, {
+      timeout: 8000,
+      maxBuffer: 1024 * 128,
+      env: { PATH: process.env.PATH || '/usr/bin:/bin' }, // minimal env
     })
     res.json({ output: stdout || '', error: stderr || null })
   } catch (err: any) {
@@ -221,6 +254,8 @@ except Exception as e:
       output: err.stdout || '',
       error: err.stderr || err.message || 'Execution failed',
     })
+  } finally {
+    unlink(tmpFile).catch(() => {})
   }
 })
 

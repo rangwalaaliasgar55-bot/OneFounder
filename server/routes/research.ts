@@ -4,6 +4,7 @@ import { db } from '../db'
 import { researchReports } from '../db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { getAIProvider } from '../ai'
+import { getWebContextString } from '../ai/webSearch'
 
 const router = Router()
 
@@ -18,25 +19,38 @@ router.get('/', requireAuth, async (req, res) => {
 router.post('/analyze', requireAuth, async (req, res) => {
   const user = (req as any).user
   const { niche, ideaId } = req.body
-  if (!niche) return res.status(400).json({ error: 'Niche required' })
-
-  const prompt = `Perform comprehensive market research for: "${niche}"
-
-Provide detailed analysis including:
-
-1. TOP 5 COMPETITORS: name, website, strengths, weaknesses, pricing
-2. MARKET TRENDS: 5 key trends shaping this market
-3. OPPORTUNITIES: 5 untapped opportunities
-4. KEYWORDS: 10 high-value keywords with search volume estimates
-5. SWOT ANALYSIS: detailed SWOT
-6. RISKS: top 5 risks and mitigation strategies
-7. MARKET SIZE: TAM, SAM, SOM estimates
-
-Return as valid JSON with keys: competitors, trends, opportunities, keywords, swot, risks, marketSize`
+  if (!niche || typeof niche !== 'string') return res.status(400).json({ error: 'Niche required' })
+  if (niche.length > 200) return res.status(400).json({ error: 'Niche too long (max 200 chars)' })
 
   try {
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+
+    // Fetch real-time web context in parallel before calling AI
+    const [webContext, newsContext] = await Promise.all([
+      getWebContextString(`${niche} market trends 2025 competitors`),
+      getWebContextString(`${niche} startup industry news 2025`),
+    ])
+
+    const prompt = `Today is ${today}. Perform comprehensive market research for: "${niche}"
+
+${webContext}
+
+${newsContext}
+
+Using the real-time data above AND your training knowledge, return ONLY valid JSON:
+{
+  "competitors": [{ "name": string, "website": string, "strengths": string[], "weaknesses": string[], "pricing": string }],
+  "trends": [{ "trend": string, "impact": string, "timeframe": string }],
+  "opportunities": [{ "opportunity": string, "rationale": string, "difficulty": string }],
+  "keywords": [{ "keyword": string, "estimatedVolume": string, "intent": string }],
+  "swot": { "strengths": string[], "weaknesses": string[], "opportunities": string[], "threats": string[] },
+  "risks": [{ "risk": string, "mitigation": string, "severity": string }],
+  "marketSize": { "tam": string, "sam": string, "som": string, "growthRate": string }
+}
+Include 5 competitors, 5 trends (cite real ones from web context), 5 opportunities, 10 keywords, full SWOT, 5 risks.`
+
     const ai = await getAIProvider()
-    const response = await ai.generate(prompt, 'You are a market research expert. Return ONLY valid JSON.')
+    const response = await ai.generate(prompt, `You are a market research expert with access to real-time web data. Today is ${today}. Return ONLY valid JSON — no markdown, no explanation.`)
 
     let data: any = {}
     try {
