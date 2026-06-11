@@ -46,14 +46,25 @@ const aiLimiter = rateLimit({
 })
 
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:5000',
-    'http://127.0.0.1:5000',
-    process.env.CLIENT_URL || '',
-    /\.replit\.dev$/,
-    /\.repl\.co$/,
-  ].filter(Boolean),
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true)
+    const allowedExact = [
+      'http://localhost:5173',
+      'http://localhost:5000',
+      'http://127.0.0.1:5000',
+      process.env.CLIENT_URL,
+      process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+      process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined,
+    ].filter(Boolean) as string[]
+
+    const isAllowed =
+      allowedExact.includes(origin) ||
+      /\.replit\.dev$/.test(origin) ||
+      /\.repl\.co$/.test(origin) ||
+      /\.vercel\.app$/.test(origin)
+
+    callback(isAllowed ? null : new Error('Not allowed by CORS'), isAllowed)
+  },
   credentials: true,
 }))
 

@@ -41,6 +41,8 @@ export const auth = betterAuth({
     'http://127.0.0.1:5000',
     'http://localhost:5173',
     process.env.CLIENT_URL || '',
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '',
     ...(process.env.REPLIT_DEV_DOMAIN ? [`https://${process.env.REPLIT_DEV_DOMAIN}`] : []),
     ...(process.env.REPLIT_DOMAINS ? process.env.REPLIT_DOMAINS.split(',').map(d => `https://${d.trim()}`) : []),
   ].filter(Boolean),

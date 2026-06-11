@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run build:client",
+  "outputDirectory": "dist/client",
   "builds": [
     {
       "src": "server/index.ts",
@@ -24,7 +25,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/dist/client/index.html"
+      "dest": "/index.html"
     }
   ]
 }
