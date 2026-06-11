@@ -8,7 +8,7 @@ export const socialPostStatusEnum = pgEnum('social_post_status', ['draft', 'sche
 export const socialPlatformEnum = pgEnum('social_platform', ['linkedin', 'twitter', 'instagram', 'tiktok', 'facebook']);
 export const financeEntryTypeEnum = pgEnum('finance_entry_type', ['revenue', 'expense', 'subscription']);
 export const users = pgTable('users', {
-    id: uuid('id').primaryKey().defaultRandom(),
+    id: text('id').primaryKey(),
     email: text('email').notNull().unique(),
     name: text('name'),
     avatar: text('avatar'),
@@ -18,7 +18,7 @@ export const users = pgTable('users', {
 });
 export const sessions = pgTable('sessions', {
     id: text('id').primaryKey(),
-    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     expiresAt: timestamp('expires_at').notNull(),
     token: text('token').notNull().unique(),
     createdAt: timestamp('created_at').defaultNow(),
@@ -28,7 +28,7 @@ export const sessions = pgTable('sessions', {
 });
 export const accounts = pgTable('accounts', {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     accountId: text('account_id').notNull(),
     providerId: text('provider_id').notNull(),
     accessToken: text('access_token'),

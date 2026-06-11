@@ -1,5 +1,15 @@
 const BASE = '/api'
 
+async function parseJSONResponse(res: Response) {
+  const text = await res.text()
+  if (!text) return null
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -7,10 +17,25 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Request failed' }))
-    throw new Error(err.error || 'Request failed')
+    const err = (await parseJSONResponse(res)) || { error: 'Request failed' }
+    throw new Error((err as any).error || 'Request failed')
   }
-  return res.json()
+  return (await parseJSONResponse(res)) as T
+}
+
+function authFetch(path: string, options: RequestInit) {
+  return fetch(path, {
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    ...options,
+  }).then(async res => {
+    const body = await parseJSONResponse(res)
+    if (!res.ok) {
+      const error = (body as any)?.error || 'Request failed'
+      throw new Error(error)
+    }
+    return body
+  })
 }
 
 export const api = {
@@ -23,27 +48,20 @@ export const api = {
 
 export const authApi = {
   signIn: (email: string, password: string) =>
-    fetch('/auth/sign-in/email', {
+    authFetch('/auth/sign-in/email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ email, password }),
-    }).then(r => r.json()),
+    }),
 
   signUp: (name: string, email: string, password: string) =>
-    fetch('/auth/sign-up/email', {
+    authFetch('/auth/sign-up/email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ name, email, password }),
-    }).then(r => r.json()),
+    }),
 
   signOut: () =>
-    fetch('/auth/sign-out', {
-      method: 'POST',
-      credentials: 'include',
-    }).then(r => r.json()),
+    authFetch('/auth/sign-out', { method: 'POST' }),
 
   getSession: () =>
-    fetch('/auth/get-session', { credentials: 'include' }).then(r => r.json()),
+    authFetch('/auth/get-session', { method: 'GET' }),
 }
