@@ -1,0 +1,46 @@
+20:08:06.851 Running build in Washington, D.C., USA (East) – iad1
+20:08:06.852 Build machine configuration: 2 cores, 8 GB
+20:08:06.981 Cloning github.com/rangwalaaliasgar55-bot/OneFounder (Branch: main, Commit: caadd38)
+20:08:07.475 Cloning completed: 493.000ms
+20:08:07.710 Restored build cache from previous deployment (3uhwmh9Udw9z6ddmFmTCarYzgKiq)
+20:08:07.960 Running "vercel build"
+20:08:08.600 Vercel CLI 54.11.1
+20:08:09.440 Warning: Due to "engines": { "node": "20.x" } in your `package.json` file, the Node.js Version defined in your Project Settings ("22.x") will not apply, Node.js Version "20.x" will be used instead. Learn More: https://vercel.link/node-version
+20:08:09.456 Running "install" command: `npm install --legacy-peer-deps`...
+20:08:10.346 npm warn EBADENGINE Unsupported engine {
+20:08:10.346 npm warn EBADENGINE   package: 'concurrently@10.0.3',
+20:08:10.347 npm warn EBADENGINE   required: { node: '>=22' },
+20:08:10.347 npm warn EBADENGINE   current: { node: 'v20.20.2', npm: '10.8.2' }
+20:08:10.347 npm warn EBADENGINE }
+20:08:10.348 npm warn EBADENGINE Unsupported engine {
+20:08:10.348 npm warn EBADENGINE   package: 'kysely@0.29.2',
+20:08:10.349 npm warn EBADENGINE   required: { node: '>=22.0.0' },
+20:08:10.349 npm warn EBADENGINE   current: { node: 'v20.20.2', npm: '10.8.2' }
+20:08:10.349 npm warn EBADENGINE }
+20:09:20.611 npm error Exit handler never called!
+20:09:20.611 npm error This is an error with npm itself. Please report this error at:
+20:09:20.611 npm error   <https://github.com/npm/cli/issues>
+20:09:20.611 npm error A complete log of this run can be found in: /vercel/.npm/_logs/2026-06-11T14_38_09_599Z-debug-0.log
+20:09:21.152 
+20:09:21.153 > onefoundr@1.0.0 build:client
+20:09:21.153 > vite build --config client/vite.config.ts
+20:09:21.153 
+20:09:21.244 node:internal/modules/esm/resolve:215
+20:09:21.245   const resolvedOption = FSLegacyMainResolve(packageJsonUrlString, packageConfig.main, baseStringified);
+20:09:21.245                          ^
+20:09:21.245 
+20:09:21.245 Error: Cannot find package '/vercel/path0/node_modules/vite/node_modules/picomatch/index.js' imported from /vercel/path0/node_modules/vite/dist/node/cli.js
+20:09:21.245     at legacyMainResolve (node:internal/modules/esm/resolve:215:26)
+20:09:21.245     at packageResolve (node:internal/modules/esm/resolve:860:14)
+20:09:21.246     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+20:09:21.246     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+20:09:21.246     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+20:09:21.246     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+20:09:21.246     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+20:09:21.246     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+20:09:21.246     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+20:09:21.246   code: 'ERR_MODULE_NOT_FOUND'
+20:09:21.247 }
+20:09:21.247 
+20:09:21.247 Node.js v20.20.2
+20:09:21.264 Error: Command "npm run build:client" exited with 1
