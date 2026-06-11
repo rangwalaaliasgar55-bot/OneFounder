@@ -23,6 +23,7 @@ import ceoRoutes from './routes/ceo'
 import journeyRoutes from './routes/journey'
 import wordpressRoutes from './routes/wordpress'
 import founderProfileRoutes from './routes/founderProfile'
+import intelligenceRoutes from './routes/intelligence'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -60,6 +61,7 @@ app.use('/api/ceo', ceoRoutes)
 app.use('/api/journey', journeyRoutes)
 app.use('/api/wordpress', wordpressRoutes)
 app.use('/api/founder-profile', founderProfileRoutes)
+app.use('/api/intelligence', intelligenceRoutes)
 
 app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', version: '1.0.0', name: 'OneFounder' })

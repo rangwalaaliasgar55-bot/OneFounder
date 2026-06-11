@@ -5,6 +5,9 @@ import { chatMessages } from '../db/schema'
 import { eq, desc, and } from 'drizzle-orm'
 import { getAIProvider } from '../ai'
 import { v4 as uuidv4 } from 'uuid'
+import { assembleFounderContext, buildSystemPromptWithContext } from '../ai/context'
+import { extractAndStoreMemories } from '../ai/memory'
+import { logActivity } from '../ai/activity'
 
 const router = Router()
 
@@ -54,6 +57,8 @@ router.post('/send', requireAuth, async (req, res) => {
     content: message,
   })
 
+  await logActivity(user.id, 'sent_message', 'chat', session, { agentType })
+
   const history = await db.select().from(chatMessages)
     .where(and(
       eq(chatMessages.userId, user.id),
@@ -61,18 +66,25 @@ router.post('/send', requireAuth, async (req, res) => {
     ))
     .orderBy(chatMessages.createdAt)
 
-  const agentPrompts: Record<string, string> = {
-    ceo: 'You are the CEO Agent for OneFounder. You help with business strategy, decision-making, prioritization, and high-level planning. Be strategic, decisive, and results-focused.',
-    marketing: 'You are the Marketing Agent. You help with growth strategies, content marketing, brand positioning, and customer acquisition. Be creative and data-driven.',
-    seo: 'You are the SEO Agent. You help with keyword research, content optimization, technical SEO, and ranking strategies. Be specific and actionable.',
-    sales: 'You are the Sales Agent. You help with lead generation, outreach scripts, proposals, and closing strategies. Be persuasive and practical.',
-    research: 'You are the Research Agent. You analyze competitors, markets, and opportunities. Provide data-driven insights and strategic recommendations.',
-    operations: 'You are the Operations Agent. You help optimize workflows, processes, and business systems for maximum efficiency.',
-    product: 'You are the Product Agent. You help with product planning, feature prioritization, user stories, and product strategy.',
-    founder: `You are the Founder AI, the personal AI assistant of OneFounder. You are a brilliant, experienced startup advisor and business strategist. Help this founder build and grow their business with practical, actionable advice. Be direct, insightful, and encouraging.`,
+  const agentBasePrompts: Record<string, string> = {
+    ceo: 'You are the CEO Agent for OneFounder. You help with business strategy, decision-making, prioritization, and high-level planning. Be strategic, decisive, and results-focused. Always reference the founder context below to give specific, not generic, advice.',
+    marketing: 'You are the Marketing Agent. You help with growth strategies, content marketing, brand positioning, and customer acquisition. Be creative and data-driven. Use the founder context to make your recommendations specific to their stage and industry.',
+    seo: 'You are the SEO Agent. You help with keyword research, content optimization, technical SEO, and ranking strategies. Be specific and actionable. Reference any keywords or content already tracked.',
+    sales: 'You are the Sales Agent. You help with lead generation, outreach scripts, proposals, and closing strategies. Reference the founder\'s actual leads and pipeline when giving advice.',
+    research: 'You are the Research Agent. You analyze competitors, markets, and opportunities. Provide data-driven insights and strategic recommendations specific to the founder\'s industry and stage.',
+    operations: 'You are the Operations Agent. You help optimize workflows, processes, and business systems for maximum efficiency. Be specific about which OneFounder modules to leverage.',
+    product: 'You are the Product Agent. You help with product planning, feature prioritization, user stories, and product strategy. Reference the founder\'s actual ideas and projects.',
+    founder: 'You are the Founder AI — a brilliant, experienced startup advisor and business strategist embedded inside OneFounder. You have full context on this founder\'s business, goals, and current situation. Give direct, specific, personalized advice. Never be generic. Always reference their actual data.',
   }
 
-  const systemPrompt = agentPrompts[agentType] || agentPrompts.founder
+  const basePrompt = agentBasePrompts[agentType] || agentBasePrompts.founder
+
+  let systemPrompt = basePrompt
+  try {
+    const context = await assembleFounderContext(user.id)
+    systemPrompt = buildSystemPromptWithContext(basePrompt, context)
+  } catch {}
+
   const messages = [
     { role: 'system' as const, content: systemPrompt },
     ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
@@ -87,8 +99,10 @@ router.post('/send', requireAuth, async (req, res) => {
       sessionId: session,
       role: 'assistant',
       content: response,
-      model: 'ollama',
+      model: agentType || 'founder',
     }).returning()
+
+    extractAndStoreMemories(user.id, message, response, `chat:${agentType || 'founder'}`).catch(() => {})
 
     res.json({ message: saved, sessionId: session })
   } catch (error: any) {

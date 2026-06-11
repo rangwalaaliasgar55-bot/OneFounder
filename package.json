@@ -13,12 +13,6 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
-  "overrides": {
-    "zod": "^3.25.76",
-    "better-call": {
-      "zod": "^3.25.76"
-    }
-  },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
     "better-auth": "^1.2.8",
@@ -32,7 +26,7 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.1",
     "uuid": "^11.1.0",
-    "zod": "^3.25.76"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

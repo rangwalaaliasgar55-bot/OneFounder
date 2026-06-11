@@ -1,0 +1,100 @@
+# INFRASTRUCTURE CONSTRAINTS AND DEPLOYMENT REQUIREMENTS
+
+You must inspect the repository and determine how AI capabilities can be integrated into the EXISTING production architecture.
+
+Do not create a separate project.
+
+Do not create a standalone AI application.
+
+Do not create a new backend.
+
+Do not create a new database.
+
+Do not create a new deployment architecture.
+
+Everything must integrate into the current production stack.
+
+Current Infrastructure:
+
+* Frontend: Next.js
+* Backend: Existing repository backend
+* Database: Neon PostgreSQL
+* Deployment: Vercel
+* Authentication: Existing production authentication system
+* Storage: Existing production storage system
+* APIs: Existing production APIs
+* Repository: Existing remote Git repository
+
+Your responsibility is to determine:
+
+1. How AI should be integrated into the existing repository.
+2. Which existing services should be extended.
+3. Which database tables should be modified.
+4. Which APIs should be enhanced.
+5. Which background jobs should be added.
+6. Which frontend pages should consume AI features.
+7. How AI can be deployed within the current Vercel architecture.
+8. How AI memory should be stored inside Neon.
+9. How AI context should be assembled from existing user data.
+10. How AI features can be shipped without breaking production.
+
+For every AI feature proposed:
+
+Provide:
+
+* Exact files to modify
+* Exact database schema changes
+* Exact API changes
+* Exact frontend integrations
+* Exact deployment considerations
+* Exact migration scripts
+* Exact testing requirements
+
+Repository Analysis Requirement:
+
+Inspect the existing repository and identify:
+
+* Existing user data sources
+* Existing goals systems
+* Existing habits systems
+* Existing project systems
+* Existing analytics systems
+* Existing activity systems
+* Existing social systems
+* Existing notifications systems
+* Existing retention systems
+
+Then determine how AI can leverage those systems rather than creating new ones.
+
+AI Integration Requirement:
+
+The AI must use existing application data as context.
+
+The AI should understand:
+
+* User profile
+* Goals
+* Projects
+* Tasks
+* Habits
+* Learning activity
+* Reflections
+* Analytics
+* Productivity patterns
+* Social/accountability activity
+* Historical behavior
+
+The AI should become more personalized over time.
+
+Deployment Requirement:
+
+All solutions must be compatible with:
+
+* Vercel deployment
+* Neon PostgreSQL
+* Existing repository architecture
+* Existing production environment
+
+Do not recommend rebuilding infrastructure unless absolutely necessary.
+
+The preferred approach is to integrate AI directly into the current production system using the existing repository, database, deployment pipeline, and application architecture.

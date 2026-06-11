@@ -333,3 +333,46 @@ export const founderProfiles = pgTable('founder_profiles', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })
+
+// AI Memory — persistent facts, decisions, preferences extracted from user activity
+export const aiMemories = pgTable('ai_memories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(), // 'fact' | 'decision' | 'preference' | 'goal' | 'reflection' | 'pattern'
+  content: text('content').notNull(),
+  source: text('source'), // which module created this: 'chat', 'ideas', 'planner', 'finance', etc.
+  importance: integer('importance').default(5), // 1-10 scale
+  tags: jsonb('tags').default([]),
+  expiresAt: timestamp('expires_at'),
+  lastReferencedAt: timestamp('last_referenced_at').defaultNow(),
+  referenceCount: integer('reference_count').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+// User Activity Log — tracks all meaningful actions for behavioral intelligence
+export const userActivityLog = pgTable('user_activity_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  action: text('action').notNull(), // 'created_idea', 'completed_task', 'sent_message', 'added_lead', etc.
+  module: text('module').notNull(), // 'ideas', 'projects', 'crm', 'chat', 'content', 'seo', 'finance'
+  entityId: text('entity_id'),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at').defaultNow(),
+})
+
+// AI Insights — proactive, system-generated intelligence surfaced to the founder
+export const aiInsights = pgTable('ai_insights', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(), // 'opportunity' | 'risk' | 'recommendation' | 'pattern' | 'alert'
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  module: text('module'), // which part of the product this relates to
+  priority: text('priority').default('medium'), // 'high' | 'medium' | 'low'
+  read: boolean('read').default(false),
+  dismissed: boolean('dismissed').default(false),
+  actionUrl: text('action_url'),
+  expiresAt: timestamp('expires_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+})
