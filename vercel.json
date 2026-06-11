@@ -1,13 +1,19 @@
 {
   "version": 2,
-  "buildCommand": "npm run build:client",
-  "outputDirectory": "dist/client",
   "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/client"
+      }
+    },
     {
       "src": "server/index.ts",
       "use": "@vercel/node",
       "config": {
-        "runtime": "nodejs20.x"
+        "maxDuration": 30,
+        "includeFiles": ["server/**", "node_modules/**"]
       }
     }
   ],

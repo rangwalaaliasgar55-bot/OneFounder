@@ -116,8 +116,8 @@ app.use((err: any, req: express.Request, res: express.Response, _next: express.N
   })
 })
 
-// Serve built client in production
-if (process.env.NODE_ENV === 'production') {
+// Serve built client in production (not on Vercel — CDN handles static files there)
+if (process.env.NODE_ENV === 'production' && !process.env.VERCEL) {
   const clientDist = path.resolve(process.cwd(), 'dist/client')
   app.use(express.static(clientDist))
   app.get('*', (_req, res) => {

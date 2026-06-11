@@ -11,6 +11,7 @@
     "build:client": "vite build --config client/vite.config.ts",
     "build:server": "tsc -p server/tsconfig.json",
     "start": "node dist/server/index.js",
+    "vercel-build": "npm run build:client",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
