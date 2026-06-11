@@ -1,0 +1,125 @@
+🧠 SYSTEM GOAL
+
+Transform this project into a multi-expert AI system that can act as:
+
+Senior Software Engineer (all languages)
+Code debugger & architect
+Python execution assistant (safe sandbox)
+SEO expert (technical + content + ranking strategy)
+Product manager (roadmaps, features, UX decisions)
+Data analyst (SQL, charts, insights)
+Cybersecurity analyst (vulnerability detection, secure coding guidance)
+Learning tutor (teaches any programming language step-by-step)
+⚙️ 1. FIRST PRIORITY: FIX ALL ERRORS
+
+Before adding features:
+
+Fix ALL runtime errors
+Fix backend (Node/Express or FastAPI) fully
+Fix frontend build issues
+Fix authentication issues (/auth/* routes if present)
+Fix database connection (Neon PostgreSQL if used)
+Ensure production deployment works on Replit + Vercel
+🧩 2. ARCHITECTURE CLEANUP
+Standardize project to ONE module system (ESM preferred)
+Clean API structure:
+/api/* backend routes
+Add global error handler
+Add logging system for debugging
+🧠 3. MULTI-ROLE AI SYSTEM (CORE FEATURE)
+
+Create an AI router system that detects user intent and switches modes:
+
+AI MODES:
+💻 Code Expert Mode
+Debug any code (all languages)
+Explain code step-by-step
+Optimize performance
+Suggest best practices
+🐍 Python Expert Mode
+Execute safe Python code
+Teach Python from beginner → advanced
+Data science + automation help
+📈 SEO Expert Mode
+Keyword research strategy
+Blog optimization
+Technical SEO audits
+Ranking improvement suggestions
+📊 Data Analyst Mode
+SQL queries
+Data cleaning suggestions
+Chart/insight generation
+Business analytics advice
+🔐 Cybersecurity Mode
+Detect insecure code
+Suggest secure patterns
+Explain vulnerabilities (OWASP basics)
+API security checks
+📦 Product Manager Mode
+Feature planning
+Roadmaps
+UX improvements
+SaaS scaling advice
+🧠 4. “SMART ROUTING SYSTEM”
+
+Build an internal function:
+
+Detect user intent automatically
+Route to correct AI mode
+Combine modes when needed (e.g., SEO + Product)
+🐍 5. PYTHON EXECUTION SYSTEM
+Add secure sandboxed Python runtime
+No system file access
+Return output + errors safely
+Support data analysis scripts
+🗄️ 6. DATABASE (NEON POSTGRES)
+
+Ensure:
+
+DATABASE_URL configured properly
+Tables:
+users
+sessions
+chat_history
+code_snippets
+user_memory (for pseudo-learning system)
+🧠 7. “LEARNING SYSTEM” (SIMULATED MEMORY)
+
+AI should “appear to learn” by:
+
+Storing user interactions in DB
+Recalling previous conversations
+Improving suggestions based on history
+Tracking preferences per user
+
+IMPORTANT: This is NOT model training, only contextual memory.
+
+🎨 8. UI REQUIREMENTS
+Modern AI chat interface
+Mode selector (Code / SEO / Cyber / Product / Data)
+Syntax highlighting for code
+Loading indicators
+Mobile responsive UI
+🔐 9. SECURITY REQUIREMENTS
+Validate all inputs
+Prevent code injection
+Secure API routes
+Protect Python execution sandbox
+Rate limiting for API endpoints
+🚀 10. FINAL OUTPUT REQUIREMENTS
+
+After completion:
+
+App must run without errors
+All modes must work
+Database must be connected
+Python execution must work
+Provide:
+setup instructions
+env variables
+architecture explanation
+🌟 IMPORTANT DESIGN RULE
+
+The AI must always behave like:
+
+“A team of expert systems working together, not a single chatbot.”

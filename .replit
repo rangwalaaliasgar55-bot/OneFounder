@@ -2,6 +2,7 @@ modules = ["nodejs-20", "postgresql-16"]
 [agent]
 expertMode = true
 stack = "BEST_EFFORT_FALLBACK"
+integrations = ["javascript_anthropic_ai_integrations:2.0.0"]
 
 [nix]
 channel = "stable-25_05"
