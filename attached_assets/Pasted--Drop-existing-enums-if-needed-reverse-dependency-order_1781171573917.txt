@@ -1,0 +1,67 @@
+-- Drop existing enums if needed (reverse dependency order)
+DROP TYPE IF EXISTS finance_entry_type CASCADE;
+DROP TYPE IF EXISTS social_platform CASCADE;
+DROP TYPE IF EXISTS social_post_status CASCADE;
+DROP TYPE IF EXISTS content_type CASCADE;
+DROP TYPE IF EXISTS lead_status CASCADE;
+DROP TYPE IF EXISTS task_status CASCADE;
+DROP TYPE IF EXISTS idea_status CASCADE;
+DROP TYPE IF EXISTS role CASCADE;
+
+-- Create enums
+CREATE TYPE role AS ENUM ('admin', 'editor', 'viewer');
+CREATE TYPE idea_status AS ENUM ('draft', 'validated', 'building', 'launched');
+CREATE TYPE task_status AS ENUM ('todo', 'in_progress', 'done', 'cancelled');
+CREATE TYPE lead_status AS ENUM ('lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost');
+CREATE TYPE content_type AS ENUM ('blog', 'landing_page', 'linkedin', 'twitter', 'newsletter', 'email', 'ad_copy', 'product_description');
+CREATE TYPE social_post_status AS ENUM ('draft', 'scheduled', 'published', 'failed');
+CREATE TYPE social_platform AS ENUM ('linkedin', 'twitter', 'instagram', 'tiktok', 'facebook');
+CREATE TYPE finance_entry_type AS ENUM ('revenue', 'expense', 'subscription');
+
+-- Auth tables
+CREATE TABLE users (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  email TEXT NOT NULL UNIQUE,
+  name TEXT,
+  avatar TEXT,
+  email_verified BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TIMESTAMP NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  ip_address TEXT,
+  user_agent TEXT
+);
+
+CREATE TABLE accounts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  account_id TEXT NOT NULL,
+  provider_id TEXT NOT NULL,
+  access_token TEXT,
+  refresh_token TEXT,
+  expires_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE verifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  identifier TEXT NOT NULL,
+  value TEXT NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX idx_accounts_user_id ON accounts(user_id);

@@ -10,8 +10,8 @@ channel = "stable-25_05"
 
 [userenv.shared]
 PORT = "3001"
-BETTER_AUTH_URL = "http://localhost:3001"
-CLIENT_URL = "http://localhost:5173"
+BETTER_AUTH_URL = "https://be0a5bcd-6b1f-4dbc-b750-36495e0fbee9-00-2xk7lx9nfuojc.sisko.replit.dev"
+CLIENT_URL = "https://be0a5bcd-6b1f-4dbc-b750-36495e0fbee9-00-2xk7lx9nfuojc.sisko.replit.dev"
 OLLAMA_BASE_URL = "http://localhost:11434"
 OLLAMA_MODEL = "llama3.2"
 NODE_ENV = "development"

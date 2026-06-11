@@ -1,0 +1,61 @@
+Fix all existing errors in my project and upgrade the system into a production-ready AI-powered app.
+
+🧩 1. Fix all current issues
+Debug and fix all runtime errors in backend and frontend
+Fix authentication issues (/auth/* routes if present)
+Fix database connection issues (Neon PostgreSQL if used)
+Fix any build/deployment errors
+Ensure the app runs successfully in Replit + production mode
+⚙️ 2. Fix backend architecture
+Ensure backend runs correctly (Node.js / Express / FastAPI if used)
+Convert project to correct module system (ESM or CommonJS consistently)
+Remove all incompatible imports causing crashes (like ERR_REQUIRE_ESM)
+Ensure clean API structure:
+/api/* for backend routes
+Proper error handling middleware
+🧠 3. Add AI “learning + coding assistant” features
+
+Upgrade the app into an AI-powered coding assistant system:
+
+Features to implement:
+Code explanation (user gives code → AI explains it)
+Code debugging (user pastes code → AI finds errors)
+Code improvement suggestions (optimize + refactor)
+Simple “teach coding” mode (step-by-step explanations)
+Optional: Python execution sandbox (safe execution only)
+🐍 4. Python integration
+Add a secure Python execution environment
+Allow running small Python snippets safely
+Return output/errors to frontend
+Prevent unsafe operations (no system access, no file system abuse)
+🗄️ 5. Database (Neon PostgreSQL)
+Ensure DATABASE_URL is correctly used
+Fix schema if missing tables
+Create tables for:
+users
+sessions
+saved code snippets (optional feature)
+Ensure proper connection pooling and error handling
+🎨 6. UI/UX improvements
+Make UI clean and modern
+Add loading states for AI responses
+Improve chat interface for AI assistant
+Ensure mobile responsiveness
+🔐 7. Environment variables (ensure working setup)
+
+Make sure project uses:
+
+DATABASE_URL
+ANY_AUTH_SECRET (if auth exists)
+AI_API_KEY (if required)
+🚀 8. Final output requirement
+
+After fixes:
+
+App must run without errors
+Backend + frontend must both work
+AI features must be functional
+Provide summary of:
+what was fixed
+what was added
+how to run project
