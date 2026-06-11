@@ -11,7 +11,7 @@ export interface AIProvider {
   research(topic: string): Promise<string>
 }
 
-export type AIProviderType = 'ollama' | 'openai' | 'claude' | 'gemini'
+export type AIProviderType = 'ollama' | 'mock'
 
 export interface AIConfig {
   provider: AIProviderType

@@ -3,10 +3,9 @@ import { requireAuth } from '../middleware/auth'
 import { db } from '../db'
 import { chatMessages } from '../db/schema'
 import { eq, desc, and } from 'drizzle-orm'
-import { getAIProvider } from '../ai'
 import { v4 as uuidv4 } from 'uuid'
-import { assembleFounderContext, buildSystemPromptWithContext } from '../ai/context'
-import { extractAndStoreMemories } from '../ai/memory'
+import { brain } from '../ai/brain'
+import { detectExpertMode } from '../ai/router'
 import { logActivity } from '../ai/activity'
 
 const router = Router()
@@ -49,68 +48,79 @@ router.post('/send', requireAuth, async (req, res) => {
   if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message required' })
   if (message.length > 4000) return res.status(400).json({ error: 'Message too long (max 4000 chars)' })
 
-  const session = sessionId || uuidv4()
-
-  await db.insert(chatMessages).values({
-    userId: user.id,
-    sessionId: session,
-    role: 'user',
-    content: message,
-  })
-
-  await logActivity(user.id, 'sent_message', 'chat', session, { agentType })
-
-  const history = await db.select().from(chatMessages)
-    .where(and(
-      eq(chatMessages.userId, user.id),
-      eq(chatMessages.sessionId, session)
-    ))
-    .orderBy(chatMessages.createdAt)
-
-  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-
-  const agentBasePrompts: Record<string, string> = {
-    ceo: `You are the CEO Agent for OneFounder. Today is ${today}. You help with business strategy, decision-making, prioritization, and high-level planning. Be strategic, decisive, and results-focused. Always reference the founder context below to give specific, not generic, advice.`,
-    marketing: `You are the Marketing Agent. Today is ${today}. You help with growth strategies, content marketing, brand positioning, and customer acquisition. Be creative and data-driven. Use the founder context to make your recommendations specific to their stage and industry.`,
-    seo: `You are the SEO Agent. Today is ${today}. You help with keyword research, content optimization, technical SEO, and ranking strategies. Be specific and actionable. Reference any keywords or content already tracked.`,
-    sales: `You are the Sales Agent. Today is ${today}. You help with lead generation, outreach scripts, proposals, and closing strategies. Reference the founder's actual leads and pipeline when giving advice.`,
-    research: `You are the Research Agent. Today is ${today}. You analyze competitors, markets, and opportunities. Provide data-driven insights and strategic recommendations specific to the founder's industry and stage.`,
-    operations: `You are the Operations Agent. Today is ${today}. You help optimize workflows, processes, and business systems for maximum efficiency. Be specific about which OneFounder modules to leverage.`,
-    product: `You are the Product Agent. Today is ${today}. You help with product planning, feature prioritization, user stories, and product strategy. Reference the founder's actual ideas and projects.`,
-    founder: `You are the Founder AI — a brilliant, experienced startup advisor and business strategist embedded inside OneFounder. Today is ${today}. You have full context on this founder's business, goals, and current situation. Give direct, specific, personalized advice. Never be generic. Always reference their actual data.`,
-  }
-
-  const basePrompt = agentBasePrompts[agentType] || agentBasePrompts.founder
-
-  let systemPrompt = basePrompt
-  try {
-    const context = await assembleFounderContext(user.id)
-    systemPrompt = buildSystemPromptWithContext(basePrompt, context)
-  } catch {}
-
-  const messages = [
-    { role: 'system' as const, content: systemPrompt },
-    ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
-  ]
+  await logActivity(user.id, 'sent_message', 'chat', sessionId, { agentType }).catch(() => {})
 
   try {
-    const ai = await getAIProvider()
-    const response = await ai.chat(messages)
-
-    const [saved] = await db.insert(chatMessages).values({
+    const result = await brain.process({
       userId: user.id,
-      sessionId: session,
-      role: 'assistant',
-      content: response,
-      model: agentType || 'founder',
-    }).returning()
+      message,
+      sessionId,
+      forcedMode: agentType && agentType !== 'founder' ? agentType : undefined,
+      useWebSearch: agentType === 'research' || agentType === undefined,
+    })
 
-    extractAndStoreMemories(user.id, message, response, `chat:${agentType || 'founder'}`).catch(() => {})
+    const saved = await db.query.chatMessages.findFirst({
+      where: and(
+        eq(chatMessages.userId, user.id),
+        eq(chatMessages.sessionId, result.sessionId)
+      ),
+      orderBy: [desc(chatMessages.createdAt)],
+    })
 
-    res.json({ message: saved, sessionId: session })
+    res.json({
+      message: saved || { id: uuidv4(), role: 'assistant', content: result.response },
+      sessionId: result.sessionId,
+      mode: result.mode,
+      modeLabel: result.modeLabel,
+      confidence: result.confidence,
+      webSearchUsed: result.webSearchUsed,
+    })
   } catch (error: any) {
     res.status(500).json({ error: error.message })
   }
+})
+
+router.post('/stream', requireAuth, async (req, res) => {
+  const user = (req as any).user
+  const { message, sessionId, agentType } = req.body
+  if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message required' })
+  if (message.length > 4000) return res.status(400).json({ error: 'Message too long (max 4000 chars)' })
+
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.setHeader('X-Accel-Buffering', 'no')
+  res.flushHeaders()
+
+  const send = (event: string, data: string) => {
+    res.write(`event: ${event}\ndata: ${data}\n\n`)
+  }
+
+  try {
+    const gen = brain.stream({
+      userId: user.id,
+      message,
+      sessionId,
+      forcedMode: agentType && agentType !== 'founder' ? agentType : undefined,
+      useWebSearch: agentType === 'research' || agentType === undefined,
+    })
+
+    for await (const chunk of gen) {
+      send(chunk.type, typeof chunk.data === 'string' ? chunk.data : JSON.stringify(chunk.data))
+      if (chunk.type === 'done' || chunk.type === 'error') break
+    }
+  } catch (err: any) {
+    send('error', err.message || 'Stream failed')
+  } finally {
+    res.end()
+  }
+})
+
+router.get('/route/analyze', async (req, res) => {
+  const { message } = req.query
+  if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message required' })
+  const result = detectExpertMode(message)
+  res.json(result)
 })
 
 export default router

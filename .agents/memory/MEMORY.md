@@ -1,1 +1,2 @@
 - [Tailwind + Vite config](tailwind-vite-config.md) — tailwind.config.js must be at workspace root with client/ paths; PostCSS must be inlined in vite.config.ts
+- [ONEFOUNDER AI Brain](onefoundr-ai-brain.md) — full AI Brain built: router, prompt enhancer, brain orchestrator, streaming SSE; Ollama-only, no external APIs

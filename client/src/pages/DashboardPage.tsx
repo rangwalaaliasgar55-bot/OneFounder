@@ -160,9 +160,7 @@ export function DashboardPage() {
   const urgencyBg = (u: string) => u === 'high' ? 'bg-red-500/10 border-red-500/20' : u === 'medium' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-emerald-500/10 border-emerald-500/20'
 
   const providerLabel = aiStatus?.available
-    ? aiStatus.provider === 'claude'
-      ? `Claude (${aiStatus.models?.[0] || 'Sonnet'})`
-      : `Ollama (${aiStatus.models?.[0] || 'connected'})`
+    ? `🧠 AI Online (${aiStatus.models?.[0] || 'Ollama'})`
     : 'Demo Mode'
 
   return (
@@ -227,9 +225,9 @@ export function DashboardPage() {
           <div>
             <p className="text-yellow-400 text-sm font-medium">AI in Demo Mode</p>
             <p className="text-slate-400 text-xs mt-0.5">
-              Set <code className="bg-white/10 px-1 rounded text-xs">ANTHROPIC_API_KEY</code> for Claude AI, or install{' '}
-              <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">Ollama</a>{' '}
-              and run <code className="bg-white/10 px-1 rounded text-xs">ollama pull llama3.2</code> to enable real AI.
+              Install <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">Ollama</a> and run{' '}
+              <code className="bg-white/10 px-1 rounded text-xs">ollama serve</code> then{' '}
+              <code className="bg-white/10 px-1 rounded text-xs">ollama pull llama3.2</code> to enable the full AI Brain.
             </p>
           </div>
         </div>

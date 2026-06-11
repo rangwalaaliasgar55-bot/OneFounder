@@ -62,9 +62,7 @@ export function SettingsPage() {
   ]
 
   const providerLabel = aiStatus?.available
-    ? aiStatus.provider === 'claude'
-      ? `Claude AI (${aiStatus.models?.[0] || 'Sonnet'})`
-      : `Ollama (${aiStatus.models?.join(', ') || 'connected'})`
+    ? `ONEFOUNDER AI — Ollama (${aiStatus.models?.join(', ') || 'connected'})`
     : 'Demo Mode (No AI)'
 
   const riskOptions = [
@@ -231,25 +229,31 @@ export function SettingsPage() {
               <div className="flex-1">
                 <div className="text-sm font-medium text-white">{providerLabel}</div>
                 <div className="text-xs text-slate-400 mt-0.5">
-                  {aiStatus?.provider === 'claude' && 'Powered by Anthropic Claude — set via ANTHROPIC_API_KEY'}
-                  {aiStatus?.provider === 'ollama' && `Models: ${aiStatus.models?.join(', ') || 'none loaded'}`}
-                  {!aiStatus?.available && 'Set ANTHROPIC_API_KEY or install Ollama to enable real AI'}
+                  {aiStatus?.provider === 'ollama' && `Models: ${aiStatus.models?.join(', ') || 'none loaded'} · Local inference via Ollama`}
+                  {!aiStatus?.available && 'Install Ollama and run: ollama serve && ollama pull llama3.2'}
                 </div>
               </div>
             </div>
 
             {!aiStatus?.available && (
-              <div className="glass rounded-xl p-4 text-sm text-slate-400 space-y-2">
-                <p className="font-medium text-white">How to enable AI:</p>
-                <p className="text-xs text-slate-400">Option 1: Set <code className="bg-white/10 px-2 py-0.5 rounded text-xs font-mono">ANTHROPIC_API_KEY</code> environment variable for Claude AI</p>
-                <p className="text-xs text-slate-400">Option 2: Install <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">Ollama</a> and run <code className="bg-white/10 px-1 rounded text-xs font-mono">ollama pull llama3.2</code></p>
+              <div className="glass rounded-xl p-4 text-sm text-slate-400 space-y-3">
+                <p className="font-medium text-white">Enable ONEFOUNDER AI (Local · Free · Private)</p>
+                <div className="space-y-2">
+                  <p className="text-xs text-slate-400">1. Install Ollama: <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">ollama.ai</a></p>
+                  <p className="text-xs text-slate-400">2. Start the engine: <code className="bg-white/10 px-2 py-0.5 rounded text-xs font-mono">ollama serve</code></p>
+                  <p className="text-xs text-slate-400">3. Pull a model: <code className="bg-white/10 px-2 py-0.5 rounded text-xs font-mono">ollama pull llama3.2</code></p>
+                </div>
+                <p className="text-xs text-slate-600">Recommended models: llama3.2, mistral, deepseek-r1, qwen2.5</p>
               </div>
             )}
 
-            {aiStatus?.available && aiStatus.provider !== 'claude' && (
-              <div className="glass rounded-xl p-4 text-sm text-slate-400">
-                <p className="font-medium text-white mb-1">Upgrade to Claude AI</p>
-                <p className="text-xs">Set <code className="bg-white/10 px-2 py-0.5 rounded text-xs font-mono">ANTHROPIC_API_KEY</code> to use claude-sonnet-4-20250514 for better results.</p>
+            {aiStatus?.available && (
+              <div className="glass rounded-xl p-4 text-sm text-slate-400 space-y-1">
+                <p className="font-medium text-white mb-2">🧠 ONEFOUNDER AI Brain — Active</p>
+                <p className="text-xs">Auto-routing: detects intent and routes to the right expert (Code · SEO · Security · Data · Research · Startup)</p>
+                <p className="text-xs">Prompt enhancement: rewrites your question into expert-level prompts</p>
+                <p className="text-xs">Web search: injects live news and trends into research queries</p>
+                <p className="text-xs">Memory: learns your business context over time</p>
               </div>
             )}
           </div>
@@ -284,7 +288,7 @@ export function SettingsPage() {
         </div>
 
         <div className="text-center text-xs text-slate-600 py-4">
-          OneFounder v1.0.0 · The OS for Founders · Built with Claude AI, Neon PostgreSQL, Better Auth
+          ONEFOUNDER v2.0 · The OS for Founders · Powered by Ollama AI · Neon PostgreSQL · Better Auth
         </div>
       </div>
     </div>
