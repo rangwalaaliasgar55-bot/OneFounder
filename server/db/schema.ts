@@ -9,8 +9,9 @@ export const socialPostStatusEnum = pgEnum('social_post_status', ['draft', 'sche
 export const socialPlatformEnum = pgEnum('social_platform', ['linkedin', 'twitter', 'instagram', 'tiktok', 'facebook'])
 export const financeEntryTypeEnum = pgEnum('finance_entry_type', ['revenue', 'expense', 'subscription'])
 
+// Auth tables — id and userId use TEXT so Better Auth's string IDs work correctly
 export const users = pgTable('users', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
   name: text('name'),
   avatar: text('avatar'),
@@ -21,7 +22,7 @@ export const users = pgTable('users', {
 
 export const sessions = pgTable('sessions', {
   id: text('id').primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   expiresAt: timestamp('expires_at').notNull(),
   token: text('token').notNull().unique(),
   createdAt: timestamp('created_at').defaultNow(),
@@ -31,19 +32,22 @@ export const sessions = pgTable('sessions', {
 })
 
 export const accounts = pgTable('accounts', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   accountId: text('account_id').notNull(),
   providerId: text('provider_id').notNull(),
   accessToken: text('access_token'),
   refreshToken: text('refresh_token'),
+  accessTokenExpiresAt: timestamp('access_token_expires_at'),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
   expiresAt: timestamp('expires_at'),
+  password: text('password'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 
 export const verifications = pgTable('verifications', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: text('id').primaryKey(),
   identifier: text('identifier').notNull(),
   value: text('value').notNull(),
   expiresAt: timestamp('expires_at').notNull(),
@@ -53,7 +57,7 @@ export const verifications = pgTable('verifications', {
 
 export const businessIdeas = pgTable('business_ideas', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   description: text('description'),
   type: text('type'),
@@ -70,7 +74,7 @@ export const businessIdeas = pgTable('business_ideas', {
 
 export const researchReports = pgTable('research_reports', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   ideaId: uuid('idea_id').references(() => businessIdeas.id, { onDelete: 'set null' }),
   title: text('title').notNull(),
   niche: text('niche'),
@@ -86,7 +90,7 @@ export const researchReports = pgTable('research_reports', {
 
 export const businessPlans = pgTable('business_plans', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   ideaId: uuid('idea_id').references(() => businessIdeas.id, { onDelete: 'set null' }),
   title: text('title').notNull(),
   businessModel: text('business_model'),
@@ -103,7 +107,7 @@ export const businessPlans = pgTable('business_plans', {
 
 export const projects = pgTable('projects', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   ideaId: uuid('idea_id').references(() => businessIdeas.id, { onDelete: 'set null' }),
   name: text('name').notNull(),
   description: text('description'),
@@ -130,7 +134,7 @@ export const tasks = pgTable('tasks', {
   id: uuid('id').primaryKey().defaultRandom(),
   projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
   milestoneId: uuid('milestone_id').references(() => milestones.id, { onDelete: 'set null' }),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   description: text('description'),
   status: taskStatusEnum('status').default('todo'),
@@ -143,7 +147,7 @@ export const tasks = pgTable('tasks', {
 
 export const contentPieces = pgTable('content_pieces', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   type: contentTypeEnum('type').default('blog'),
   content: text('content'),
@@ -159,7 +163,7 @@ export const contentPieces = pgTable('content_pieces', {
 
 export const leads = pgTable('leads', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   email: text('email'),
   company: text('company'),
@@ -175,7 +179,7 @@ export const leads = pgTable('leads', {
 
 export const chatMessages = pgTable('chat_messages', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   sessionId: text('session_id').notNull(),
   role: text('role').notNull(),
   content: text('content').notNull(),
@@ -185,7 +189,7 @@ export const chatMessages = pgTable('chat_messages', {
 
 export const knowledgeBase = pgTable('knowledge_base', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   content: text('content'),
   type: text('type').default('note'),
@@ -196,7 +200,7 @@ export const knowledgeBase = pgTable('knowledge_base', {
 
 export const socialPosts = pgTable('social_posts', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   platform: socialPlatformEnum('platform').notNull(),
   content: text('content').notNull(),
   status: socialPostStatusEnum('status').default('draft'),
@@ -211,7 +215,7 @@ export const socialPosts = pgTable('social_posts', {
 
 export const financeEntries = pgTable('finance_entries', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   type: financeEntryTypeEnum('type').notNull(),
   amount: integer('amount').notNull(),
   currency: text('currency').default('USD'),
@@ -226,7 +230,7 @@ export const financeEntries = pgTable('finance_entries', {
 
 export const seoKeywords = pgTable('seo_keywords', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   keyword: text('keyword').notNull(),
   targetUrl: text('target_url'),
   volume: integer('volume'),
@@ -246,7 +250,7 @@ export const seoKeywords = pgTable('seo_keywords', {
 
 export const seoAudits = pgTable('seo_audits', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   url: text('url').notNull(),
   score: integer('score'),
   issues: jsonb('issues'),
@@ -257,7 +261,7 @@ export const seoAudits = pgTable('seo_audits', {
 
 export const backlinks = pgTable('backlinks', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   sourceUrl: text('source_url').notNull(),
   sourceDomain: text('source_domain'),
   targetUrl: text('target_url').notNull(),
@@ -275,7 +279,7 @@ export const backlinks = pgTable('backlinks', {
 
 export const journeyMilestones = pgTable('journey_milestones', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   key: text('key').notNull(),
   stage: text('stage').notNull(),
   title: text('title').notNull(),
@@ -292,7 +296,7 @@ export const journeyMilestones = pgTable('journey_milestones', {
 
 export const seoBriefs = pgTable('seo_briefs', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   keyword: text('keyword').notNull(),
   targetAudience: text('target_audience'),
   businessContext: text('business_context'),
@@ -306,10 +310,9 @@ export const seoBriefs = pgTable('seo_briefs', {
   createdAt: timestamp('created_at').defaultNow(),
 })
 
-// WordPress / Website Manager
 export const wpSites = pgTable('wp_sites', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   siteUrl: text('site_url').notNull(),
   siteName: text('site_name'),
   applicationPassword: text('application_password'),
@@ -320,10 +323,9 @@ export const wpSites = pgTable('wp_sites', {
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 
-// Founder Profile
 export const founderProfiles = pgTable('founder_profiles', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
   riskTolerance: text('risk_tolerance').default('moderate'),
   workStyle: text('work_style').default('builder'),
   primaryGoal: text('primary_goal').default('get_first_customer'),
@@ -334,14 +336,13 @@ export const founderProfiles = pgTable('founder_profiles', {
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 
-// AI Memory — persistent facts, decisions, preferences extracted from user activity
 export const aiMemories = pgTable('ai_memories', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  type: text('type').notNull(), // 'fact' | 'decision' | 'preference' | 'goal' | 'reflection' | 'pattern'
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(),
   content: text('content').notNull(),
-  source: text('source'), // which module created this: 'chat', 'ideas', 'planner', 'finance', etc.
-  importance: integer('importance').default(5), // 1-10 scale
+  source: text('source'),
+  importance: integer('importance').default(5),
   tags: jsonb('tags').default([]),
   expiresAt: timestamp('expires_at'),
   lastReferencedAt: timestamp('last_referenced_at').defaultNow(),
@@ -350,26 +351,24 @@ export const aiMemories = pgTable('ai_memories', {
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 
-// User Activity Log — tracks all meaningful actions for behavioral intelligence
 export const userActivityLog = pgTable('user_activity_log', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  action: text('action').notNull(), // 'created_idea', 'completed_task', 'sent_message', 'added_lead', etc.
-  module: text('module').notNull(), // 'ideas', 'projects', 'crm', 'chat', 'content', 'seo', 'finance'
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  action: text('action').notNull(),
+  module: text('module').notNull(),
   entityId: text('entity_id'),
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at').defaultNow(),
 })
 
-// AI Insights — proactive, system-generated intelligence surfaced to the founder
 export const aiInsights = pgTable('ai_insights', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  type: text('type').notNull(), // 'opportunity' | 'risk' | 'recommendation' | 'pattern' | 'alert'
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(),
   title: text('title').notNull(),
   body: text('body').notNull(),
-  module: text('module'), // which part of the product this relates to
-  priority: text('priority').default('medium'), // 'high' | 'medium' | 'low'
+  module: text('module'),
+  priority: text('priority').default('medium'),
   read: boolean('read').default(false),
   dismissed: boolean('dismissed').default(false),
   actionUrl: text('action_url'),

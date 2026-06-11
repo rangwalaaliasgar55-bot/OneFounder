@@ -2,10 +2,14 @@ import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { db } from './db'
 import { users, sessions, accounts, verifications } from './db/schema'
+import { v4 as uuidv4 } from 'uuid'
 import dotenv from 'dotenv'
 dotenv.config()
 
 export const auth = betterAuth({
+  advanced: {
+    generateId: () => uuidv4(),
+  },
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: {

@@ -3,6 +3,7 @@ import cors from 'cors'
 import path from 'path'
 import { toNodeHandler } from 'better-auth/node'
 import { auth } from './auth'
+import { rateLimit } from 'express-rate-limit'
 import dotenv from 'dotenv'
 dotenv.config()
 
@@ -24,9 +25,25 @@ import journeyRoutes from './routes/journey'
 import wordpressRoutes from './routes/wordpress'
 import founderProfileRoutes from './routes/founderProfile'
 import intelligenceRoutes from './routes/intelligence'
+import expertRoutes from './routes/expert'
 
 const app = express()
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT || 3001
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+})
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 20,
+  message: { error: 'AI rate limit reached. Please wait a moment.' },
+})
 
 app.use(cors({
   origin: [
@@ -40,11 +57,13 @@ app.use(cors({
   credentials: true,
 }))
 
+app.use(limiter)
 app.use('/auth', toNodeHandler(auth))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
 
-app.use('/api/ai', aiRoutes)
+// Routes
+app.use('/api/ai', aiLimiter, aiRoutes)
 app.use('/api/ideas', ideasRoutes)
 app.use('/api/research', researchRoutes)
 app.use('/api/plans', plansRoutes)
@@ -52,7 +71,7 @@ app.use('/api/projects', projectsRoutes)
 app.use('/api/content', contentRoutes)
 app.use('/api/leads', leadsRoutes)
 app.use('/api/knowledge', knowledgeRoutes)
-app.use('/api/chat', chatRoutes)
+app.use('/api/chat', aiLimiter, chatRoutes)
 app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/social', socialRoutes)
 app.use('/api/finance', financeRoutes)
@@ -62,9 +81,18 @@ app.use('/api/journey', journeyRoutes)
 app.use('/api/wordpress', wordpressRoutes)
 app.use('/api/founder-profile', founderProfileRoutes)
 app.use('/api/intelligence', intelligenceRoutes)
+app.use('/api/expert', aiLimiter, expertRoutes)
 
 app.get('/api/health', (_, res) => {
-  res.json({ status: 'ok', version: '1.0.0', name: 'OneFounder' })
+  res.json({ status: 'ok', version: '2.0.0', name: 'OneFounder' })
+})
+
+// Global error handler
+app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('[Error]', err.message || err)
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : (err.message || 'Internal server error'),
+  })
 })
 
 // Serve built client in production
@@ -79,13 +107,13 @@ if (process.env.NODE_ENV === 'production') {
 if (!process.env.VERCEL) {
   const maxAttempts = 5
   const startServer = (port: number, attempt = 1) => {
-    const server = app.listen(port, () => {
+    const server = app.listen(port, '0.0.0.0', () => {
       console.log(`🚀 OneFounder server running on port ${port}`)
     })
     server.on('error', (err: any) => {
       if (err && err.code === 'EADDRINUSE' && attempt < maxAttempts) {
         const nextPort = port + 1
-        console.warn(`Port ${port} in use, trying ${nextPort} (attempt ${attempt + 1})`)
+        console.warn(`Port ${port} in use, trying ${nextPort}`)
         startServer(nextPort, attempt + 1)
       } else {
         console.error('Failed to start server:', err)
@@ -93,7 +121,6 @@ if (!process.env.VERCEL) {
       }
     })
   }
-
   startServer(Number(PORT))
 }
 
