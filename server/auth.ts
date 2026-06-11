@@ -17,7 +17,8 @@ export const auth = betterAuth({
   }),
   baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
   secret: process.env.BETTER_AUTH_SECRET || 'onefoundr-secret-change-in-production',
-  basePath: '/auth',
+  // Mount this router at /auth in Express, so the internal auth routes should use root path.
+  basePath: '/',
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
