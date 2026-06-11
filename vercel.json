@@ -8,8 +8,7 @@
     "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
     "NPM_CONFIG_STRICT_PEER_DEPS": "false",
     "NPM_CONFIG_FUND": "false",
-    "NPM_CONFIG_AUDIT": "false",
-    "NODE_VERSION": "22"
+    "NPM_CONFIG_AUDIT": "false"
   },
   "functions": {
     "api/server.ts": {

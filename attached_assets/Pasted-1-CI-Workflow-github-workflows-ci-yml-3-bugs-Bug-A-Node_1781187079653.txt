@@ -1,0 +1,21 @@
+1. CI Workflow (.github/workflows/ci.yml) — 3 bugs
+Bug A — Node 22 in matrix: Node 22 has known compatibility issues with several packages. Changed to 20.x.
+Bug B — Dependency audit logic inverted: The original grep ... && exit 1 was exiting 1 when no errors were found (grep returning 0 on match). Fixed to properly parse output and only fail on actual UNMET/INVALID lines.
+Bug C — Type-check would crash at runtime: db/index.ts throws immediately if DATABASE_URL is missing. During tsc --noEmit in CI, TypeScript actually evaluates top-level imports, so this crashes the type-check step. Fixed by injecting stub env vars (NEON_DATABASE_URL=postgresql://ci:ci@localhost/ci) in the CI step's env: block.
+
+2. client/tsconfig.json — 2 bugs
+Bug A — Missing .tsx in include: Was "./**/*.ts" — all React components are .tsx. Type-checking ignored them entirely. Fixed to ["./**/*.ts", "./**/*.tsx"].
+Bug B — Invalid ignoreDeprecations: "6.0": This is only valid in TypeScript 6.x+. The project uses TS 5.x, so this caused a TS compiler error. Removed.
+
+3. server/tsconfig.json — 1 bug
+Conflicting extends + rootDir: It extended the root tsconfig.json (which sets rootDir: "./server") but also declared rootDir: "." locally — a contradiction that caused tsc to error on path resolution. Fixed by making it a standalone tsconfig that doesn't extend the root.
+
+4. package.json — 2 bugs
+Bug A — engines.node: "22.x": Vercel and GitHub Actions respect this field. Pinning to 22.x causes failures on Node 20 runners. Changed to ">=20.0.0".
+Bug B — @types/react-router-dom@5: react-router-dom@6 ships its own TypeScript types. Installing @types/react-router-dom@5 alongside v6 creates conflicting type definitions (e.g. RouteComponentProps doesn't exist in v6). Removed.
+
+5. vercel.json — 1 bug
+NODE_VERSION: "22" in env block: This isn't how Vercel sets the Node runtime version — it reads .nvmrc or engines.node in package.json. Having it as an env var did nothing but clutter. Removed. Vercel now picks up Node 20 from .nvmrc.
+
+6. .nvmrc
+Changed from 22 → 20 to match CI and Vercel.

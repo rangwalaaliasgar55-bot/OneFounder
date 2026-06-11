@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [22.x]
+        node-version: [20.x]
 
     steps:
       - name: Checkout code
@@ -30,6 +30,9 @@ jobs:
 
       - name: Type-check server
         run: npx tsc --project server/tsconfig.json --noEmit
+        env:
+          NEON_DATABASE_URL: postgresql://ci:ci@localhost/ci
+          DATABASE_URL: postgresql://ci:ci@localhost/ci
 
       - name: Type-check client
         run: npx tsc --project client/tsconfig.json --noEmit
@@ -58,11 +61,18 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22.x
+          node-version: 20.x
           cache: 'npm'
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
       - name: Check for dependency conflicts
-        run: npm ls --depth=0 2>&1 | grep -E "UNMET|INVALID|ERR" && exit 1 || echo "No dependency conflicts found"
+        run: |
+          OUTPUT=$(npm ls --depth=0 2>&1 || true)
+          if echo "$OUTPUT" | grep -qE "UNMET|INVALID"; then
+            echo "Dependency conflicts found:"
+            echo "$OUTPUT"
+            exit 1
+          fi
+          echo "No dependency conflicts found"

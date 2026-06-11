@@ -1,8 +1,22 @@
 {
-  "extends": "../tsconfig.json",
   "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "lib": ["ES2020"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
     "outDir": "../dist/server",
-    "rootDir": "."
+    "rootDir": ".",
+    "baseUrl": ".",
+    "moduleResolution": "node",
+    "ignoreDeprecations": "5.0",
+    "allowSyntheticDefaultImports": true,
+    "paths": {
+      "@shared/*": ["../shared/*"]
+    }
   },
-  "include": ["./**/*.ts"]
+  "include": ["./**/*.ts"],
+  "exclude": ["../node_modules", "../dist", "./replit_integrations/**/*"]
 }
