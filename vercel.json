@@ -6,6 +6,11 @@
   "env": {
     "NPM_CONFIG_PRODUCTION": "false"
   },
+  "build": {
+    "env": {
+      "NODE_VERSION": "22"
+    }
+  },
   "functions": {
     "api/server.ts": {
       "maxDuration": 30
