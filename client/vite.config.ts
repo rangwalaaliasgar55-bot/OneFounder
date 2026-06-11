@@ -13,6 +13,15 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, '../dist/client'),
     emptyOutDir: true,
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react':  ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui':     ['react/jsx-runtime'],
+        },
+      },
+    },
   },
   resolve: {
     alias: {
