@@ -1,15 +1,8 @@
 {
   "version": 2,
-  "installCommand": "npm install --legacy-peer-deps",
+  "installCommand": "npm install --include=dev --legacy-peer-deps",
   "buildCommand": "npm run build:client",
   "outputDirectory": "dist/client",
-  "env": {
-    "NPM_CONFIG_PRODUCTION": "false",
-    "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
-    "NPM_CONFIG_STRICT_PEER_DEPS": "false",
-    "NPM_CONFIG_FUND": "false",
-    "NPM_CONFIG_AUDIT": "false"
-  },
   "functions": {
     "api/server.ts": {
       "maxDuration": 30
