@@ -2,12 +2,15 @@
   "version": 2,
   "builds": [
     {
-      "src": "server/index.ts",
-      "use": "@vercel/node"
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/client"
+      }
     },
     {
-      "src": "client/**/*",
-      "use": "@vercel/static"
+      "src": "server/index.ts",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -20,8 +23,11 @@
       "dest": "/server/index.ts"
     },
     {
+      "handle": "filesystem"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/client/index.html"
+      "dest": "/dist/client/index.html"
     }
   ]
 }

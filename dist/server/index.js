@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const path_1 = __importDefault(require("path"));
+const node_1 = require("better-auth/node");
 const auth_1 = require("./auth");
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
@@ -28,7 +29,7 @@ const wordpress_1 = __importDefault(require("./routes/wordpress"));
 const founderProfile_1 = __importDefault(require("./routes/founderProfile"));
 const intelligence_1 = __importDefault(require("./routes/intelligence"));
 const app = (0, express_1.default)();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 app.use((0, cors_1.default)({
     origin: [
         'http://localhost:5173',
@@ -40,48 +41,9 @@ app.use((0, cors_1.default)({
     ].filter(Boolean),
     credentials: true,
 }));
+app.use('/auth', (0, node_1.toNodeHandler)(auth_1.auth));
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true }));
-app.all('/auth/*', async (req, res, next) => {
-    try {
-        const authUrl = `http://localhost:3000${req.url}`;
-        const headers = new Headers();
-        Object.entries(req.headers).forEach(([key, value]) => {
-            if (value === undefined)
-                return;
-            if (Array.isArray(value))
-                value.forEach(v => headers.append(key, v));
-            else
-                headers.set(key, value);
-        });
-        const body = req.method !== 'GET' && req.method !== 'HEAD'
-            ? JSON.stringify(req.body || {})
-            : undefined;
-        const request = new Request(authUrl, {
-            method: req.method,
-            headers,
-            body,
-        });
-        const response = await auth_1.auth.handler(request);
-        response.headers.forEach((value, key) => {
-            if (key.toLowerCase() === 'set-cookie') {
-                const cookies = response.headers.get('set-cookie');
-                if (cookies) {
-                    res.setHeader('Set-Cookie', cookies);
-                }
-            }
-            else {
-                res.setHeader(key, value);
-            }
-        });
-        res.status(response.status);
-        const responseBody = await response.arrayBuffer();
-        res.send(Buffer.from(responseBody));
-    }
-    catch (error) {
-        next(error);
-    }
-});
 app.use('/api/ai', ai_1.default);
 app.use('/api/ideas', ideas_1.default);
 app.use('/api/research', research_1.default);
@@ -105,12 +67,15 @@ app.get('/api/health', (_, res) => {
 });
 // Serve built client in production
 if (process.env.NODE_ENV === 'production') {
-    const clientDist = path_1.default.resolve(__dirname, '../client');
+    const clientDist = path_1.default.resolve(process.cwd(), 'dist/client');
     app.use(express_1.default.static(clientDist));
     app.get('*', (_req, res) => {
         res.sendFile(path_1.default.join(clientDist, 'index.html'));
     });
 }
-app.listen(PORT, () => {
-    console.log(`🚀 OneFounder server running on port ${PORT}`);
-});
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`🚀 OneFounder server running on port ${PORT}`);
+    });
+}
+exports.default = app;

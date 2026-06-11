@@ -22,6 +22,7 @@ exports.auth = (0, better_auth_1.betterAuth)({
     }),
     baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
     secret: process.env.BETTER_AUTH_SECRET || 'onefoundr-secret-change-in-production',
+    basePath: '/auth',
     emailAndPassword: {
         enabled: true,
         requireEmailVerification: false,

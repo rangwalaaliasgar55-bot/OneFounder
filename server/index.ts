@@ -1,7 +1,6 @@
 import express from 'express'
 import cors from 'cors'
 import path from 'path'
-import { fileURLToPath } from 'node:url'
 import { toNodeHandler } from 'better-auth/node'
 import { auth } from './auth'
 import dotenv from 'dotenv'
@@ -70,21 +69,32 @@ app.get('/api/health', (_, res) => {
 
 // Serve built client in production
 if (process.env.NODE_ENV === 'production') {
-  const clientDist = path.resolve(__dirname, '../client')
+  const clientDist = path.resolve(process.cwd(), 'dist/client')
   app.use(express.static(clientDist))
   app.get('*', (_req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'))
   })
 }
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const isMain = process.argv[1] === __filename
+if (!process.env.VERCEL) {
+  const maxAttempts = 5
+  const startServer = (port: number, attempt = 1) => {
+    const server = app.listen(port, () => {
+      console.log(`🚀 OneFounder server running on port ${port}`)
+    })
+    server.on('error', (err: any) => {
+      if (err && err.code === 'EADDRINUSE' && attempt < maxAttempts) {
+        const nextPort = port + 1
+        console.warn(`Port ${port} in use, trying ${nextPort} (attempt ${attempt + 1})`)
+        startServer(nextPort, attempt + 1)
+      } else {
+        console.error('Failed to start server:', err)
+        process.exit(1)
+      }
+    })
+  }
 
-if (isMain && !process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`🚀 OneFounder server running on port ${PORT}`)
-  })
+  startServer(Number(PORT))
 }
 
 export default app
