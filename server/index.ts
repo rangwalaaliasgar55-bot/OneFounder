@@ -27,6 +27,7 @@ import wordpressRoutes from './routes/wordpress'
 import founderProfileRoutes from './routes/founderProfile'
 import intelligenceRoutes from './routes/intelligence'
 import expertRoutes from './routes/expert'
+import ogRoutes from './routes/og'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -103,6 +104,7 @@ app.use('/api/wordpress', wordpressRoutes)
 app.use('/api/founder-profile', founderProfileRoutes)
 app.use('/api/intelligence', intelligenceRoutes)
 app.use('/api/expert', aiLimiter, expertRoutes)
+app.use('/api/og', ogRoutes)
 
 app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', version: '2.0.0', name: 'OneFounder' })

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { api } from '../lib/api'
-import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { v4 as uuidv4 } from 'uuid'
 
 const FOUNDER_AGENTS = [
@@ -22,6 +21,28 @@ const EXPERT_AGENTS = [
   { id: 'research', icon: '🔬', name: 'Research Expert', desc: 'Deep market & competitive research' },
   { id: 'startup', icon: '🚀', name: 'Startup Advisor', desc: 'Strategy, growth & fundraising' },
 ]
+
+const MODELS = [
+  { id: 'llama3.2', label: 'Llama 3.2', desc: 'Best for general tasks', badge: 'General' },
+  { id: 'mistral', label: 'Mistral', desc: 'Fast & great for code', badge: 'Code' },
+  { id: 'deepseek-r1', label: 'DeepSeek R1', desc: 'Deep reasoning & research', badge: 'Research' },
+  { id: 'qwen2.5', label: 'Qwen 2.5', desc: 'Security & analysis', badge: 'Security' },
+]
+
+const DEFAULT_MODEL_FOR_AGENT: Record<string, string> = {
+  code: 'mistral',
+  data: 'deepseek-r1',
+  research: 'deepseek-r1',
+  security: 'qwen2.5',
+  startup: 'deepseek-r1',
+  seo: 'llama3.2',
+  founder: 'llama3.2',
+  ceo: 'llama3.2',
+  marketing: 'llama3.2',
+  sales: 'llama3.2',
+  operations: 'llama3.2',
+  product: 'llama3.2',
+}
 
 const MODE_COLORS: Record<string, string> = {
   code: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
@@ -56,7 +77,7 @@ interface Message {
   modeLabel?: string
   webSearchUsed?: boolean
   streaming?: boolean
-  createdAt?: string
+  model?: string
 }
 
 function renderContent(content: string) {
@@ -104,15 +125,29 @@ export function ChatPage() {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [activeMode, setActiveMode] = useState<string | null>(null)
+  const [selectedModel, setSelectedModel] = useState('llama3.2')
+  const [showModelPicker, setShowModelPicker] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<(() => void) | null>(null)
+  const modelPickerRef = useRef<HTMLDivElement>(null)
 
   const currentAgents = agentMode === 'founder' ? FOUNDER_AGENTS : EXPERT_AGENTS
   const currentAgent = currentAgents.find(a => a.id === selectedId) || currentAgents[0]
+  const currentModelInfo = MODELS.find(m => m.id === selectedModel) || MODELS[0]
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (modelPickerRef.current && !modelPickerRef.current.contains(e.target as Node)) {
+        setShowModelPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   const switchAgent = (id: string, mode: 'founder' | 'expert') => {
     setAgentMode(mode)
@@ -120,11 +155,13 @@ export function ChatPage() {
     setSessionId(uuidv4())
     setMessages([])
     setActiveMode(null)
+    const defaultModel = DEFAULT_MODEL_FOR_AGENT[id] || 'llama3.2'
+    setSelectedModel(defaultModel)
   }
 
   const send = useCallback(async () => {
     if (!input.trim() || sending) return
-    const userMsg: Message = { id: uuidv4(), role: 'user', content: input }
+    const userMsg: Message = { id: uuidv4(), role: 'user', content: input, model: selectedModel }
     setMessages(prev => [...prev, userMsg])
     const userInput = input
     setInput('')
@@ -137,6 +174,7 @@ export function ChatPage() {
       role: 'assistant',
       content: '',
       streaming: true,
+      model: selectedModel,
     }])
 
     let didStream = false
@@ -153,6 +191,7 @@ export function ChatPage() {
           message: userInput,
           sessionId,
           agentType: agentTypeForRoute,
+          model: selectedModel,
         }),
       })
 
@@ -163,7 +202,6 @@ export function ChatPage() {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
-      let finalMeta: any = null
 
       while (!aborted) {
         const { done, value } = await reader.read()
@@ -199,7 +237,7 @@ export function ChatPage() {
             ))
           } else if (eventType === 'done') {
             try {
-              finalMeta = JSON.parse(data)
+              const finalMeta = JSON.parse(data)
               setMessages(prev => prev.map(m =>
                 m.id === streamingMsgId
                   ? {
@@ -233,6 +271,7 @@ export function ChatPage() {
             message: userInput,
             sessionId,
             agentType: agentTypeForRoute,
+            model: selectedModel,
           })
           setMessages(prev => prev.map(m =>
             m.id === streamingMsgId
@@ -259,7 +298,7 @@ export function ChatPage() {
       setSending(false)
       abortRef.current = null
     }
-  }, [input, sending, agentMode, selectedId, sessionId])
+  }, [input, sending, agentMode, selectedId, sessionId, selectedModel])
 
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
@@ -280,7 +319,7 @@ export function ChatPage() {
               🚀 Founder
             </button>
             <button
-              onClick={() => { setAgentMode('expert'); setSelectedId('code'); setSessionId(uuidv4()); setMessages([]) }}
+              onClick={() => { setAgentMode('expert'); setSelectedId('code'); setSessionId(uuidv4()); setMessages([]); setSelectedModel('mistral') }}
               className={`flex-1 text-xs py-1.5 rounded-md transition-all font-medium ${agentMode === 'expert' ? 'bg-brand-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
             >
               🧠 Expert
@@ -341,11 +380,51 @@ export function ChatPage() {
                  activeMode === 'startup' ? '🚀 Startup' : '🧠 AI Brain'}
               </span>
             )}
-            {selectedId === 'founder' && agentMode === 'founder' && (
-              <span className="text-xs text-slate-600 px-2 py-0.5 rounded-full bg-white/5 border border-white/10">
-                Auto-routes
-              </span>
-            )}
+            {/* Model Selector */}
+            <div className="relative" ref={modelPickerRef}>
+              <button
+                onClick={() => setShowModelPicker(v => !v)}
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 transition-all"
+                title="Switch AI model"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                <span className="font-mono">{currentModelInfo.label}</span>
+                <svg className={`w-3 h-3 transition-transform ${showModelPicker ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </button>
+
+              {showModelPicker && (
+                <div className="absolute right-0 top-full mt-2 w-64 glass rounded-xl border border-white/10 shadow-2xl z-50 overflow-hidden">
+                  <div className="p-2.5 border-b border-white/5">
+                    <p className="text-xs text-slate-400 font-medium">Switch Model</p>
+                    <p className="text-xs text-slate-600 mt-0.5">Changes apply mid-conversation</p>
+                  </div>
+                  <div className="p-1.5 space-y-0.5">
+                    {MODELS.map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => { setSelectedModel(m.id); setShowModelPicker(false) }}
+                        className={`w-full flex items-center gap-3 p-2.5 rounded-lg text-left transition-all ${
+                          selectedModel === m.id
+                            ? 'bg-brand-600/20 border border-brand-500/20'
+                            : 'hover:bg-white/5 border border-transparent'
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-white font-mono">{m.label}</span>
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-slate-400">{m.badge}</span>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-0.5">{m.desc}</p>
+                        </div>
+                        {selectedModel === m.id && (
+                          <svg className="w-4 h-4 text-brand-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -357,11 +436,9 @@ export function ChatPage() {
                 <div className="text-5xl mb-3">{currentAgent.icon}</div>
                 <h3 className="text-base font-semibold text-white mb-1">{currentAgent.name}</h3>
                 <p className="text-slate-400 text-sm max-w-xs">{currentAgent.desc}</p>
-                {selectedId === 'founder' && agentMode === 'founder' && (
-                  <p className="text-xs text-slate-600 mt-2 max-w-xs">
-                    Automatically detects if you need code help, SEO advice, security review, data analysis, or startup strategy
-                  </p>
-                )}
+                <p className="text-xs text-slate-600 mt-2">
+                  Using <span className="font-mono text-slate-500">{currentModelInfo.label}</span> · {currentModelInfo.desc}
+                </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 max-w-xl w-full">
                 {(SUGGESTIONS[suggestKey] || SUGGESTIONS.founder).map((s, i) => (
@@ -386,10 +463,15 @@ export function ChatPage() {
               )}
               <div className="flex flex-col gap-1 max-w-[82%]">
                 {msg.role === 'assistant' && msg.modeLabel && (
-                  <span className={`self-start text-xs px-2 py-0.5 rounded-full border font-medium ${MODE_COLORS[msg.mode || 'founder'] || MODE_COLORS.founder}`}>
-                    {msg.modeLabel}
-                    {msg.webSearchUsed && <span className="ml-1 opacity-70">· 🌐 web</span>}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`self-start text-xs px-2 py-0.5 rounded-full border font-medium ${MODE_COLORS[msg.mode || 'founder'] || MODE_COLORS.founder}`}>
+                      {msg.modeLabel}
+                      {msg.webSearchUsed && <span className="ml-1 opacity-70">· 🌐 web</span>}
+                    </span>
+                    {msg.model && (
+                      <span className="text-xs text-slate-600 font-mono">{msg.model}</span>
+                    )}
+                  </div>
                 )}
                 <div className={`rounded-2xl px-4 py-3 text-sm ${
                   msg.role === 'user'
@@ -404,7 +486,7 @@ export function ChatPage() {
                           <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
                           <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }} />
                         </span>
-                        <span className="text-xs text-slate-500">Thinking...</span>
+                        <span className="text-xs text-slate-500">Thinking with {MODELS.find(m => m.id === selectedModel)?.label}...</span>
                       </div>
                     ) : (
                       <>{renderContent(msg.content)}{msg.streaming && <span className="inline-block w-0.5 h-4 bg-brand-400 ml-0.5 animate-pulse align-middle" />}</>
@@ -428,7 +510,7 @@ export function ChatPage() {
           <div className="flex gap-2">
             <textarea
               className="input flex-1 resize-none py-3 text-sm leading-6 min-h-[48px] max-h-32"
-              placeholder={`Message ${currentAgent.name}...`}
+              placeholder={`Message ${currentAgent.name} with ${currentModelInfo.label}...`}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKey}
@@ -448,11 +530,9 @@ export function ChatPage() {
           </div>
           <div className="flex items-center justify-between mt-2">
             <p className="text-xs text-slate-600">Enter to send · Shift+Enter for new line</p>
-            {activeMode && (
-              <p className="text-xs text-slate-600">
-                Routed to: <span className="text-slate-400">{activeMode}</span>
-              </p>
-            )}
+            <p className="text-xs text-slate-600 font-mono">
+              {currentModelInfo.label} · {currentModelInfo.badge}
+            </p>
           </div>
         </div>
       </div>

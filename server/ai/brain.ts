@@ -15,6 +15,7 @@ export interface BrainRequest {
   sessionId?: string
   forcedMode?: ExpertMode
   useWebSearch?: boolean
+  model?: string
 }
 
 export interface BrainResponse {
@@ -182,7 +183,7 @@ export class OneFounderBrain {
     try {
       const ai = await getAIProvider()
       const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
-      const ollamaModel = process.env.OLLAMA_MODEL || 'llama3.2'
+      const ollamaModel = req.model || process.env.OLLAMA_MODEL || 'llama3.2'
 
       let fullResponse = ''
 

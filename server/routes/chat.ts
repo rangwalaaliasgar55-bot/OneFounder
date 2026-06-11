@@ -44,7 +44,7 @@ router.get('/:sessionId', requireAuth, async (req, res) => {
 
 router.post('/send', requireAuth, async (req, res) => {
   const user = (req as any).user
-  const { message, sessionId, agentType } = req.body
+  const { message, sessionId, agentType, model } = req.body
   if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message required' })
   if (message.length > 4000) return res.status(400).json({ error: 'Message too long (max 4000 chars)' })
 
@@ -57,6 +57,7 @@ router.post('/send', requireAuth, async (req, res) => {
       sessionId,
       forcedMode: agentType && agentType !== 'founder' ? agentType : undefined,
       useWebSearch: agentType === 'research' || agentType === undefined,
+      model: model || undefined,
     })
 
     const saved = await db.query.chatMessages.findFirst({
@@ -82,7 +83,7 @@ router.post('/send', requireAuth, async (req, res) => {
 
 router.post('/stream', requireAuth, async (req, res) => {
   const user = (req as any).user
-  const { message, sessionId, agentType } = req.body
+  const { message, sessionId, agentType, model } = req.body
   if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message required' })
   if (message.length > 4000) return res.status(400).json({ error: 'Message too long (max 4000 chars)' })
 
@@ -103,6 +104,7 @@ router.post('/stream', requireAuth, async (req, res) => {
       sessionId,
       forcedMode: agentType && agentType !== 'founder' ? agentType : undefined,
       useWebSearch: agentType === 'research' || agentType === undefined,
+      model: model || undefined,
     })
 
     for await (const chunk of gen) {
