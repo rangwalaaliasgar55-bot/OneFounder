@@ -54,7 +54,7 @@ jobs:
         continue-on-error: true
 
       - name: Comment PR results
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const depStatus = '${{ steps.dep-check.outputs.status }}';
