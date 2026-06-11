@@ -27,12 +27,14 @@ const ceo_1 = __importDefault(require("./routes/ceo"));
 const journey_1 = __importDefault(require("./routes/journey"));
 const wordpress_1 = __importDefault(require("./routes/wordpress"));
 const founderProfile_1 = __importDefault(require("./routes/founderProfile"));
+const intelligence_1 = __importDefault(require("./routes/intelligence"));
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
 app.use((0, cors_1.default)({
     origin: [
         'http://localhost:5173',
         'http://localhost:5000',
+        'http://127.0.0.1:5000',
         process.env.CLIENT_URL || '',
         /\.replit\.dev$/,
         /\.repl\.co$/,
@@ -59,6 +61,7 @@ app.use('/api/ceo', ceo_1.default);
 app.use('/api/journey', journey_1.default);
 app.use('/api/wordpress', wordpress_1.default);
 app.use('/api/founder-profile', founderProfile_1.default);
+app.use('/api/intelligence', intelligence_1.default);
 app.get('/api/health', (_, res) => {
     res.json({ status: 'ok', version: '1.0.0', name: 'OneFounder' });
 });

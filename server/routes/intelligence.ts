@@ -44,9 +44,10 @@ router.post('/memories', requireAuth, async (req, res) => {
 
 router.delete('/memories/:id', requireAuth, async (req, res) => {
   const user = (req as any).user
+  const id = String(req.params.id)
   try {
     await db.delete(aiMemories)
-      .where(and(eq(aiMemories.id, req.params.id), eq(aiMemories.userId, user.id)))
+      .where(and(eq(aiMemories.id, id), eq(aiMemories.userId, user.id)))
     res.json({ success: true })
   } catch (e: any) { res.status(500).json({ error: e.message }) }
 })
@@ -65,18 +66,20 @@ router.get('/insights', requireAuth, async (req, res) => {
 
 router.patch('/insights/:id/read', requireAuth, async (req, res) => {
   const user = (req as any).user
+  const id = String(req.params.id)
   try {
     await db.update(aiInsights).set({ read: true })
-      .where(and(eq(aiInsights.id, req.params.id), eq(aiInsights.userId, user.id)))
+      .where(and(eq(aiInsights.id, id), eq(aiInsights.userId, user.id)))
     res.json({ success: true })
   } catch (e: any) { res.status(500).json({ error: e.message }) }
 })
 
 router.patch('/insights/:id/dismiss', requireAuth, async (req, res) => {
   const user = (req as any).user
+  const id = String(req.params.id)
   try {
     await db.update(aiInsights).set({ dismissed: true })
-      .where(and(eq(aiInsights.id, req.params.id), eq(aiInsights.userId, user.id)))
+      .where(and(eq(aiInsights.id, id), eq(aiInsights.userId, user.id)))
     res.json({ success: true })
   } catch (e: any) { res.status(500).json({ error: e.message }) }
 })

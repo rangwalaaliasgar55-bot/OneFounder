@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.founderProfiles = exports.wpSites = exports.seoBriefs = exports.journeyMilestones = exports.backlinks = exports.seoAudits = exports.seoKeywords = exports.financeEntries = exports.socialPosts = exports.knowledgeBase = exports.chatMessages = exports.leads = exports.contentPieces = exports.tasks = exports.milestones = exports.projects = exports.businessPlans = exports.researchReports = exports.businessIdeas = exports.verifications = exports.accounts = exports.sessions = exports.users = exports.financeEntryTypeEnum = exports.socialPlatformEnum = exports.socialPostStatusEnum = exports.contentTypeEnum = exports.leadStatusEnum = exports.taskStatusEnum = exports.ideaStatusEnum = exports.roleEnum = void 0;
+exports.aiInsights = exports.userActivityLog = exports.aiMemories = exports.founderProfiles = exports.wpSites = exports.seoBriefs = exports.journeyMilestones = exports.backlinks = exports.seoAudits = exports.seoKeywords = exports.financeEntries = exports.socialPosts = exports.knowledgeBase = exports.chatMessages = exports.leads = exports.contentPieces = exports.tasks = exports.milestones = exports.projects = exports.businessPlans = exports.researchReports = exports.businessIdeas = exports.verifications = exports.accounts = exports.sessions = exports.users = exports.financeEntryTypeEnum = exports.socialPlatformEnum = exports.socialPostStatusEnum = exports.contentTypeEnum = exports.leadStatusEnum = exports.taskStatusEnum = exports.ideaStatusEnum = exports.roleEnum = void 0;
 const pg_core_1 = require("drizzle-orm/pg-core");
 exports.roleEnum = (0, pg_core_1.pgEnum)('role', ['admin', 'editor', 'viewer']);
 exports.ideaStatusEnum = (0, pg_core_1.pgEnum)('idea_status', ['draft', 'validated', 'building', 'launched']);
@@ -311,4 +311,44 @@ exports.founderProfiles = (0, pg_core_1.pgTable)('founder_profiles', {
     stage: (0, pg_core_1.text)('stage').default('idea'),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow(),
     updatedAt: (0, pg_core_1.timestamp)('updated_at').defaultNow(),
+});
+// AI Memory — persistent facts, decisions, preferences extracted from user activity
+exports.aiMemories = (0, pg_core_1.pgTable)('ai_memories', {
+    id: (0, pg_core_1.uuid)('id').primaryKey().defaultRandom(),
+    userId: (0, pg_core_1.uuid)('user_id').notNull().references(() => exports.users.id, { onDelete: 'cascade' }),
+    type: (0, pg_core_1.text)('type').notNull(), // 'fact' | 'decision' | 'preference' | 'goal' | 'reflection' | 'pattern'
+    content: (0, pg_core_1.text)('content').notNull(),
+    source: (0, pg_core_1.text)('source'), // which module created this: 'chat', 'ideas', 'planner', 'finance', etc.
+    importance: (0, pg_core_1.integer)('importance').default(5), // 1-10 scale
+    tags: (0, pg_core_1.jsonb)('tags').default([]),
+    expiresAt: (0, pg_core_1.timestamp)('expires_at'),
+    lastReferencedAt: (0, pg_core_1.timestamp)('last_referenced_at').defaultNow(),
+    referenceCount: (0, pg_core_1.integer)('reference_count').default(0),
+    createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow(),
+    updatedAt: (0, pg_core_1.timestamp)('updated_at').defaultNow(),
+});
+// User Activity Log — tracks all meaningful actions for behavioral intelligence
+exports.userActivityLog = (0, pg_core_1.pgTable)('user_activity_log', {
+    id: (0, pg_core_1.uuid)('id').primaryKey().defaultRandom(),
+    userId: (0, pg_core_1.uuid)('user_id').notNull().references(() => exports.users.id, { onDelete: 'cascade' }),
+    action: (0, pg_core_1.text)('action').notNull(), // 'created_idea', 'completed_task', 'sent_message', 'added_lead', etc.
+    module: (0, pg_core_1.text)('module').notNull(), // 'ideas', 'projects', 'crm', 'chat', 'content', 'seo', 'finance'
+    entityId: (0, pg_core_1.text)('entity_id'),
+    metadata: (0, pg_core_1.jsonb)('metadata').default({}),
+    createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow(),
+});
+// AI Insights — proactive, system-generated intelligence surfaced to the founder
+exports.aiInsights = (0, pg_core_1.pgTable)('ai_insights', {
+    id: (0, pg_core_1.uuid)('id').primaryKey().defaultRandom(),
+    userId: (0, pg_core_1.uuid)('user_id').notNull().references(() => exports.users.id, { onDelete: 'cascade' }),
+    type: (0, pg_core_1.text)('type').notNull(), // 'opportunity' | 'risk' | 'recommendation' | 'pattern' | 'alert'
+    title: (0, pg_core_1.text)('title').notNull(),
+    body: (0, pg_core_1.text)('body').notNull(),
+    module: (0, pg_core_1.text)('module'), // which part of the product this relates to
+    priority: (0, pg_core_1.text)('priority').default('medium'), // 'high' | 'medium' | 'low'
+    read: (0, pg_core_1.boolean)('read').default(false),
+    dismissed: (0, pg_core_1.boolean)('dismissed').default(false),
+    actionUrl: (0, pg_core_1.text)('action_url'),
+    expiresAt: (0, pg_core_1.timestamp)('expires_at'),
+    createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow(),
 });

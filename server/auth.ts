@@ -15,7 +15,7 @@ export const auth = betterAuth({
       verification: verifications,
     },
   }),
-  baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3001',
+  baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
   secret: process.env.BETTER_AUTH_SECRET || 'onefoundr-secret-change-in-production',
   emailAndPassword: {
     enabled: true,
@@ -31,5 +31,10 @@ export const auth = betterAuth({
       clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
     },
   },
-  trustedOrigins: ['http://localhost:5173', process.env.CLIENT_URL || ''],
+  trustedOrigins: [
+    'http://localhost:5000',
+    'http://127.0.0.1:5000',
+    'http://localhost:5173',
+    process.env.CLIENT_URL || '',
+  ].filter(Boolean),
 })

@@ -32,16 +32,16 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.schema = exports.db = void 0;
+require("dotenv/config");
 const serverless_1 = require("@neondatabase/serverless");
 const neon_http_1 = require("drizzle-orm/neon-http");
 const schema = __importStar(require("./schema"));
 exports.schema = schema;
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
-const sql = (0, serverless_1.neon)(process.env.DATABASE_URL);
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+    throw new Error('DATABASE_URL is missing. Check your .env file.');
+}
+const sql = (0, serverless_1.neon)(DATABASE_URL);
 exports.db = (0, neon_http_1.drizzle)(sql, { schema });
