@@ -4,6 +4,22 @@ import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 
+const OG_MODULES = [
+  { key: 'ideas', icon: '💡', label: 'Idea Lab', title: 'Startup Idea Lab', description: 'AI-powered startup idea generation & validation' },
+  { key: 'research', icon: '🔬', label: 'Market Research', title: 'Market Research', description: 'Competitor analysis & trend discovery in real-time' },
+  { key: 'plans', icon: '📋', label: 'Business Planner', title: 'Business Planner', description: 'Full AI-generated business plans in minutes' },
+  { key: 'crm', icon: '👥', label: 'CRM', title: 'CRM Pipeline', description: 'Manage leads, customers & deals in one place' },
+  { key: 'content', icon: '✍️', label: 'Content Studio', title: 'Content Studio', description: 'Blog posts, LinkedIn, newsletters & ad copy' },
+  { key: 'seo', icon: '🔍', label: 'SEO OS', title: 'SEO OS', description: 'Keyword tracking, audits & AI content briefs' },
+  { key: 'finance', icon: '💰', label: 'Finance Tracker', title: 'Finance Tracker', description: 'MRR, revenue, expenses & profit tracking' },
+  { key: 'chat', icon: '🧠', label: 'AI Agents', title: 'OneFounder AI Agents', description: 'CEO, Marketing, Sales & Expert AI agents in one brain' },
+]
+
+function buildOgUrl(module: string, title: string, description: string): string {
+  const base = typeof window !== 'undefined' ? window.location.origin : ''
+  return `${base}/api/og?module=${encodeURIComponent(module)}&title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}`
+}
+
 interface FounderProfile {
   riskTolerance: string
   workStyle: string
@@ -26,6 +42,8 @@ export function SettingsPage() {
   })
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
+  const [copiedOgKey, setCopiedOgKey] = useState<string | null>(null)
+  const [activeOgModule, setActiveOgModule] = useState(OG_MODULES[0])
 
   useEffect(() => {
     api.get<any>('/ai/status').then(setAiStatus).catch(() => {})
@@ -41,6 +59,13 @@ export function SettingsPage() {
       setProfileSaved(true)
       setTimeout(() => setProfileSaved(false), 2000)
     } catch {} finally { setProfileSaving(false) }
+  }
+
+  const copyOgUrl = (mod: typeof OG_MODULES[0]) => {
+    const url = buildOgUrl(mod.key, mod.title, mod.description)
+    navigator.clipboard.writeText(url)
+    setCopiedOgKey(mod.key)
+    setTimeout(() => setCopiedOgKey(null), 2000)
   }
 
   const MODULES = [
@@ -277,6 +302,55 @@ export function SettingsPage() {
                 <p className="text-xs text-slate-500 line-clamp-1">{mod.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* OG Image Preview */}
+        <div className="card">
+          <h2 className="text-base font-semibold text-white mb-1">🖼️ Social Preview Cards</h2>
+          <p className="text-xs text-slate-500 mb-4">Copy these URLs as your <code className="bg-white/10 px-1 rounded">og:image</code> meta tags — LinkedIn and Twitter will render branded cards when your links are shared.</p>
+
+          <div className="flex gap-3 flex-wrap mb-4">
+            {OG_MODULES.map(mod => (
+              <button
+                key={mod.key}
+                onClick={() => setActiveOgModule(mod)}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                  activeOgModule.key === mod.key
+                    ? 'bg-brand-600/20 border-brand-500/30 text-white'
+                    : 'border-white/5 text-slate-400 hover:text-white hover:border-white/10'
+                }`}
+              >
+                {mod.icon} {mod.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Live preview */}
+          <div className="rounded-xl overflow-hidden border border-white/10 mb-3 bg-black/20">
+            <img
+              key={activeOgModule.key}
+              src={buildOgUrl(activeOgModule.key, activeOgModule.title, activeOgModule.description)}
+              alt={`OG preview for ${activeOgModule.label}`}
+              className="w-full"
+              style={{ aspectRatio: '1200/630' }}
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-slate-400 truncate font-mono">
+              {buildOgUrl(activeOgModule.key, activeOgModule.title, activeOgModule.description)}
+            </code>
+            <button
+              onClick={() => copyOgUrl(activeOgModule)}
+              className={`flex-shrink-0 text-xs px-3 py-2 rounded-lg border transition-all ${
+                copiedOgKey === activeOgModule.key
+                  ? 'bg-green-500/20 border-green-500/30 text-green-400'
+                  : 'bg-white/5 border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              {copiedOgKey === activeOgModule.key ? '✓ Copied!' : 'Copy URL'}
+            </button>
           </div>
         </div>
 
