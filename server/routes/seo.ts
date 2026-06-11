@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { db } from '../db'
 import { seoKeywords, seoAudits, seoBriefs, backlinks } from '../db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and } from 'drizzle-orm'
 import { getAIProvider } from '../ai'
 
 const router = Router()
@@ -32,21 +32,28 @@ router.post('/', requireAuth, async (req, res) => {
 })
 
 router.patch('/:id', requireAuth, async (req, res) => {
+  const user = (req as any).user
   const updates: any = { ...req.body, updatedAt: new Date() }
   if (updates.currentRank !== undefined) {
-    const [existing] = await db.select().from(seoKeywords).where(eq(seoKeywords.id, req.params.id as string))
+    const [existing] = await db.select().from(seoKeywords)
+      .where(and(eq(seoKeywords.id, req.params.id as string), eq(seoKeywords.userId, user.id)))
     if (existing) {
       const history = (existing.rankHistory as any[]) || []
       history.push({ date: new Date().toISOString(), rank: updates.currentRank })
       updates.rankHistory = history
     }
   }
-  const [updated] = await db.update(seoKeywords).set(updates).where(eq(seoKeywords.id, req.params.id as string)).returning()
+  const [updated] = await db.update(seoKeywords).set(updates)
+    .where(and(eq(seoKeywords.id, req.params.id as string), eq(seoKeywords.userId, user.id)))
+    .returning()
+  if (!updated) return res.status(404).json({ error: 'Not found' })
   res.json(updated)
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(seoKeywords).where(eq(seoKeywords.id, req.params.id as string))
+  const user = (req as any).user
+  await db.delete(seoKeywords)
+    .where(and(eq(seoKeywords.id, req.params.id as string), eq(seoKeywords.userId, user.id)))
   res.json({ success: true })
 })
 
@@ -171,7 +178,9 @@ router.get('/audits', requireAuth, async (req, res) => {
 })
 
 router.delete('/audits/:id', requireAuth, async (req, res) => {
-  await db.delete(seoAudits).where(eq(seoAudits.id, req.params.id as string))
+  const user = (req as any).user
+  await db.delete(seoAudits)
+    .where(and(eq(seoAudits.id, req.params.id as string), eq(seoAudits.userId, user.id)))
   res.json({ success: true })
 })
 
@@ -228,7 +237,9 @@ Return JSON: { "titles":[],"metaDescription":"","outline":[{"heading":"","type":
 })
 
 router.delete('/briefs/:id', requireAuth, async (req, res) => {
-  await db.delete(seoBriefs).where(eq(seoBriefs.id, req.params.id as string))
+  const user = (req as any).user
+  await db.delete(seoBriefs)
+    .where(and(eq(seoBriefs.id, req.params.id as string), eq(seoBriefs.userId, user.id)))
   res.json({ success: true })
 })
 
@@ -448,12 +459,19 @@ router.post('/backlinks', requireAuth, async (req, res) => {
 })
 
 router.patch('/backlinks/:id', requireAuth, async (req, res) => {
-  const [updated] = await db.update(backlinks).set({ ...req.body, updatedAt: new Date() }).where(eq(backlinks.id, req.params.id as string)).returning()
+  const user = (req as any).user
+  const [updated] = await db.update(backlinks)
+    .set({ ...req.body, updatedAt: new Date() })
+    .where(and(eq(backlinks.id, req.params.id as string), eq(backlinks.userId, user.id)))
+    .returning()
+  if (!updated) return res.status(404).json({ error: 'Not found' })
   res.json(updated)
 })
 
 router.delete('/backlinks/:id', requireAuth, async (req, res) => {
-  await db.delete(backlinks).where(eq(backlinks.id, req.params.id as string))
+  const user = (req as any).user
+  await db.delete(backlinks)
+    .where(and(eq(backlinks.id, req.params.id as string), eq(backlinks.userId, user.id)))
   res.json({ success: true })
 })
 

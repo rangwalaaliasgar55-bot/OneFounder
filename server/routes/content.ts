@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { db } from '../db'
 import { contentPieces } from '../db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and } from 'drizzle-orm'
 import { getAIProvider } from '../ai'
 
 const router = Router()
@@ -54,15 +54,19 @@ router.post('/generate', requireAuth, async (req, res) => {
 })
 
 router.patch('/:id', requireAuth, async (req, res) => {
+  const user = (req as any).user
   const [updated] = await db.update(contentPieces)
     .set({ ...req.body, updatedAt: new Date() })
-    .where(eq(contentPieces.id, req.params.id as string))
+    .where(and(eq(contentPieces.id, req.params.id as string), eq(contentPieces.userId, user.id)))
     .returning()
+  if (!updated) return res.status(404).json({ error: 'Not found' })
   res.json(updated)
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(contentPieces).where(eq(contentPieces.id, req.params.id as string))
+  const user = (req as any).user
+  await db.delete(contentPieces)
+    .where(and(eq(contentPieces.id, req.params.id as string), eq(contentPieces.userId, user.id)))
   res.json({ success: true })
 })
 

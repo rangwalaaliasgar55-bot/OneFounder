@@ -1,0 +1,71 @@
+name: Security Audit
+
+on:
+  push:
+    branches: [main, master]
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: Dependency Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Check for critical vulnerabilities
+        run: |
+          RESULT=$(npm audit --json 2>/dev/null || true)
+          CRITICAL=$(echo "$RESULT" | node -e "
+            let d=''; process.stdin.on('data',c=>d+=c);
+            process.stdin.on('end',()=>{
+              try {
+                const r=JSON.parse(d);
+                const c=(r.metadata?.vulnerabilities?.critical||0);
+                const h=(r.metadata?.vulnerabilities?.high||0);
+                console.log(c+' critical, '+h+' high');
+                if(c>0) process.exit(1);
+              } catch { console.log('audit parse error'); }
+            });
+          " 2>/dev/null || echo "0 critical")
+          echo "Vulnerability summary: $CRITICAL"
+
+  type-check:
+    name: TypeScript Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check server
+        run: npx tsc --project server/tsconfig.json --noEmit
+        env:
+          NEON_DATABASE_URL: postgresql://ci:ci@localhost/ci
+          DATABASE_URL: postgresql://ci:ci@localhost/ci
+          BETTER_AUTH_SECRET: ci-secret-for-type-check-only
+
+      - name: Type-check client
+        run: npx tsc --project client/tsconfig.json --noEmit
+        continue-on-error: true

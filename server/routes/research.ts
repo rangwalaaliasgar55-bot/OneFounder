@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { db } from '../db'
 import { researchReports } from '../db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and } from 'drizzle-orm'
 import { getAIProvider } from '../ai'
 import { getWebContextString } from '../ai/webSearch'
 
@@ -87,7 +87,9 @@ router.get('/:id', requireAuth, async (req, res) => {
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(researchReports).where(eq(researchReports.id, req.params.id as string))
+  const user = (req as any).user
+  await db.delete(researchReports)
+    .where(and(eq(researchReports.id, req.params.id as string), eq(researchReports.userId, user.id)))
   res.json({ success: true })
 })
 

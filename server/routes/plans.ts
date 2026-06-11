@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { db } from '../db'
 import { businessPlans } from '../db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and } from 'drizzle-orm'
 import { getAIProvider } from '../ai'
 
 const router = Router()
@@ -75,7 +75,9 @@ router.get('/:id', requireAuth, async (req, res) => {
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(businessPlans).where(eq(businessPlans.id, req.params.id as string))
+  const user = (req as any).user
+  await db.delete(businessPlans)
+    .where(and(eq(businessPlans.id, req.params.id as string), eq(businessPlans.userId, user.id)))
   res.json({ success: true })
 })
 

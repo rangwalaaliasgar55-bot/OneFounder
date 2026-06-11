@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { db } from '../db'
 import { financeEntries } from '../db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and } from 'drizzle-orm'
 
 const router = Router()
 
@@ -36,13 +36,16 @@ router.patch('/:id', requireAuth, async (req, res) => {
   if (updateData.amount) updateData.amount = Math.round(parseFloat(updateData.amount) * 100)
   const [updated] = await db.update(financeEntries)
     .set(updateData)
-    .where(eq(financeEntries.id, req.params.id as string))
+    .where(and(eq(financeEntries.id, req.params.id as string), eq(financeEntries.userId, user.id)))
     .returning()
+  if (!updated) return res.status(404).json({ error: 'Not found' })
   res.json({ ...updated, amount: updated.amount / 100 })
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(financeEntries).where(eq(financeEntries.id, req.params.id as string))
+  const user = (req as any).user
+  await db.delete(financeEntries)
+    .where(and(eq(financeEntries.id, req.params.id as string), eq(financeEntries.userId, user.id)))
   res.json({ success: true })
 })
 

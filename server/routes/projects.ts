@@ -30,15 +30,19 @@ router.get('/:id', requireAuth, async (req, res) => {
 })
 
 router.patch('/:id', requireAuth, async (req, res) => {
+  const user = (req as any).user
   const [updated] = await db.update(projects)
     .set({ ...req.body, updatedAt: new Date() })
-    .where(eq(projects.id, req.params.id as string))
+    .where(and(eq(projects.id, req.params.id as string), eq(projects.userId, user.id)))
     .returning()
+  if (!updated) return res.status(404).json({ error: 'Not found' })
   res.json(updated)
 })
 
 router.delete('/:id', requireAuth, async (req, res) => {
-  await db.delete(projects).where(eq(projects.id, req.params.id as string))
+  const user = (req as any).user
+  await db.delete(projects)
+    .where(and(eq(projects.id, req.params.id as string), eq(projects.userId, user.id)))
   res.json({ success: true })
 })
 
@@ -54,10 +58,12 @@ router.post('/:id/tasks', requireAuth, async (req, res) => {
 })
 
 router.patch('/tasks/:taskId', requireAuth, async (req, res) => {
+  const user = (req as any).user
   const [task] = await db.update(tasks)
     .set({ ...req.body, updatedAt: new Date() })
-    .where(eq(tasks.id, req.params.taskId as string))
+    .where(and(eq(tasks.id, req.params.taskId as string), eq(tasks.userId, user.id)))
     .returning()
+  if (!task) return res.status(404).json({ error: 'Not found' })
   res.json(task)
 })
 
