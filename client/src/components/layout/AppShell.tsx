@@ -49,9 +49,10 @@ const NAV_SECTIONS = [
 interface AppShellProps {
   children: React.ReactNode
   onCmdK?: () => void
+  onShortcuts?: () => void
 }
 
-export function AppShell({ children, onCmdK }: AppShellProps) {
+export function AppShell({ children, onCmdK, onShortcuts }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const { user, signOut } = useAuth()
@@ -175,7 +176,25 @@ export function AppShell({ children, onCmdK }: AppShellProps) {
                 <div className="text-[11px] font-medium text-slate-300 truncate">{user?.name || 'Founder'}</div>
                 <div className="text-[10px] text-slate-600 truncate">{user?.email}</div>
               </div>
+              {onShortcuts && (
+                <button
+                  onClick={onShortcuts}
+                  title="Keyboard shortcuts (?)"
+                  className="w-5 h-5 rounded flex items-center justify-center text-slate-700 hover:text-slate-400 hover:bg-white/5 transition-all flex-shrink-0 text-[11px] font-mono border border-white/[0.06]"
+                >
+                  ?
+                </button>
+              )}
             </div>
+          )}
+          {collapsed && onShortcuts && (
+            <button
+              onClick={onShortcuts}
+              title="Keyboard shortcuts (?)"
+              className="nav-item text-slate-700 hover:text-slate-400 w-full justify-center px-0 py-2"
+            >
+              <span className="text-[11px] font-mono">?</span>
+            </button>
           )}
           <button
             onClick={signOut}
