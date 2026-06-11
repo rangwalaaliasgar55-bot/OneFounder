@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { LoginPage } from './pages/LoginPage'
@@ -20,6 +20,54 @@ const SeoPage        = lazy(() => import('./pages/SeoPage').then(m => ({ default
 const JourneyPage    = lazy(() => import('./pages/JourneyPage').then(m => ({ default: m.JourneyPage })))
 const WordPressPage  = lazy(() => import('./pages/WordPressPage').then(m => ({ default: m.WordPressPage })))
 
+// Prefetch a list of dynamic import functions after the browser goes idle.
+// Falls back to a 200 ms setTimeout on browsers without requestIdleCallback.
+function prefetchAfterIdle(importFns: Array<() => Promise<unknown>>, delay = 200) {
+  const run = () => {
+    importFns.forEach(fn => {
+      try { fn() } catch (_) { /* ignore */ }
+    })
+  }
+  if (typeof requestIdleCallback !== 'undefined') {
+    requestIdleCallback(run, { timeout: 3000 })
+  } else {
+    setTimeout(run, delay)
+  }
+}
+
+// Warm the most-likely-next pages while the user is on the login screen.
+function LoginPrefetch() {
+  useEffect(() => {
+    prefetchAfterIdle([
+      () => import('./pages/DashboardPage'),
+      () => import('./pages/IdeasPage'),
+      () => import('./pages/ChatPage'),
+    ])
+  }, [])
+  return null
+}
+
+// Warm the remaining routes once the authenticated shell has painted.
+function AppPrefetch() {
+  useEffect(() => {
+    prefetchAfterIdle([
+      () => import('./pages/ResearchPage'),
+      () => import('./pages/PlannerPage'),
+      () => import('./pages/ProjectsPage'),
+      () => import('./pages/ContentPage'),
+      () => import('./pages/CRMPage'),
+      () => import('./pages/SocialPage'),
+      () => import('./pages/FinancePage'),
+      () => import('./pages/SeoPage'),
+      () => import('./pages/JourneyPage'),
+      () => import('./pages/KnowledgePage'),
+      () => import('./pages/SettingsPage'),
+      () => import('./pages/WordPressPage'),
+    ])
+  }, [])
+  return null
+}
+
 function PageFallback() {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -36,6 +84,7 @@ function PageFallback() {
 function AuthenticatedApp() {
   return (
     <AppShell>
+      <AppPrefetch />
       <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/"          element={<DashboardPage />} />
@@ -78,7 +127,12 @@ export default function App() {
   }
 
   if (!user) {
-    return <LoginPage onSuccess={() => window.location.reload()} />
+    return (
+      <>
+        <LoginPrefetch />
+        <LoginPage onSuccess={() => window.location.reload()} />
+      </>
+    )
   }
 
   return (
