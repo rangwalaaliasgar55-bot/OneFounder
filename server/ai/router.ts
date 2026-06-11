@@ -5,6 +5,8 @@ export type ExpertMode =
   | 'data'
   | 'startup'
   | 'research'
+  | 'finance'
+  | 'product'
   | 'founder'
 
 export interface RouteResult {
@@ -74,24 +76,49 @@ const ROUTING_RULES: Array<{
     keywords: ['research', 'competitor', 'industry', 'trend', 'market', 'compare', 'explain'],
   },
   {
+    mode: 'finance',
+    patterns: [
+      /\b(finance|financial|money|cash|revenue|profit|loss|income|expense|cost|budget)\b/i,
+      /\b(mrr|arr|churn|burn rate|runway|valuation|cap table|equity|dilution|round)\b/i,
+      /\b(fundraising|investor|vc|angel|seed|series a|pitch|term sheet|safe|convertible)\b/i,
+      /\b(accounting|bookkeeping|tax|vat|invoice|payroll|salary|roi|irr|npv)\b/i,
+      /\b(pricing|subscription|freemium|ltv|cac|payback period|gross margin|unit economics)\b/i,
+      /\b(p&l|balance sheet|cash flow|forecast|projection|model|break.?even)\b/i,
+    ],
+    keywords: ['finance', 'revenue', 'profit', 'burn rate', 'runway', 'fundraising', 'investor', 'valuation', 'pricing', 'budget'],
+  },
+  {
+    mode: 'product',
+    patterns: [
+      /\b(product|feature|roadmap|user story|sprint|backlog|mvp|prototype|wireframe)\b/i,
+      /\b(user experience|ux|ui|design|interface|usability|accessibility|a\/b test)\b/i,
+      /\b(product.?market fit|pmf|nps|csat|retention|activation|onboarding|churn)\b/i,
+      /\b(discovery|validation|hypothesis|experiment|feedback|interview|survey)\b/i,
+      /\b(prioritize|priority|rice|kano|moscow|jobs.?to.?be.?done|jtbd)\b/i,
+      /\b(launch|release|v\d|version|milestone|epic|story point|velocity)\b/i,
+    ],
+    keywords: ['product', 'feature', 'roadmap', 'mvp', 'ux', 'user', 'sprint', 'backlog', 'pmf', 'launch'],
+  },
+  {
     mode: 'startup',
     patterns: [
-      /\b(startup|business|product|market|revenue|customer|funding|pitch|investor)\b/i,
-      /\b(strategy|roadmap|vision|mission|value prop|mvp|go.?to.?market|gtm)\b/i,
-      /\b(hire|team|culture|founder|co-founder|equity|vesting|runway|burn rate)\b/i,
-      /\b(scale|growth|expansion|acquisition|retention|nps|feedback|user)\b/i,
+      /\b(startup|business|market|customer|funding|pitch|strategy|vision|mission)\b/i,
+      /\b(value prop|go.?to.?market|gtm|hire|team|culture|founder|co-founder)\b/i,
+      /\b(scale|growth|expansion|acquisition|nps|feedback|operations|okr)\b/i,
     ],
-    keywords: ['startup', 'business', 'strategy', 'product', 'market', 'revenue', 'customer', 'growth', 'mvp'],
+    keywords: ['startup', 'business', 'strategy', 'market', 'customer', 'growth', 'mvp'],
   },
 ]
 
 export function detectExpertMode(message: string): RouteResult {
   const scores: Record<ExpertMode, number> = {
-    code: 0, seo: 0, security: 0, data: 0, research: 0, startup: 0, founder: 0,
+    code: 0, seo: 0, security: 0, data: 0, research: 0,
+    finance: 0, product: 0, startup: 0, founder: 0,
   }
 
   const detected: Record<ExpertMode, string[]> = {
-    code: [], seo: [], security: [], data: [], research: [], startup: [], founder: [],
+    code: [], seo: [], security: [], data: [], research: [],
+    finance: [], product: [], startup: [], founder: [],
   }
 
   for (const rule of ROUTING_RULES) {
@@ -128,6 +155,8 @@ export const MODE_LABELS: Record<ExpertMode, string> = {
   security: '🔒 Security Expert',
   data: '📊 Data Analyst',
   research: '🔬 Research Expert',
+  finance: '💰 Finance Expert',
+  product: '🧩 Product Expert',
   startup: '🚀 Startup Advisor',
   founder: '🧠 Founder AI',
 }
@@ -138,6 +167,8 @@ export const MODE_COLORS: Record<ExpertMode, string> = {
   security: 'red',
   data: 'purple',
   research: 'yellow',
+  finance: 'emerald',
+  product: 'pink',
   startup: 'orange',
   founder: 'indigo',
 }

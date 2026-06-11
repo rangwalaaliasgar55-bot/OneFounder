@@ -4,6 +4,7 @@ import { getAIProvider } from './index'
 import { assembleFounderContext, type FounderContext } from './context'
 import { extractAndStoreMemories } from './memory'
 import { gatherWebContext, formatWebContextForPrompt } from './webSearch'
+import { ClaudeProvider } from './claude'
 import { db } from '../db'
 import { chatMessages } from '../db/schema'
 import { eq, and } from 'drizzle-orm'
@@ -39,6 +40,8 @@ const MODE_LABELS: Record<ExpertMode, string> = {
   security: '🔒 Security Expert',
   data: '📊 Data Analyst',
   research: '🔬 Research Expert',
+  finance: '💰 Finance Expert',
+  product: '🧩 Product Expert',
   startup: '🚀 Startup Advisor',
   founder: '🧠 OneFounder AI',
 }
@@ -91,7 +94,7 @@ export class OneFounderBrain {
     if (shouldSearchWeb) {
       try {
         const webCtx = await gatherWebContext(req.message)
-        if (webCtx.length > 0) {
+        if (webCtx.results.length > 0 || webCtx.news.length > 0) {
           finalSystemPrompt = systemPrompt + '\n\n' + formatWebContextForPrompt(webCtx)
           webSearchUsed = true
         }
@@ -172,7 +175,7 @@ export class OneFounderBrain {
     if (shouldSearchWeb) {
       try {
         const webCtx = await gatherWebContext(req.message)
-        if (webCtx.length > 0) {
+        if (webCtx.results.length > 0 || webCtx.news.length > 0) {
           finalSystemPrompt = finalSystemPrompt + '\n\n' + formatWebContextForPrompt(webCtx)
           webSearchUsed = true
         }
@@ -200,6 +203,8 @@ export class OneFounderBrain {
 
       let fullResponse = ''
 
+      // --- Try Ollama native streaming ---
+      let ollamaStreamed = false
       try {
         const streamRes = await fetch(`${ollamaBaseUrl}/api/chat`, {
           method: 'POST',
@@ -208,33 +213,61 @@ export class OneFounderBrain {
           signal: AbortSignal.timeout(120000),
         })
 
-        if (!streamRes.ok || !streamRes.body) throw new Error('Stream not available')
+        if (streamRes.ok && streamRes.body) {
+          const reader = streamRes.body.getReader()
+          const decoder = new TextDecoder()
 
-        const reader = streamRes.body.getReader()
-        const decoder = new TextDecoder()
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          const chunk = decoder.decode(value, { stream: true })
-          const lines = chunk.split('\n').filter(l => l.trim())
-          for (const line of lines) {
-            try {
-              const parsed = JSON.parse(line)
-              const token = parsed.message?.content || ''
-              if (token) {
-                fullResponse += token
-                yield { type: 'token', data: token }
-              }
-            } catch {}
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            const chunk = decoder.decode(value, { stream: true })
+            const lines = chunk.split('\n').filter(l => l.trim())
+            for (const line of lines) {
+              try {
+                const parsed = JSON.parse(line)
+                const token = parsed.message?.content || ''
+                if (token) {
+                  fullResponse += token
+                  yield { type: 'token', data: token }
+                }
+              } catch {}
+            }
           }
+          ollamaStreamed = true
         }
       } catch {
+        // Ollama not available — fall through to next provider
+      }
+
+      // --- Try Claude native streaming (when Ollama is unavailable) ---
+      if (!ollamaStreamed) {
+        const claudeKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY
+        if (claudeKey) {
+          try {
+            const claude = new ClaudeProvider(
+              claudeKey,
+              process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+              'claude-haiku-4-5'
+            )
+            for await (const token of claude.stream(messages)) {
+              fullResponse += token
+              yield { type: 'token', data: token }
+            }
+            ollamaStreamed = true
+          } catch {
+            // Fall through to non-streaming fallback
+          }
+        }
+      }
+
+      // --- Non-streaming fallback (mock or any provider) ---
+      if (!ollamaStreamed) {
         const response = await ai.chat(messages)
         fullResponse = response
+        // Simulate streaming word by word for UI consistency
         for (const word of response.split(' ')) {
           yield { type: 'token', data: word + ' ' }
-          await new Promise(r => setTimeout(r, 10))
+          await new Promise(r => setTimeout(r, 8))
         }
       }
 

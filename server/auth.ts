@@ -7,9 +7,6 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 export const auth = betterAuth({
-  advanced: {
-    generateId: () => uuidv4(),
-  },
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: {

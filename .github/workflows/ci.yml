@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, dev]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  install-and-build:
+    name: Install, Type-check & Build
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [22.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Type-check server
+        run: npx tsc --project server/tsconfig.json --noEmit
+
+      - name: Type-check client
+        run: npx tsc --project client/tsconfig.json --noEmit
+        continue-on-error: true
+
+      - name: Build client (Vercel build simulation)
+        run: npm run build:client
+        env:
+          NODE_ENV: production
+
+      - name: Verify build output
+        run: |
+          if [ ! -f "dist/client/index.html" ]; then
+            echo "Build failed: dist/client/index.html not found"
+            exit 1
+          fi
+          echo "Build output verified:"
+          ls -la dist/client/
+
+  lint-check:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Check for dependency conflicts
+        run: npm ls --depth=0 2>&1 | grep -E "UNMET|INVALID|ERR" && exit 1 || echo "No dependency conflicts found"

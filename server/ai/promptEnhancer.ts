@@ -49,6 +49,24 @@ Provide:
 4. Opportunities and threats ranked by impact
 5. Recommended next steps`,
 
+  finance: (msg) => `${msg}
+
+Provide:
+1. Direct answer with specific numbers and calculations shown
+2. Industry benchmarks to contextualize the numbers (cite source/standard)
+3. The key financial risks or red flags to watch
+4. Immediate action items (what to do in the next 30 days)
+5. Modeling assumptions if a forecast is involved`,
+
+  product: (msg) => `${msg}
+
+Provide:
+1. Direct recommendation — no hedging
+2. The product framework applied (RICE, Kano, JTBD, etc.) and why
+3. How to measure success (specific metrics, baseline, target)
+4. Common mistakes product teams make in this area
+5. What "good" looks like at scale (reference a real company or product)`,
+
   startup: (msg) => `${msg}
 
 Provide:
@@ -77,7 +95,7 @@ export function enhancePrompt(userMessage: string, mode: ExpertMode, founderCont
 
 // Keep this export for any route that imports EXPERT_SYSTEM_PROMPTS directly
 export const EXPERT_SYSTEM_PROMPTS: Record<ExpertMode, string> = Object.fromEntries(
-  (['code', 'seo', 'security', 'data', 'research', 'startup', 'founder'] as ExpertMode[]).map(
+  (['code', 'seo', 'security', 'data', 'research', 'finance', 'product', 'startup', 'founder'] as ExpertMode[]).map(
     mode => [mode, buildMasterPrompt(mode)]
   )
 ) as Record<ExpertMode, string>
