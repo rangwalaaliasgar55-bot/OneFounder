@@ -1,7 +1,7 @@
 import { detectExpertMode, type ExpertMode, type RouteResult } from './router'
 import { enhancePrompt } from './promptEnhancer'
 import { getAIProvider } from './index'
-import { assembleFounderContext, buildSystemPromptWithContext } from './context'
+import { assembleFounderContext, type FounderContext } from './context'
 import { extractAndStoreMemories } from './memory'
 import { gatherWebContext, formatWebContextForPrompt } from './webSearch'
 import { db } from '../db'
@@ -40,7 +40,18 @@ const MODE_LABELS: Record<ExpertMode, string> = {
   data: '📊 Data Analyst',
   research: '🔬 Research Expert',
   startup: '🚀 Startup Advisor',
-  founder: '🧠 Founder AI',
+  founder: '🧠 OneFounder AI',
+}
+
+function formatContext(ctx: FounderContext): string {
+  return [
+    `Founder Stage: ${ctx.stage} | Industry: ${ctx.industry} | Goal: ${ctx.goals}`,
+    `Business Snapshot:\n${ctx.businessSnapshot}`,
+    `Financial Context: ${ctx.financialContext}`,
+    ctx.urgentItems !== 'No urgent items flagged' ? `Urgent Items:\n${ctx.urgentItems}` : '',
+    `Persistent Memories:\n${ctx.memories}`,
+    `Recent Activity: ${ctx.recentActivity}`,
+  ].filter(Boolean).join('\n\n')
 }
 
 export class OneFounderBrain {
@@ -59,16 +70,16 @@ export class OneFounderBrain {
       ? { mode: req.forcedMode, confidence: 'high' as const, detectedKeywords: [] }
       : detectExpertMode(req.message)
 
-    const { systemPrompt: expertSystemPrompt, enhancedMessage } = enhancePrompt(req.message, route.mode)
-
-    let founderSystemPrompt = expertSystemPrompt
+    let founderContext: string | undefined
     try {
-      const context = await assembleFounderContext(req.userId)
-      founderSystemPrompt = buildSystemPromptWithContext(expertSystemPrompt, context)
+      const ctx = await assembleFounderContext(req.userId)
+      founderContext = formatContext(ctx)
     } catch {}
 
+    const { systemPrompt, enhancedMessage } = enhancePrompt(req.message, route.mode, founderContext)
+
+    let finalSystemPrompt = systemPrompt
     let webSearchUsed = false
-    let finalSystemPrompt = founderSystemPrompt
 
     const shouldSearchWeb = req.useWebSearch !== false && (
       route.mode === 'research' ||
@@ -81,7 +92,7 @@ export class OneFounderBrain {
       try {
         const webCtx = await gatherWebContext(req.message)
         if (webCtx.length > 0) {
-          finalSystemPrompt = founderSystemPrompt + '\n\n' + formatWebContextForPrompt(webCtx)
+          finalSystemPrompt = systemPrompt + '\n\n' + formatWebContextForPrompt(webCtx)
           webSearchUsed = true
         }
       } catch {}
@@ -93,11 +104,11 @@ export class OneFounderBrain {
 
     const messages = [
       { role: 'system' as const, content: finalSystemPrompt },
-      ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+      ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
     ]
 
     const lastUserMsg = messages[messages.length - 1]
-    if (lastUserMsg && lastUserMsg.role === 'user') {
+    if (lastUserMsg?.role === 'user') {
       lastUserMsg.content = enhancedMessage
     }
 
@@ -142,14 +153,16 @@ export class OneFounderBrain {
 
     yield { type: 'mode', data: JSON.stringify({ mode: route.mode, modeLabel: MODE_LABELS[route.mode], sessionId: session }) }
 
-    const { systemPrompt: expertSystemPrompt, enhancedMessage } = enhancePrompt(req.message, route.mode)
-
-    let finalSystemPrompt = expertSystemPrompt
-    let webSearchUsed = false
+    let founderContext: string | undefined
     try {
-      const context = await assembleFounderContext(req.userId)
-      finalSystemPrompt = buildSystemPromptWithContext(expertSystemPrompt, context)
+      const ctx = await assembleFounderContext(req.userId)
+      founderContext = formatContext(ctx)
     } catch {}
+
+    const { systemPrompt, enhancedMessage } = enhancePrompt(req.message, route.mode, founderContext)
+
+    let finalSystemPrompt = systemPrompt
+    let webSearchUsed = false
 
     const shouldSearchWeb = req.useWebSearch !== false && (
       route.mode === 'research' || route.mode === 'seo' || route.mode === 'startup' ||
@@ -172,11 +185,11 @@ export class OneFounderBrain {
 
     const messages = [
       { role: 'system' as const, content: finalSystemPrompt },
-      ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+      ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
     ]
 
     const lastUserMsg = messages[messages.length - 1]
-    if (lastUserMsg && lastUserMsg.role === 'user') {
+    if (lastUserMsg?.role === 'user') {
       lastUserMsg.content = enhancedMessage
     }
 

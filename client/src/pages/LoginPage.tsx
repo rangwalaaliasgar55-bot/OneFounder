@@ -101,6 +101,7 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
                   placeholder="John Smith"
                   value={name}
                   onChange={e => setName(e.target.value)}
+                  autoComplete="name"
                   required
                 />
               </div>
@@ -114,6 +115,7 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
                 placeholder="you@company.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
+                autoComplete="email"
                 required
               />
             </div>
@@ -126,6 +128,7 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
                 placeholder="••••••••"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 required
                 minLength={8}
               />

@@ -16,6 +16,8 @@ export async function getAIProvider(): Promise<AIProvider> {
 
   lastProviderCheck = now
 
+  // OneFounder AI runs on Ollama — a free, local, open-source LLM engine.
+  // The AI identity, knowledge, and behaviour are defined by our master prompt.
   const ollama = new OllamaProvider(
     process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
     process.env.OLLAMA_MODEL || 'llama3.2'
@@ -23,11 +25,15 @@ export async function getAIProvider(): Promise<AIProvider> {
   const available = await ollama.isAvailable()
 
   if (available) {
-    if (activeProviderName !== 'ollama') console.log('✅ ONEFOUNDER AI — Ollama engine connected')
+    if (activeProviderName !== 'ollama') {
+      console.log('🧠 OneFounder AI — engine online (Ollama)')
+    }
     activeProviderName = 'ollama'
     aiProvider = ollama
   } else {
-    if (activeProviderName !== 'mock') console.log('⚠️  Ollama not available — running in demo mode. Start with: ollama serve')
+    if (activeProviderName !== 'mock') {
+      console.log('⚠️  OneFounder AI — running in demo mode (no Ollama). Start with: ollama serve && ollama pull llama3.2')
+    }
     activeProviderName = 'mock'
     aiProvider = new MockAIProvider()
   }
@@ -35,7 +41,12 @@ export async function getAIProvider(): Promise<AIProvider> {
   return aiProvider
 }
 
-export async function getAIStatus(): Promise<{ available: boolean; provider: string; models?: string[]; note?: string }> {
+export async function getAIStatus(): Promise<{
+  available: boolean
+  provider: string
+  models?: string[]
+  note?: string
+}> {
   const ollama = new OllamaProvider(
     process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
     process.env.OLLAMA_MODEL || 'llama3.2'
@@ -43,12 +54,16 @@ export async function getAIStatus(): Promise<{ available: boolean; provider: str
   const available = await ollama.isAvailable()
   if (available) {
     const models = await ollama.listModels()
-    return { available: true, provider: 'ollama', models }
+    return {
+      available: true,
+      provider: 'OneFounder AI',
+      models,
+    }
   }
   return {
     available: false,
-    provider: 'mock',
-    note: 'Start Ollama to enable real AI: ollama serve && ollama pull llama3.2',
+    provider: 'OneFounder AI (demo)',
+    note: 'Start Ollama to enable full AI: ollama serve && ollama pull llama3.2',
   }
 }
 

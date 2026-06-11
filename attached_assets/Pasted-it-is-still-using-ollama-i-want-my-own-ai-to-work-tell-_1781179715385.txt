@@ -1,0 +1,37 @@
+it is still using ollama i want my own ai to work tell replit to maek my own ai so we dont haev to be depndende onlalma and otther ai make a master propmt for it no suggetsions neede djust maek athe matser porpmt
+no like there should be ollama but tell it make our own ai also reove clausde ant other ai i want may ia to learn web traned scode seo cyber and all tell it
+whats the error 17:07:02.659 npm warn EBADENGINE Unsupported engine {
+17:07:02.659 npm warn EBADENGINE   package: 'concurrently@10.0.3',
+17:07:02.659 npm warn EBADENGINE   required: { node: '>=22' },
+17:07:02.660 npm warn EBADENGINE   current: { node: 'v20.20.2', npm: '10.8.2' }
+17:07:02.660 npm warn EBADENGINE }
+17:07:02.660 npm warn EBADENGINE Unsupported engine {
+17:07:02.660 npm warn EBADENGINE   package: 'kysely@0.29.2',
+17:07:02.660 npm warn EBADENGINE   required: { node: '>=22.0.0' },
+17:07:02.661 npm warn EBADENGINE   current: { node: 'v20.20.2', npm: '10.8.2' }
+17:07:02.661 npm warn EBADENGINE }
+17:07:04.917 npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+17:07:04.940 npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+17:07:05.069 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+tell replit to do that and push 
+17:15:07.848 Running build in Washington, D.C., USA (East) – iad1
+17:15:07.849 Build machine configuration: 2 cores, 8 GB
+17:15:07.975 Cloning github.com/rangwalaaliasgar55-bot/OneFounder (Branch: main, Commit: d965d07)
+17:15:08.535 Cloning completed: 558.000ms
+17:15:08.757 Skipping build cache since Node.js version changed from "20.x" to "24.x"
+17:15:08.949 Running "vercel build"
+17:15:08.969 Vercel CLI 54.10.2
+17:15:09.608 Warning: Due to "engines": { "node": ">=22" } in your package.json file, the Node.js Version defined in your Project Settings ("20.x") will not apply, Node.js Version "24.x" will be used instead. Learn More: https://vercel.link/node-version
+17:15:09.609 Warning: Detected "engines": { "node": ">=22" } in your package.json that will automatically upgrade when a new major Node.js Version is released. Learn More: https://vercel.link/node-version
+17:15:09.640 Running "install" command: npm ci...
+17:16:20.695 npm error Exit handler never called!
+17:16:20.696 npm error This is an error with npm itself. Please report this error at:
+17:16:20.697 npm error   <https://github.com/npm/cli/issues>
+17:16:20.697 npm error A complete log of this run can be found in: /vercel/.npm/_logs/2026-06-11T11_45_09_776Z-debug-0.log
+17:16:20.739 Error: Command "npm ci" exited with 1
+
+
+now what replit has to do 
+tell replit to do the work thta u have jsut told me
+Function Runtimes must have a valid version, for example now-php@1.0.0. -- new error
+tell replit that
