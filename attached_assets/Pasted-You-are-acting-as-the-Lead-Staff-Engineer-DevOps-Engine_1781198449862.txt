@@ -1,0 +1,286 @@
+You are acting as the Lead Staff Engineer, DevOps Engineer, Security Engineer, Product Engineer, and QA Lead for this project.
+
+DO NOT make quick fixes.
+DO NOT suppress errors.
+DO NOT bypass TypeScript, CI, linting, or build failures.
+DO NOT hide issues with "skipLibCheck", "any", force flags, or disabling checks unless absolutely necessary and documented.
+
+Your goal is to make this repository production-ready.
+
+=====================================================
+PHASE 1 — FULL PROJECT AUDIT
+=====================================================
+
+Perform a complete audit of:
+
+- package.json
+- package-lock.json
+- tsconfig.json
+- vite.config.ts
+- vercel.json
+- .env.example
+- server/*
+- client/*
+- shared/*
+- .github/workflows/*
+- database configuration
+- authentication system
+- API routes
+- build configuration
+- deployment configuration
+
+Identify ALL issues including:
+
+- Build failures
+- TypeScript errors
+- Runtime errors
+- Dependency issues
+- Security risks
+- Memory leaks
+- Performance bottlenecks
+- SEO problems
+- Accessibility problems
+- Broken imports
+- Dead code
+- Duplicate code
+- Missing environment variables
+- Missing error handling
+- Invalid API patterns
+- Database issues
+- Authentication vulnerabilities
+- CI/CD issues
+- Vercel deployment issues
+
+Create a prioritized list:
+Critical
+High
+Medium
+Low
+
+=====================================================
+PHASE 2 — FIX BUILD SYSTEM
+=====================================================
+
+Ensure:
+
+npm install
+npm run build
+npm run dev
+
+all work successfully.
+
+Fix:
+
+- ESM/CommonJS conflicts
+- Missing packages
+- Missing type definitions
+- Incorrect imports
+- Circular dependencies
+- Invalid build scripts
+- Path alias issues
+
+Do not leave warnings unresolved.
+
+=====================================================
+PHASE 3 — FIX TYPESCRIPT
+=====================================================
+
+Resolve every TypeScript issue.
+
+Requirements:
+
+- No implicit any
+- No broken imports
+- No invalid types
+- No unsafe casts
+- Proper interfaces
+- Proper API response types
+- Proper database types
+
+Ensure:
+
+npm run type-check
+
+passes successfully.
+
+=====================================================
+PHASE 4 — FIX GITHUB ACTIONS
+=====================================================
+
+Review and rebuild:
+
+.github/workflows/ci.yml
+
+Requirements:
+
+Use Node 20 LTS.
+
+Workflow must:
+
+- Install dependencies
+- Run type check
+- Run build
+- Run tests if present
+
+No deprecated GitHub Actions.
+
+No unstable versions.
+
+No unnecessary permissions.
+
+Ensure workflow passes.
+
+=====================================================
+PHASE 5 — FIX VERCEL
+=====================================================
+
+Review deployment configuration.
+
+Fix:
+
+- Build command
+- Output directory
+- Environment variables
+- API routes
+- Serverless compatibility
+- Edge compatibility if needed
+
+Run deployment analysis.
+
+Ensure project can deploy successfully.
+
+Create or update:
+
+vercel.json
+
+only if necessary.
+
+=====================================================
+PHASE 6 — SECURITY REVIEW
+=====================================================
+
+Review entire application.
+
+Check for:
+
+- XSS
+- CSRF
+- SQL Injection
+- Auth bypasses
+- Open redirects
+- Sensitive logging
+- Secret exposure
+- Token leaks
+- Weak validation
+
+Implement fixes.
+
+=====================================================
+PHASE 7 — PERFORMANCE REVIEW
+=====================================================
+
+Optimize:
+
+- Bundle size
+- Lazy loading
+- API calls
+- Database queries
+- Client rendering
+- Caching opportunities
+
+Remove unnecessary packages.
+
+Remove dead code.
+
+=====================================================
+PHASE 8 — SEO REVIEW
+=====================================================
+
+Improve:
+
+- Metadata
+- Open Graph
+- Twitter cards
+- Structured data
+- Sitemap generation
+- robots.txt
+- Canonical URLs
+- Page titles
+- Descriptions
+
+Ensure strong SEO foundations.
+
+=====================================================
+PHASE 9 — CODE QUALITY
+=====================================================
+
+Refactor where needed.
+
+Improve:
+
+- Folder structure
+- Naming consistency
+- Reusability
+- Error handling
+- Logging
+- Maintainability
+
+Do not over-engineer.
+
+=====================================================
+PHASE 10 — AI SYSTEM REVIEW
+=====================================================
+
+Review all AI-related code.
+
+Verify:
+
+- Prompt handling
+- Context handling
+- Error recovery
+- Rate limiting
+- Retry logic
+- Cost optimization
+- Security controls
+
+Suggest improvements.
+
+=====================================================
+PHASE 11 — FINAL VALIDATION
+=====================================================
+
+Before finishing:
+
+Verify all pass successfully:
+
+npm install
+npm run type-check
+npm run build
+
+GitHub Actions passes.
+
+Vercel deployment passes.
+
+No unresolved errors remain.
+
+=====================================================
+DELIVERABLES
+=====================================================
+
+Provide:
+
+1. Complete list of fixes made
+2. Files modified
+3. Remaining risks
+4. Recommended future improvements
+5. Production readiness score out of 100
+6. Security score out of 100
+7. Performance score out of 100
+8. SEO score out of 100
+9. Scalability score out of 100
+
+Act like the owner of a venture-backed startup preparing for launch.
+
+Find root causes, not symptoms.
+
+Do not stop after fixing the first error. Continue auditing the entire repository and proactively fix everything you discover.
