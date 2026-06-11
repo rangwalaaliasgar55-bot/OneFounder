@@ -1,8 +1,11 @@
 {
   "version": 2,
-  "installCommand": "npm ci --include=dev",
+  "installCommand": "npm ci",
   "buildCommand": "npm run build:client",
   "outputDirectory": "dist/client",
+  "env": {
+    "NPM_CONFIG_PRODUCTION": "false"
+  },
   "functions": {
     "api/server.ts": {
       "maxDuration": 30
