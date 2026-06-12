@@ -31,6 +31,7 @@ import ogRoutes from './routes/og'
 import agentsRoutes from './routes/agents'
 import memoryRoutes from './routes/memory'
 import tasksRoutes from './routes/tasks'
+import adminRoutes from './routes/admin'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -122,6 +123,7 @@ app.use('/api/og', ogRoutes)
 app.use('/api/agents', aiLimiter, agentsRoutes)
 app.use('/api/memory', memoryRoutes)
 app.use('/api/tasks', tasksRoutes)
+app.use('/api/admin', adminRoutes)
 
 app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', version: '2.0.0', name: 'OneFounder' })

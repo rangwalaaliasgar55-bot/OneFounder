@@ -49,6 +49,8 @@ const NAV_SECTIONS = [
   },
 ]
 
+const ADMIN_NAV = { path: '/admin', icon: '🛡️', label: 'Admin Panel' }
+
 interface AppShellProps {
   children: React.ReactNode
   onCmdK?: () => void
@@ -167,6 +169,21 @@ export function AppShell({ children, onCmdK, onShortcuts }: AppShellProps) {
             </div>
           ))}
         </nav>
+
+        {/* Admin nav item */}
+        {(user as any)?.isAdmin && (
+          <div className="px-1.5 pb-1">
+            <Link
+              to={ADMIN_NAV.path}
+              onClick={() => setMobileOpen(false)}
+              title={collapsed ? ADMIN_NAV.label : undefined}
+              className={`nav-item ${isActive(ADMIN_NAV.path) ? 'active' : ''} ${collapsed ? 'justify-center px-0 py-2' : ''} text-amber-400/80 hover:text-amber-300`}
+            >
+              <span className="text-sm flex-shrink-0 leading-none">{ADMIN_NAV.icon}</span>
+              {!collapsed && <span className="truncate">{ADMIN_NAV.label}</span>}
+            </Link>
+          </div>
+        )}
 
         {/* User row */}
         <div className="p-1.5 border-t border-white/[0.06] space-y-px">

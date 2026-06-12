@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
+import { checkTokens, deductToken } from '../middleware/tokens'
 import { db } from '../db'
 import { chatMessages } from '../db/schema'
 import { eq, desc, and } from 'drizzle-orm'
@@ -42,7 +43,7 @@ router.get('/:sessionId', requireAuth, async (req, res) => {
   res.json(messages)
 })
 
-router.post('/send', requireAuth, async (req, res) => {
+router.post('/send', requireAuth, checkTokens, async (req, res) => {
   const user = (req as any).user
   const { message, sessionId, agentType, model } = req.body
   if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message required' })
@@ -68,6 +69,7 @@ router.post('/send', requireAuth, async (req, res) => {
       orderBy: [desc(chatMessages.createdAt)],
     })
 
+    if (!user.isAdmin) await deductToken(user.id)
     res.json({
       message: saved || { id: uuidv4(), role: 'assistant', content: result.response },
       sessionId: result.sessionId,
@@ -81,7 +83,7 @@ router.post('/send', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/stream', requireAuth, async (req, res) => {
+router.post('/stream', requireAuth, checkTokens, async (req, res) => {
   const user = (req as any).user
   const { message, sessionId, agentType, model } = req.body
   if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message required' })
@@ -107,9 +109,14 @@ router.post('/stream', requireAuth, async (req, res) => {
       model: model || undefined,
     })
 
+    let deducted = false
     for await (const chunk of gen) {
       send(chunk.type, typeof chunk.data === 'string' ? chunk.data : JSON.stringify(chunk.data))
-      if (chunk.type === 'done' || chunk.type === 'error') break
+      if ((chunk.type === 'done' || chunk.type === 'error') && !deducted) {
+        deducted = true
+        if (!user.isAdmin && chunk.type === 'done') await deductToken(user.id).catch(() => {})
+        break
+      }
     }
   } catch (err: any) {
     send('error', err.message || 'Stream failed')

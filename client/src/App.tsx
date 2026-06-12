@@ -29,6 +29,7 @@ const SeoPage        = lazy(() => import('./pages/SeoPage').then(m => ({ default
 const JourneyPage    = lazy(() => import('./pages/JourneyPage').then(m => ({ default: m.JourneyPage })))
 const WordPressPage  = lazy(() => import('./pages/WordPressPage').then(m => ({ default: m.WordPressPage })))
 const InvestorPage   = lazy(() => import('./pages/InvestorPage').then(m => ({ default: m.InvestorPage })))
+const AdminPage      = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })))
 
 function prefetchAfterIdle(importFns: Array<() => Promise<unknown>>, delay = 200) {
   const run = () => { importFns.forEach(fn => { try { fn() } catch (_) {} }) }
@@ -171,6 +172,7 @@ function AuthenticatedApp() {
             <Route path="/memory"    element={<MemoryPage />} />
             <Route path="/tasks"     element={<TasksPage />} />
             <Route path="/agents"    element={<AgentPage />} />
+            <Route path="/admin"     element={<AdminPage />} />
             <Route path="*"          element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

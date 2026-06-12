@@ -122,8 +122,11 @@ export function SettingsPage() {
   const [copiedOgKey, setCopiedOgKey] = useState<string | null>(null)
   const [activeOgModule, setActiveOgModule] = useState(OG_MODULES[0])
 
+  const [tokenInfo, setTokenInfo] = useState<{ tokenBalance: number; tokenUsed: number; isAdmin: boolean } | null>(null)
+
   useEffect(() => {
     api.get<any>('/ai/status').then(setAiStatus).catch(() => {})
+    api.get<any>('/ai/tokens').then(setTokenInfo).catch(() => {})
     api.get<FounderProfile | null>('/founder-profile').then(p => {
       if (p) setProfile(p)
     }).catch(() => {})
@@ -289,6 +292,48 @@ CORE RULES:
               </div>
             </div>
           </div>
+
+          {/* Token Balance */}
+          {tokenInfo && (
+            <div className={`rounded-2xl p-4 border flex items-center gap-4 ${
+              tokenInfo.isAdmin
+                ? 'bg-amber-500/5 border-amber-500/15'
+                : tokenInfo.tokenBalance <= 0
+                  ? 'bg-red-500/8 border-red-500/20'
+                  : tokenInfo.tokenBalance <= 20
+                    ? 'bg-yellow-500/8 border-yellow-500/20'
+                    : 'bg-white/[0.03] border-white/[0.06]'
+            }`}>
+              <div className="text-2xl flex-shrink-0">🪙</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-white">AI Tokens</span>
+                  {tokenInfo.isAdmin && (
+                    <span className="text-xs bg-amber-500/15 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded-full">Admin — unlimited</span>
+                  )}
+                  {!tokenInfo.isAdmin && tokenInfo.tokenBalance <= 0 && (
+                    <span className="text-xs bg-red-500/15 text-red-400 px-1.5 py-0.5 rounded-full">Out of tokens</span>
+                  )}
+                  {!tokenInfo.isAdmin && tokenInfo.tokenBalance > 0 && tokenInfo.tokenBalance <= 20 && (
+                    <span className="text-xs bg-yellow-500/15 text-yellow-400 px-1.5 py-0.5 rounded-full">Running low</span>
+                  )}
+                </div>
+                {!tokenInfo.isAdmin && (
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    <span className={`font-mono font-bold text-sm mr-1 ${
+                      tokenInfo.tokenBalance <= 0 ? 'text-red-400' : tokenInfo.tokenBalance <= 20 ? 'text-yellow-400' : 'text-green-400'
+                    }`}>{tokenInfo.tokenBalance}</span>
+                    remaining · <span className="text-slate-600">{tokenInfo.tokenUsed} used total</span>
+                    {tokenInfo.tokenBalance <= 20 && tokenInfo.tokenBalance > 0 && ' · Contact admin for more'}
+                    {tokenInfo.tokenBalance <= 0 && ' · Contact admin to get more tokens'}
+                  </p>
+                )}
+                {tokenInfo.isAdmin && (
+                  <p className="text-xs text-slate-500 mt-0.5">Admins have unlimited AI access. Manage user tokens in the <a href="/admin" className="text-amber-400 hover:underline">Admin Panel</a>.</p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Free AI Providers */}
           <div className="card">

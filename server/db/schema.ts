@@ -16,8 +16,20 @@ export const users = pgTable('users', {
   name: text('name'),
   avatar: text('avatar'),
   emailVerified: boolean('email_verified').default(false),
+  isAdmin: boolean('is_admin').default(false),
+  tokenBalance: integer('token_balance').default(100).notNull(),
+  tokenUsed: integer('token_used').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+export const tokenTransactions = pgTable('token_transactions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  amount: integer('amount').notNull(),
+  type: text('type').notNull(), // 'grant' | 'deduct' | 'reset'
+  note: text('note'),
+  createdAt: timestamp('created_at').defaultNow(),
 })
 
 export const sessions = pgTable('sessions', {
