@@ -1,7 +1,7 @@
 {
   "version": 2,
   "installCommand": "npm install --include=dev --legacy-peer-deps",
-  "buildCommand": "npm run build:client",
+  "buildCommand": "npm run build:client && npx drizzle-kit push --force",
   "outputDirectory": "dist/client",
   "functions": {
     "api/server.ts": {
