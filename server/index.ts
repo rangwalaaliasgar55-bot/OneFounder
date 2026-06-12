@@ -28,6 +28,9 @@ import founderProfileRoutes from './routes/founderProfile'
 import intelligenceRoutes from './routes/intelligence'
 import expertRoutes from './routes/expert'
 import ogRoutes from './routes/og'
+import agentsRoutes from './routes/agents'
+import memoryRoutes from './routes/memory'
+import tasksRoutes from './routes/tasks'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -116,6 +119,9 @@ app.use('/api/founder-profile', founderProfileRoutes)
 app.use('/api/intelligence', intelligenceRoutes)
 app.use('/api/expert', aiLimiter, expertRoutes)
 app.use('/api/og', ogRoutes)
+app.use('/api/agents', aiLimiter, agentsRoutes)
+app.use('/api/memory', memoryRoutes)
+app.use('/api/tasks', tasksRoutes)
 
 app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', version: '2.0.0', name: 'OneFounder' })

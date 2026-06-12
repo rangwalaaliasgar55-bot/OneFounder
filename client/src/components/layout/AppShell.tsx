@@ -4,16 +4,19 @@ import { useAuth } from '../../hooks/useAuth'
 
 const NAV_SECTIONS = [
   {
-    label: 'Core',
+    label: 'OS Core',
     items: [
       { path: '/', icon: '⚡', label: 'Dashboard' },
-      { path: '/journey', icon: '🗺️', label: 'Founder Journey' },
-      { path: '/chat', icon: '🤖', label: 'AI Agents' },
+      { path: '/chat', icon: '🤖', label: 'AI Chat' },
+      { path: '/agents', icon: '🧠', label: 'Supreme Agents' },
+      { path: '/memory', icon: '💾', label: 'Memory' },
+      { path: '/tasks', icon: '✅', label: 'Task Center' },
     ],
   },
   {
     label: 'Build',
     items: [
+      { path: '/journey', icon: '🗺️', label: 'Founder Journey' },
       { path: '/ideas', icon: '💡', label: 'Idea Lab' },
       { path: '/research', icon: '🔍', label: 'Research' },
       { path: '/planner', icon: '📋', label: 'Business Plan' },

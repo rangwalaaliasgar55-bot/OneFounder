@@ -1,0 +1,254 @@
+Current errors:
+
+/auth/get-session
+500 Internal Server Error
+
+/auth/sign-u
+p/email
+500 Internal Server Error
+
+(index)
+404 Not Found
+
+═══════════════════════════════════════
+PHASE 0 — AUTH SYSTEM REPAIR
+═══════════════════════════════════════
+
+The application currently cannot authenticate users.
+
+This is a P0 blocker.
+
+Perform a complete root-cause analysis.
+
+Required investigation:
+
+Verify Better Auth is mounted correctly
+
+Check:
+
+app.use('/auth', toNodeHandler(auth))
+
+or equivalent.
+
+Confirm ALL routes exist:
+
+/auth/get-session
+/auth/sign-in/email
+/auth/sign-up/email
+/auth/sign-out
+
+Test each endpoint manually.
+
+═══════════════════════════════════════
+
+Check Environment Variables
+
+Verify:
+
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=
+DATABASE_URL=
+DATABASE_URL_UNPOOLED=
+CLIENT_URL=
+
+Requirements:
+
+loaded before auth initialization
+dotenv runs before auth setup
+no undefined values
+
+Add startup validation:
+
+validateEnv()
+
+Server should fail immediately if required vars are missing.
+
+═══════════════════════════════════════
+
+Debug 500 Error
+
+For:
+
+/auth/get-session
+/auth/sign-up/email
+
+Capture full stack trace.
+
+Do NOT hide errors.
+
+Log:
+
+console.error(error)
+
+Return structured errors.
+
+Find exact failing line.
+
+Common causes:
+
+auth table missing
+session table missing
+invalid database connection
+incorrect Better Auth config
+cookies failing
+adapter misconfiguration
+
+Identify actual root cause.
+
+Fix it.
+
+═══════════════════════════════════════
+
+Database Verification
+
+Inspect:
+
+users
+sessions
+accounts
+verifications
+
+or Better Auth equivalent.
+
+Verify:
+
+tables exist
+schema matches Better Auth requirements
+migrations applied correctly
+
+Do NOT recreate database.
+
+Do NOT wipe production data.
+
+═══════════════════════════════════════
+
+CORS Verification
+
+Verify:
+
+credentials: true
+
+and
+
+origin: CLIENT_URL
+
+Ensure auth cookies are allowed.
+
+Verify:
+
+sameSite
+secure
+httpOnly
+
+configuration.
+
+═══════════════════════════════════════
+
+Cookie Debugging
+
+After sign-in:
+
+Verify browser receives:
+
+Set-Cookie
+
+header.
+
+Verify cookie persists.
+
+Verify session retrieval works.
+
+═══════════════════════════════════════
+
+PHASE 0.5 — FRONTEND 404 ERROR
+═══════════════════════════════════════
+
+Current error:
+
+(index):1 404
+
+Investigate:
+
+missing assets
+broken routes
+Vite build paths
+React Router paths
+favicon path
+API path mismatch
+
+Find exact missing file.
+
+Fix permanently.
+
+═══════════════════════════════════════
+
+REQUIRED TESTS
+═══════════════════════════════════════
+
+Execute full flow:
+
+Test 1
+
+Sign Up
+
+Expected:
+
+{
+  "user": {},
+  "session": {}
+}
+
+Test 2
+
+Sign In
+
+Expected:
+
+{
+  "user": {},
+  "session": {}
+}
+
+Test 3
+
+GET /auth/get-session
+
+Expected:
+
+{
+  "user": {},
+  "session": {}
+}
+
+Test 4
+
+Sign Out
+
+Expected:
+
+Session removed.
+
+═══════════════════════════════════════
+
+REQUIRED OUTPUT
+═══════════════════════════════════════
+
+Do NOT simply claim it is fixed.
+
+Provide:
+
+Root cause
+Files changed
+Code diff summary
+Database verification results
+Auth endpoint test results
+Screenshot of successful login
+Screenshot of successful signup
+Screenshot of successful session retrieval
+
+Only after all auth errors are resolved should work continue on memory systems, RAG, agents, repository intelligence, CRM, and social integrations.
+
+Current priority:
+
+AUTHENTICATION WORKING = 100%
+NEW FEATURES = 0%

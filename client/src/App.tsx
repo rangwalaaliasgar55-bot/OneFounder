@@ -11,6 +11,9 @@ import { ToastProvider } from './components/ui/ToastProvider'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
 const DashboardPage  = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const MemoryPage     = lazy(() => import('./pages/MemoryPage').then(m => ({ default: m.MemoryPage })))
+const TasksPage      = lazy(() => import('./pages/TasksPage').then(m => ({ default: m.TasksPage })))
+const AgentPage      = lazy(() => import('./pages/AgentPage').then(m => ({ default: m.AgentPage })))
 const IdeasPage      = lazy(() => import('./pages/IdeasPage').then(m => ({ default: m.IdeasPage })))
 const ResearchPage   = lazy(() => import('./pages/ResearchPage').then(m => ({ default: m.ResearchPage })))
 const PlannerPage    = lazy(() => import('./pages/PlannerPage').then(m => ({ default: m.PlannerPage })))
@@ -60,6 +63,9 @@ function AppPrefetch() {
       () => import('./pages/SettingsPage'),
       () => import('./pages/WordPressPage'),
       () => import('./pages/InvestorPage'),
+      () => import('./pages/MemoryPage'),
+      () => import('./pages/TasksPage'),
+      () => import('./pages/AgentPage'),
     ])
   }, [])
   return null
@@ -162,6 +168,9 @@ function AuthenticatedApp() {
             <Route path="/journey"   element={<JourneyPage />} />
             <Route path="/wordpress" element={<WordPressPage />} />
             <Route path="/investor"  element={<InvestorPage />} />
+            <Route path="/memory"    element={<MemoryPage />} />
+            <Route path="/tasks"     element={<TasksPage />} />
+            <Route path="/agents"    element={<AgentPage />} />
             <Route path="*"          element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

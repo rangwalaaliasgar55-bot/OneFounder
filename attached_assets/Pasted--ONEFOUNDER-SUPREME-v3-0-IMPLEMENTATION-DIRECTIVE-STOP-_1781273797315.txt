@@ -1,0 +1,414 @@
+# ONEFOUNDER SUPREME v3.0 — IMPLEMENTATION DIRECTIVE
+
+STOP ADDING PROMPTS.
+
+STOP ADDING MARKETING TEXT.
+
+STOP ADDING NEW AI PERSONAS.
+
+The OneFounder Supreme v2.0 prompt already exists.
+
+Your job now is to IMPLEMENT the missing infrastructure and convert OneFounder from a prompt wrapper into a real AI Operating System.
+
+═══════════════════════════════════════
+PHASE 1 — LONG TERM MEMORY SYSTEM
+═══════════════════════════════════════
+
+Build persistent memory.
+
+Create:
+
+server/memory/
+
+Required:
+
+* episodicMemory.ts
+* semanticMemory.ts
+* memoryManager.ts
+* memoryRetrieval.ts
+
+Capabilities:
+
+* Store conversations
+* Store user goals
+* Store projects
+* Store startup ideas
+* Store repositories
+* Store tasks
+* Store preferences
+
+Memory types:
+
+1. Episodic Memory
+
+   * conversation history
+   * decisions made
+   * actions taken
+
+2. Semantic Memory
+
+   * facts about projects
+   * business information
+   * company information
+
+3. Working Memory
+
+   * current conversation state
+   * current active tasks
+
+4. Procedural Memory
+
+   * learned workflows
+   * repeated user patterns
+
+Database tables:
+
+users
+memories
+entities
+relationships
+tasks
+projects
+
+Build memory retrieval before every AI response.
+
+The AI should know:
+
+* who the user is
+* what they are building
+* previous decisions
+* previous conversations
+
+═══════════════════════════════════════
+PHASE 2 — KNOWLEDGE GRAPH
+═══════════════════════════════════════
+
+Build:
+
+server/knowledge/
+
+Create:
+
+entityExtractor.ts
+graphBuilder.ts
+relationshipEngine.ts
+graphQueries.ts
+
+Track:
+
+User
+Projects
+Startups
+Competitors
+Repositories
+Customers
+Investors
+Features
+Tasks
+
+Example:
+
+User
+├─ owns → Startup
+├─ manages → Project
+├─ building → Product
+├─ targeting → ICP
+└─ raising → Funding
+
+AI must query graph before answering.
+
+═══════════════════════════════════════
+PHASE 3 — MULTI AGENT SYSTEM
+═══════════════════════════════════════
+
+Build:
+
+server/agents/
+
+Create:
+
+supervisorAgent.ts
+researchAgent.ts
+engineeringAgent.ts
+marketingAgent.ts
+seoAgent.ts
+financeAgent.ts
+salesAgent.ts
+
+Workflow:
+
+User Request
+↓
+Supervisor
+↓
+Agent Selection
+↓
+Parallel Execution
+↓
+Aggregation
+↓
+Final Response
+
+Research requests:
+
+Research Agent
++
+SEO Agent
++
+Data Agent
+
+run simultaneously.
+
+Engineering requests:
+
+Engineering Agent
++
+Security Agent
++
+DevOps Agent
+
+run simultaneously.
+
+Implement Promise.all orchestration.
+
+═══════════════════════════════════════
+PHASE 4 — RAG SYSTEM
+═══════════════════════════════════════
+
+Build:
+
+server/rag/
+
+Create:
+
+documentIngestion.ts
+chunker.ts
+embeddings.ts
+retriever.ts
+reranker.ts
+contextAssembler.ts
+
+Supported files:
+
+PDF
+DOCX
+TXT
+Markdown
+GitHub repos
+
+Requirements:
+
+* semantic chunking
+* vector search
+* retrieval ranking
+* context injection
+
+AI must answer using uploaded docs.
+
+═══════════════════════════════════════
+PHASE 5 — REPOSITORY INTELLIGENCE
+═══════════════════════════════════════
+
+Build:
+
+server/repository/
+
+Capabilities:
+
+* Repository indexing
+* Dependency graph
+* Architecture analysis
+* Vulnerability scanning
+* Technical debt analysis
+
+AI should understand:
+
+entire codebase structure
+dependency relationships
+API architecture
+database architecture
+
+before making code changes.
+
+═══════════════════════════════════════
+PHASE 6 — SOCIAL MEDIA INTEGRATIONS
+═══════════════════════════════════════
+
+Create:
+
+server/integrations/social/
+
+Integrations:
+
+LinkedIn
+Twitter/X
+Instagram
+YouTube
+Reddit
+TikTok
+
+Capabilities:
+
+* account connection
+* analytics retrieval
+* content scheduling
+* post generation
+* engagement tracking
+
+Build OAuth flow.
+
+Store tokens securely.
+
+═══════════════════════════════════════
+PHASE 7 — CRM INTEGRATIONS
+═══════════════════════════════════════
+
+Integrations:
+
+HubSpot
+Salesforce
+Pipedrive
+Zoho
+Notion
+Airtable
+
+Capabilities:
+
+* sync contacts
+* sync companies
+* sync deals
+* sync activities
+
+AI should access CRM context.
+
+═══════════════════════════════════════
+PHASE 8 — AUTONOMOUS TASK SYSTEM
+═══════════════════════════════════════
+
+Create:
+
+server/tasks/
+
+Capabilities:
+
+* task creation
+* task scheduling
+* reminders
+* task execution plans
+
+AI can generate:
+
+daily plan
+weekly plan
+sprint plan
+launch checklist
+
+Store tasks in database.
+
+═══════════════════════════════════════
+PHASE 9 — ANALYTICS COMMAND CENTER
+═══════════════════════════════════════
+
+Create dashboards:
+
+Revenue
+SEO
+Traffic
+Sales
+Product
+Users
+
+Build KPI engine.
+
+Track:
+
+MRR
+ARR
+CAC
+LTV
+Retention
+Churn
+Activation
+
+═══════════════════════════════════════
+PHASE 10 — TRUE AI IMPROVEMENT
+═══════════════════════════════════════
+
+Current problem:
+
+AI is mostly prompt-based.
+
+Fix:
+
+Build response pipeline:
+
+Memory
+↓
+Knowledge Graph
+↓
+Repository Intelligence
+↓
+RAG Context
+↓
+Agent Orchestration
+↓
+Reasoning
+↓
+Response
+
+The AI should become smarter because of context and systems,
+not because of bigger prompts.
+
+═══════════════════════════════════════
+UI REQUIREMENTS
+═══════════════════════════════════════
+
+Add:
+
+* Memory Panel
+* Agent Panel
+* Knowledge Graph Viewer
+* Connected Accounts
+* CRM Dashboard
+* Repository Explorer
+* Analytics Dashboard
+* Task Center
+
+═══════════════════════════════════════
+CRITICAL RULES
+═══════════════════════════════════════
+
+DO NOT:
+
+* add more prompts
+* add more personas
+* add fake AI features
+* add mock implementations
+
+DO:
+
+* build real infrastructure
+* build real persistence
+* build real agent orchestration
+* build real integrations
+* build production-ready code
+
+Every feature must be:
+
+1. implemented
+2. tested
+3. type-safe
+4. production-ready
+5. committed to GitHub
+
+Before completion provide:
+
+* file tree of all new files
+* git diff summary
+* architecture diagram
+* test results
+* remaining blockers
+
+Goal:
+
+Transform OneFounder into a genuine AI Operating System rather than a prompt-engineered chatbot.

@@ -1,3 +1,4 @@
 - [Tailwind + Vite config](tailwind-vite-config.md) — tailwind.config.js must be at workspace root with client/ paths; PostCSS must be inlined in vite.config.ts
 - [ONEFOUNDER AI Brain](onefoundr-ai-brain.md) — full AI Brain built: router, prompt enhancer, brain orchestrator, streaming SSE; Ollama → Claude → Mock provider chain
 - [TypeScript config quirks](ts-config-quirks.md) — replit_integrations excluded from tsc; ignoreDeprecations must be "5.0" not "6.0"; Better Auth's `advanced.generateId` was removed in v1
+- [OneFounder Supreme v3 Architecture](supreme-v3-architecture.md) — multi-agent system, memory retrieval, RAG, task planner all built; brain.ts enriched with parallel context assembly before every response

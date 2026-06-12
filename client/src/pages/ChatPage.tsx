@@ -22,6 +22,21 @@ const EXPERT_AGENTS = [
   { id: 'startup', icon: '🚀', name: 'Startup Advisor', desc: 'Strategy, growth & fundraising' },
 ]
 
+const SUPREME_AGENTS = [
+  { id: 'research', icon: '🔬', name: 'Research', desc: 'Market intel & competitive analysis', color: 'text-yellow-400' },
+  { id: 'engineering', icon: '💻', name: 'Engineering', desc: 'Architecture & implementation', color: 'text-blue-400' },
+  { id: 'marketing', icon: '📣', name: 'Marketing', desc: 'Growth strategy & campaigns', color: 'text-rose-400' },
+  { id: 'seo', icon: '🔍', name: 'SEO', desc: 'Search & content strategy', color: 'text-green-400' },
+  { id: 'finance', icon: '💰', name: 'Finance', desc: 'Unit economics & fundraising', color: 'text-emerald-400' },
+  { id: 'sales', icon: '💼', name: 'Sales', desc: 'Pipeline & deal closing', color: 'text-cyan-400' },
+  { id: 'security', icon: '🔒', name: 'Security', desc: 'Threat modeling & hardening', color: 'text-red-400' },
+  { id: 'devops', icon: '☁️', name: 'DevOps', desc: 'Infrastructure & reliability', color: 'text-slate-400' },
+  { id: 'product', icon: '🧩', name: 'Product', desc: 'Roadmap & PMF', color: 'text-pink-400' },
+  { id: 'data', icon: '📊', name: 'Data', desc: 'Analytics & KPIs', color: 'text-purple-400' },
+  { id: 'legal', icon: '⚖️', name: 'Legal Ops', desc: 'Contracts & compliance', color: 'text-amber-400' },
+  { id: 'startup', icon: '🚀', name: 'Founder', desc: 'Strategy & fundraising', color: 'text-orange-400' },
+]
+
 const MODELS = [
   { id: 'llama3.2', label: 'Llama 3.2', desc: 'Best for general tasks', badge: 'General' },
   { id: 'mistral', label: 'Mistral', desc: 'Fast & great for code', badge: 'Code' },
@@ -126,7 +141,7 @@ function renderContent(content: string) {
 }
 
 export function ChatPage() {
-  const [agentMode, setAgentMode] = useState<'founder' | 'expert'>('founder')
+  const [agentMode, setAgentMode] = useState<'founder' | 'expert' | 'supreme'>('founder')
   const [selectedId, setSelectedId] = useState('founder')
   const [sessionId, setSessionId] = useState(() => uuidv4())
   const [messages, setMessages] = useState<Message[]>([])
@@ -135,12 +150,17 @@ export function ChatPage() {
   const [activeMode, setActiveMode] = useState<string | null>(null)
   const [selectedModel, setSelectedModel] = useState('llama3.2')
   const [showModelPicker, setShowModelPicker] = useState(false)
+  const [supremeAutoSelect, setSupremeAutoSelect] = useState(true)
+  const [supremeSelected, setSupremeSelected] = useState<string[]>([])
+  const [agentsActive, setAgentsActive] = useState<string[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<(() => void) | null>(null)
   const modelPickerRef = useRef<HTMLDivElement>(null)
 
-  const currentAgents = agentMode === 'founder' ? FOUNDER_AGENTS : EXPERT_AGENTS
-  const currentAgent = currentAgents.find(a => a.id === selectedId) || currentAgents[0]
+  const currentAgents = agentMode === 'founder' ? FOUNDER_AGENTS : agentMode === 'expert' ? EXPERT_AGENTS : []
+  const currentAgent = agentMode === 'supreme'
+    ? { id: 'supreme', icon: '⚡', name: 'Supreme Mode', desc: 'Multi-agent parallel orchestration' }
+    : (currentAgents.find(a => a.id === selectedId) || currentAgents[0])
   const currentModelInfo = MODELS.find(m => m.id === selectedModel) || MODELS[0]
 
   useEffect(() => {
@@ -167,14 +187,113 @@ export function ChatPage() {
     setSelectedModel(defaultModel)
   }
 
+  const sendSupreme = useCallback(async (userInput: string) => {
+    const streamingMsgId = uuidv4()
+    setMessages(prev => [...prev, { id: streamingMsgId, role: 'assistant', content: '', streaming: true, model: 'supreme', modeLabel: '⚡ Supreme Mode' }])
+    setAgentsActive([])
+
+    try {
+      const res: any = await fetch('/api/agents/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          query: userInput,
+          agents: supremeAutoSelect ? undefined : supremeSelected,
+        }),
+      })
+
+      if (!res.ok || !res.body) throw new Error('Stream unavailable')
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) continue
+          if (!line.startsWith('data: ')) continue
+          const prevLine = lines[lines.indexOf(line) - 1] || ''
+          const eventType = prevLine.startsWith('event: ') ? prevLine.slice(7).trim() : ''
+          const data = line.slice(6)
+          try {
+            const parsed = JSON.parse(data)
+            if (eventType === 'agents_selected') {
+              setAgentsActive(parsed.agents || [])
+              setMessages(prev => prev.map(m => m.id === streamingMsgId
+                ? { ...m, content: `🔄 Deploying ${parsed.agents?.length || 0} specialist agents in parallel...\n\nAgents: ${(parsed.agents || []).join(', ')}` }
+                : m
+              ))
+            } else if (eventType === 'agent_complete') {
+              setMessages(prev => prev.map(m => m.id === streamingMsgId
+                ? { ...m, content: m.content + `\n✓ ${parsed.agent} (${(parsed.executionTimeMs/1000).toFixed(1)}s)` }
+                : m
+              ))
+            } else if (eventType === 'done') {
+              const full: any = await api.post('/agents/execute', {
+                query: userInput,
+                agents: supremeAutoSelect ? undefined : supremeSelected,
+              })
+              setMessages(prev => prev.map(m => m.id === streamingMsgId
+                ? {
+                    ...m,
+                    streaming: false,
+                    content: full.synthesis || '',
+                    modeLabel: `⚡ Supreme (${full.agentsUsed?.length || 0} agents · ${((full.totalTimeMs||0)/1000).toFixed(1)}s)`,
+                  }
+                : m
+              ))
+              setAgentsActive([])
+              return
+            }
+          } catch {}
+        }
+      }
+    } catch {
+      try {
+        const full: any = await api.post('/agents/execute', {
+          query: userInput,
+          agents: supremeAutoSelect ? undefined : supremeSelected,
+        })
+        setMessages(prev => prev.map(m => m.id === streamingMsgId
+          ? {
+              ...m,
+              streaming: false,
+              content: full.synthesis || 'No response',
+              modeLabel: `⚡ Supreme (${full.agentsUsed?.length || 0} agents)`,
+            }
+          : m
+        ))
+      } catch (err: any) {
+        setMessages(prev => prev.map(m => m.id === streamingMsgId
+          ? { ...m, content: `❌ ${err.message}`, streaming: false }
+          : m
+        ))
+      }
+    }
+    setAgentsActive([])
+  }, [supremeAutoSelect, supremeSelected])
+
   const send = useCallback(async () => {
     if (!input.trim() || sending) return
-    const userMsg: Message = { id: uuidv4(), role: 'user', content: input, model: selectedModel }
+    const userMsg: Message = { id: uuidv4(), role: 'user', content: input, model: agentMode === 'supreme' ? 'supreme' : selectedModel }
     setMessages(prev => [...prev, userMsg])
     const userInput = input
     setInput('')
     setSending(true)
     setActiveMode(null)
+
+    if (agentMode === 'supreme') {
+      await sendSupreme(userInput)
+      setSending(false)
+      return
+    }
 
     const streamingMsgId = uuidv4()
     setMessages(prev => [...prev, {
@@ -306,7 +425,7 @@ export function ChatPage() {
       setSending(false)
       abortRef.current = null
     }
-  }, [input, sending, agentMode, selectedId, sessionId, selectedModel])
+  }, [input, sending, agentMode, selectedId, sessionId, selectedModel, sendSupreme])
 
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
@@ -318,49 +437,106 @@ export function ChatPage() {
     <div className="flex h-[calc(100vh-0px)] overflow-hidden">
       {/* Sidebar */}
       <div className="w-56 flex-shrink-0 border-r border-white/5 bg-surface-900/30 flex flex-col">
-        <div className="p-3 border-b border-white/5">
-          <div className="flex rounded-lg overflow-hidden bg-white/5 p-0.5">
+        <div className="p-2.5 border-b border-white/5 space-y-1.5">
+          {/* Mode tabs */}
+          <div className="flex rounded-lg overflow-hidden bg-white/5 p-0.5 gap-0.5">
             <button
               onClick={() => { setAgentMode('founder'); setSelectedId('founder'); setSessionId(uuidv4()); setMessages([]) }}
-              className={`flex-1 text-xs py-1.5 rounded-md transition-all font-medium ${agentMode === 'founder' ? 'bg-brand-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              className={`flex-1 text-[10px] py-1.5 rounded-md transition-all font-medium ${agentMode === 'founder' ? 'bg-brand-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
             >
               🚀 Founder
             </button>
             <button
               onClick={() => { setAgentMode('expert'); setSelectedId('code'); setSessionId(uuidv4()); setMessages([]); setSelectedModel('mistral') }}
-              className={`flex-1 text-xs py-1.5 rounded-md transition-all font-medium ${agentMode === 'expert' ? 'bg-brand-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              className={`flex-1 text-[10px] py-1.5 rounded-md transition-all font-medium ${agentMode === 'expert' ? 'bg-brand-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
             >
               🧠 Expert
+            </button>
+            <button
+              onClick={() => { setAgentMode('supreme'); setSessionId(uuidv4()); setMessages([]) }}
+              className={`flex-1 text-[10px] py-1.5 rounded-md transition-all font-medium ${agentMode === 'supreme' ? 'bg-amber-500 text-black shadow' : 'text-slate-400 hover:text-white'}`}
+            >
+              ⚡ Supreme
             </button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-          <p className="text-xs text-slate-600 px-2 pt-2 pb-1 uppercase tracking-wider font-medium">
-            {agentMode === 'founder' ? 'Business Agents' : 'Expert Modes'}
-          </p>
-          {currentAgents.map(a => (
-            <button
-              key={a.id}
-              onClick={() => switchAgent(a.id, agentMode)}
-              className={`w-full flex items-center gap-2 p-2.5 rounded-lg text-left transition-all duration-200 ${
-                selectedId === a.id
-                  ? 'bg-brand-600/20 border border-brand-500/20 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
-              }`}
-            >
-              <span className="text-base flex-shrink-0">{a.icon}</span>
-              <div className="min-w-0">
-                <div className="text-xs font-medium truncate">{a.name}</div>
-                <div className="text-xs text-slate-600 truncate leading-tight">{a.desc}</div>
+          {agentMode === 'supreme' ? (
+            <>
+              <div className="px-2 pt-2 pb-1">
+                <p className="text-[10px] text-slate-600 uppercase tracking-wider font-medium mb-1.5">Multi-Agent Mode</p>
+                <button
+                  onClick={() => setSupremeAutoSelect(v => !v)}
+                  className={`w-full text-xs py-1.5 rounded-lg border transition-all ${
+                    supremeAutoSelect
+                      ? 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                      : 'border-white/10 text-slate-500 hover:border-white/20'
+                  }`}
+                >
+                  {supremeAutoSelect ? '⚡ Auto-Select' : '🎯 Manual Select'}
+                </button>
               </div>
-            </button>
-          ))}
+              {SUPREME_AGENTS.map(a => (
+                <button
+                  key={a.id}
+                  onClick={() => {
+                    if (supremeAutoSelect) return
+                    setSupremeSelected(prev =>
+                      prev.includes(a.id) ? prev.filter(x => x !== a.id) : [...prev, a.id]
+                    )
+                  }}
+                  className={`w-full flex items-center gap-2 p-2 rounded-lg text-left transition-all ${
+                    supremeAutoSelect
+                      ? 'text-slate-500 cursor-default'
+                      : supremeSelected.includes(a.id)
+                      ? 'bg-amber-500/10 border border-amber-500/20 text-white cursor-pointer'
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-white/3 border border-transparent cursor-pointer'
+                  } ${agentsActive.includes(a.id) ? 'animate-pulse bg-amber-500/10 border border-amber-500/20' : ''}`}
+                >
+                  <span className="text-sm flex-shrink-0">{a.icon}</span>
+                  <div className="min-w-0">
+                    <div className={`text-xs font-medium truncate ${a.color}`}>{a.name}</div>
+                    <div className="text-[10px] text-slate-700 truncate leading-tight">{a.desc}</div>
+                  </div>
+                  {!supremeAutoSelect && supremeSelected.includes(a.id) && (
+                    <span className="ml-auto text-amber-400 text-xs flex-shrink-0">✓</span>
+                  )}
+                  {agentsActive.includes(a.id) && (
+                    <span className="ml-auto w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
+                  )}
+                </button>
+              ))}
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-slate-600 px-2 pt-2 pb-1 uppercase tracking-wider font-medium">
+                {agentMode === 'founder' ? 'Business Agents' : 'Expert Modes'}
+              </p>
+              {currentAgents.map(a => (
+                <button
+                  key={a.id}
+                  onClick={() => switchAgent(a.id, agentMode as 'founder' | 'expert')}
+                  className={`w-full flex items-center gap-2 p-2.5 rounded-lg text-left transition-all duration-200 ${
+                    selectedId === a.id
+                      ? 'bg-brand-600/20 border border-brand-500/20 text-white'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                >
+                  <span className="text-base flex-shrink-0">{a.icon}</span>
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium truncate">{a.name}</div>
+                    <div className="text-xs text-slate-600 truncate leading-tight">{a.desc}</div>
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
         </div>
 
         <div className="p-2 border-t border-white/5">
           <button
-            onClick={() => { setSessionId(uuidv4()); setMessages([]); setActiveMode(null) }}
+            onClick={() => { setSessionId(uuidv4()); setMessages([]); setActiveMode(null); setAgentsActive([]) }}
             className="btn-ghost w-full justify-center text-xs py-2"
           >
             ✨ New Chat

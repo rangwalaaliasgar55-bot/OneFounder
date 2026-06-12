@@ -3,6 +3,9 @@ import { enhancePrompt } from './promptEnhancer'
 import { getAIProvider } from './index'
 import { assembleFounderContext, type FounderContext } from './context'
 import { extractAndStoreMemories } from './memory'
+import { extractEntitiesFromConversation } from '../knowledge/entityExtractor'
+import { getMemoryContextForQuery } from '../memory/memoryRetrieval'
+import { assembleRAGContext } from '../rag/contextAssembler'
 import { gatherWebContext, formatWebContextForPrompt } from './webSearch'
 import { db } from '../db'
 import { chatMessages } from '../db/schema'
@@ -76,15 +79,28 @@ export class OneFounderBrain {
       ? { mode: req.forcedMode, confidence: 'high' as const, detectedKeywords: [] }
       : detectExpertMode(req.message)
 
+    // Build context in parallel: founder context, memory retrieval, RAG
     let founderContext: string | undefined
+    let memoryContext = ''
+    let ragContext = ''
+
     try {
-      const ctx = await assembleFounderContext(req.userId)
-      founderContext = formatContext(ctx)
+      const [ctx, memCtx, ragCtx] = await Promise.all([
+        assembleFounderContext(req.userId).catch(() => null),
+        getMemoryContextForQuery(req.userId, req.message).catch(() => ''),
+        assembleRAGContext(req.userId, req.message).catch(() => ''),
+      ])
+      if (ctx) founderContext = formatContext(ctx)
+      memoryContext = memCtx
+      ragContext = ragCtx
     } catch {}
 
     const { systemPrompt, enhancedMessage } = enhancePrompt(req.message, route.mode, founderContext)
 
     let finalSystemPrompt = systemPrompt
+    if (memoryContext) finalSystemPrompt += `\n\n${memoryContext}`
+    if (ragContext) finalSystemPrompt += `\n\n${ragContext}`
+
     let webSearchUsed = false
 
     const shouldSearchWeb = req.useWebSearch !== false && (
@@ -98,7 +114,7 @@ export class OneFounderBrain {
       try {
         const webCtx = await gatherWebContext(req.message)
         if (webCtx.results.length > 0 || webCtx.news.length > 0) {
-          finalSystemPrompt = systemPrompt + '\n\n' + formatWebContextForPrompt(webCtx)
+          finalSystemPrompt = finalSystemPrompt + '\n\n' + formatWebContextForPrompt(webCtx)
           webSearchUsed = true
         }
       } catch {}
@@ -129,7 +145,9 @@ export class OneFounderBrain {
       model: `brain:${route.mode}`,
     })
 
+    // Fire-and-forget memory + entity extraction
     extractAndStoreMemories(req.userId, req.message, response, `brain:${route.mode}`).catch(() => {})
+    extractEntitiesFromConversation(req.userId, req.message, response).catch(() => {})
 
     return {
       response,
@@ -159,15 +177,28 @@ export class OneFounderBrain {
 
     yield { type: 'mode', data: JSON.stringify({ mode: route.mode, modeLabel: MODE_LABELS[route.mode], sessionId: session }) }
 
+    // Build all context in parallel before responding
     let founderContext: string | undefined
+    let memoryContext = ''
+    let ragContext = ''
+
     try {
-      const ctx = await assembleFounderContext(req.userId)
-      founderContext = formatContext(ctx)
+      const [ctx, memCtx, ragCtx] = await Promise.all([
+        assembleFounderContext(req.userId).catch(() => null),
+        getMemoryContextForQuery(req.userId, req.message).catch(() => ''),
+        assembleRAGContext(req.userId, req.message).catch(() => ''),
+      ])
+      if (ctx) founderContext = formatContext(ctx)
+      memoryContext = memCtx
+      ragContext = ragCtx
     } catch {}
 
     const { systemPrompt, enhancedMessage } = enhancePrompt(req.message, route.mode, founderContext)
 
     let finalSystemPrompt = systemPrompt
+    if (memoryContext) finalSystemPrompt += `\n\n${memoryContext}`
+    if (ragContext) finalSystemPrompt += `\n\n${ragContext}`
+
     let webSearchUsed = false
 
     const shouldSearchWeb = req.useWebSearch !== false && (
@@ -205,9 +236,8 @@ export class OneFounderBrain {
       const ollamaModel = req.model || process.env.OLLAMA_MODEL || 'llama3.2'
 
       let fullResponse = ''
-
-      // --- Try Ollama native streaming ---
       let ollamaStreamed = false
+
       try {
         const streamRes = await fetch(`${ollamaBaseUrl}/api/chat`, {
           method: 'POST',
@@ -239,14 +269,12 @@ export class OneFounderBrain {
           ollamaStreamed = true
         }
       } catch {
-        // Ollama not available — fall through to next provider
+        // Ollama not available — fall through to provider fallback
       }
 
-      // --- Non-streaming fallback (demo mode) ---
       if (!ollamaStreamed) {
         const response = await ai.chat(messages)
         fullResponse = response
-        // Simulate streaming word by word for UI consistency
         for (const word of response.split(' ')) {
           yield { type: 'token', data: word + ' ' }
           await new Promise(r => setTimeout(r, 8))
@@ -261,7 +289,9 @@ export class OneFounderBrain {
         model: `brain:${route.mode}`,
       }).catch(() => {})
 
+      // Fire-and-forget enrichment
       extractAndStoreMemories(req.userId, req.message, fullResponse, `brain:${route.mode}`).catch(() => {})
+      extractEntitiesFromConversation(req.userId, req.message, fullResponse).catch(() => {})
 
       yield {
         type: 'done',
