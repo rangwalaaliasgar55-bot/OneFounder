@@ -2,3 +2,4 @@
 - [ONEFOUNDER AI Brain](onefoundr-ai-brain.md) — full AI Brain built: router, prompt enhancer, brain orchestrator, streaming SSE; Ollama → Claude → Mock provider chain
 - [TypeScript config quirks](ts-config-quirks.md) — replit_integrations excluded from tsc; ignoreDeprecations must be "5.0" not "6.0"; Better Auth's `advanced.generateId` was removed in v1
 - [OneFounder Supreme v3 Architecture](supreme-v3-architecture.md) — multi-agent system, memory retrieval, RAG, task planner all built; brain.ts enriched with parallel context assembly before every response
+- [Auth root causes fixed](auth-root-causes.md) — two bugs: neon-http driver vs local PG; app.use strips prefix but app.all does not

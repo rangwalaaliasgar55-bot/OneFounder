@@ -2,11 +2,38 @@ import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { db } from './db'
 import { users, sessions, accounts, verifications } from './db/schema'
-import { v4 as uuidv4 } from 'uuid'
 import dotenv from 'dotenv'
 dotenv.config()
 
+const secret = process.env.BETTER_AUTH_SECRET
+if (!secret) {
+  throw new Error('BETTER_AUTH_SECRET env var is required. Add it to your Replit Secrets.')
+}
+
+// Resolve the public base URL — must match what the browser sees
+// In Replit dev: the Replit domain (port 80) proxies to Vite (5000) which proxies /auth to backend (3001)
+const baseURL = (() => {
+  if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`
+  if (process.env.REPLIT_DOMAINS) return `https://${process.env.REPLIT_DOMAINS.split(',')[0].trim()}`
+  if (process.env.CLIENT_URL) return process.env.CLIENT_URL
+  return 'http://localhost:5000'
+})()
+
+const trustedOrigins = [
+  'http://localhost:5000',
+  'http://127.0.0.1:5000',
+  'http://localhost:5173',
+  process.env.CLIENT_URL || '',
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
+  process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '',
+  ...(process.env.REPLIT_DEV_DOMAIN ? [`https://${process.env.REPLIT_DEV_DOMAIN}`] : []),
+  ...(process.env.REPLIT_DOMAINS ? process.env.REPLIT_DOMAINS.split(',').map(d => `https://${d.trim()}`) : []),
+].filter(Boolean)
+
 export const auth = betterAuth({
+  baseURL,
+  basePath: '/auth',
+  secret,
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: {
@@ -16,13 +43,6 @@ export const auth = betterAuth({
       verification: verifications,
     },
   }),
-  secret: (() => {
-    const s = process.env.BETTER_AUTH_SECRET
-    if (!s) throw new Error('BETTER_AUTH_SECRET env var is required. Add it to your Replit Secrets.')
-    return s
-  })(),
-  // Mount this router at /auth in Express, so internal Better Auth routes should use /auth as prefix.
-  basePath: '/auth',
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
@@ -37,14 +57,5 @@ export const auth = betterAuth({
       clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
     },
   },
-  trustedOrigins: [
-    'http://localhost:5000',
-    'http://127.0.0.1:5000',
-    'http://localhost:5173',
-    process.env.CLIENT_URL || '',
-    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '',
-    ...(process.env.REPLIT_DEV_DOMAIN ? [`https://${process.env.REPLIT_DEV_DOMAIN}`] : []),
-    ...(process.env.REPLIT_DOMAINS ? process.env.REPLIT_DOMAINS.split(',').map(d => `https://${d.trim()}`) : []),
-  ].filter(Boolean),
+  trustedOrigins,
 })
