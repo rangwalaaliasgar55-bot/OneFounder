@@ -34,15 +34,19 @@ export interface BrainStreamChunk {
 }
 
 const MODE_LABELS: Record<ExpertMode, string> = {
-  code: '💻 Code Expert',
-  seo: '🔍 SEO Expert',
-  security: '🔒 Security Expert',
-  data: '📊 Data Analyst',
-  research: '🔬 Research Expert',
-  finance: '💰 Finance Expert',
-  product: '🧩 Product Expert',
-  startup: '🚀 Startup Advisor',
-  founder: '🧠 OneFounder AI',
+  code: '💻 Engineering Agent',
+  seo: '🔍 SEO Command Center',
+  security: '🔒 Security Agent',
+  data: '📊 Data Agent',
+  research: '🔬 Deep Research Engine',
+  finance: '💰 Finance Agent',
+  product: '🧩 Product Agent',
+  startup: '🚀 Founder Agent',
+  founder: '⚡ OneFounder Supreme',
+  marketing: '📣 Marketing Agent',
+  sales: '💼 Sales Agent',
+  devops: '☁️ DevOps Agent',
+  legal: '⚖️ Legal Ops Agent',
 }
 
 function formatContext(ctx: FounderContext): string {

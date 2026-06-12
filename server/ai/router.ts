@@ -8,6 +8,10 @@ export type ExpertMode =
   | 'finance'
   | 'product'
   | 'founder'
+  | 'marketing'
+  | 'sales'
+  | 'devops'
+  | 'legal'
 
 export interface RouteResult {
   mode: ExpertMode
@@ -40,6 +44,7 @@ const ROUTING_RULES: Array<{
       /\b(content marketing|blog post|on.?page|off.?page|technical seo|local seo)\b/i,
       /\b(alt tag|h1|canonical|redirect|301|schema markup|rich snippet|meta description)\b/i,
       /\b(landing page|rank|optimize for search|search visibility|search traffic)\b/i,
+      /\b(core web vitals|lcp|cls|inp|e.?e.?a.?t|topical authority|content cluster)\b/i,
     ],
     keywords: ['seo', 'keywords', 'ranking', 'backlink', 'organic', 'sitemap', 'meta', 'landing page'],
   },
@@ -51,6 +56,7 @@ const ROUTING_RULES: Array<{
       /\b(firewall|encryption|ssl|tls|certificate|password|hash|salt|token|secret)\b/i,
       /\b(malware|phishing|ddos|brute force|zero.?day|cve|patch|owasp)\b/i,
       /\b(secure|insecure|unsafe|protect|harden|audit|threat|risk)\b/i,
+      /\b(soc 2|gdpr|hipaa|compliance|pen test|red team|blue team|zero trust)\b/i,
     ],
     keywords: ['security', 'vulnerability', 'hack', 'attack', 'secure', 'exploit', 'injection', 'xss', 'auth'],
   },
@@ -61,7 +67,7 @@ const ROUTING_RULES: Array<{
       /\b(csv|json|excel|spreadsheet|database|query|aggregate|filter|pivot)\b/i,
       /\b(trend|pattern|correlation|regression|average|median|outlier|distribution)\b/i,
       /\b(revenue|mrr|arr|churn|ltv|cac|conversion|funnel|cohort|retention)\b/i,
-      /\b(report|dashboard|insight|forecast|predict|model)\b/i,
+      /\b(report|dashboard|insight|forecast|predict|model|bi|business intelligence)\b/i,
     ],
     keywords: ['data', 'analyze', 'metrics', 'kpi', 'csv', 'statistics', 'trend', 'chart', 'revenue data', 'mrr'],
   },
@@ -72,6 +78,7 @@ const ROUTING_RULES: Array<{
       /\b(who is|what is|how does|tell me about|explain|overview of|summary of)\b/i,
       /\b(trend|news|recent|latest|current|2024|2025|2026|report|study|survey)\b/i,
       /\b(compare|vs\.?|versus|alternative|option|choice|pros and cons)\b/i,
+      /\b(tam|sam|som|market opportunity|competitive intelligence|due diligence)\b/i,
     ],
     keywords: ['research', 'competitor', 'industry', 'trend', 'market', 'compare', 'explain'],
   },
@@ -100,11 +107,57 @@ const ROUTING_RULES: Array<{
     keywords: ['product', 'feature', 'roadmap', 'mvp', 'ux', 'user', 'sprint', 'backlog', 'pmf', 'launch'],
   },
   {
+    mode: 'marketing',
+    patterns: [
+      /\b(marketing|brand|campaign|content|email|newsletter|social media|ads?|advertising)\b/i,
+      /\b(copywriting|headline|hook|cta|call to action|conversion|funnels?|lead gen)\b/i,
+      /\b(facebook|instagram|tiktok|linkedin post|twitter|youtube|influencer|viral)\b/i,
+      /\b(demand gen|growth hacking|product hunt|launch|press release|pr|media)\b/i,
+      /\b(roas|cpa|cpl|impressions|reach|engagement|click.?through|open rate)\b/i,
+      /\b(seo content|blog strategy|thought leadership|personal brand|positioning)\b/i,
+    ],
+    keywords: ['marketing', 'brand', 'campaign', 'email', 'content', 'ads', 'viral', 'growth', 'funnels'],
+  },
+  {
+    mode: 'sales',
+    patterns: [
+      /\b(sales|sell|selling|close|closing|deal|pipeline|crm|lead|prospect|outbound|inbound)\b/i,
+      /\b(cold email|cold outreach|linkedin outreach|discovery call|demo|proposal|contract)\b/i,
+      /\b(objection|follow.?up|sequence|cadence|quota|commission|forecast|win rate)\b/i,
+      /\b(meddic|spin selling|challenger|consultative|value.?based|enterprise sales)\b/i,
+      /\b(salesforce|hubspot|pipedrive|outreach|apollo|clay|zoominfo)\b/i,
+    ],
+    keywords: ['sales', 'sell', 'deal', 'pipeline', 'lead', 'prospect', 'close', 'outreach', 'crm'],
+  },
+  {
+    mode: 'devops',
+    patterns: [
+      /\b(devops|infrastructure|server|cloud|aws|gcp|azure|kubernetes|k8s|docker|container)\b/i,
+      /\b(ci\/cd|github actions|deploy|deployment|pipeline|terraform|ansible|helm)\b/i,
+      /\b(monitoring|observability|prometheus|grafana|datadog|logging|alerting|slo|sla)\b/i,
+      /\b(load balancer|cdn|nginx|reverse proxy|ssl cert|domain|dns|vpc|subnet)\b/i,
+      /\b(autoscaling|horizontal scaling|microservice|serverless|lambda|edge|vercel|railway)\b/i,
+    ],
+    keywords: ['devops', 'infrastructure', 'server', 'cloud', 'aws', 'docker', 'kubernetes', 'deploy', 'ci/cd'],
+  },
+  {
+    mode: 'legal',
+    patterns: [
+      /\b(legal|law|contract|agreement|terms|privacy policy|gdpr|compliance|ip|intellectual property)\b/i,
+      /\b(terms of service|tos|eula|nda|non.?disclosure|shareholder|founder agreement)\b/i,
+      /\b(trademark|patent|copyright|open source|license|mit|apache|gpl|saas agreement)\b/i,
+      /\b(employment|contractor|equity|vesting|cliff|409a|83b|cap table|legal entity)\b/i,
+      /\b(lawsuit|liability|indemnification|arbitration|jurisdiction|governing law)\b/i,
+    ],
+    keywords: ['legal', 'contract', 'terms', 'privacy', 'gdpr', 'ip', 'trademark', 'compliance', 'nda'],
+  },
+  {
     mode: 'startup',
     patterns: [
-      /\b(startup|business|market|customer|funding|pitch|strategy|vision|mission)\b/i,
-      /\b(value prop|go.?to.?market|gtm|hire|team|culture|founder|co-founder)\b/i,
-      /\b(scale|growth|expansion|acquisition|nps|feedback|operations|okr)\b/i,
+      /\b(startup|business model|market fit|customer discovery|go.?to.?market|gtm)\b/i,
+      /\b(value prop|value proposition|pitch|vision|mission|hire|team|culture|co-founder)\b/i,
+      /\b(scale|growth|expansion|acquisition|operations|okr|yc|accelerator|pivot)\b/i,
+      /\b(business strategy|competitive advantage|moat|differentiation|positioning)\b/i,
     ],
     keywords: ['startup', 'business', 'strategy', 'market', 'customer', 'growth', 'mvp'],
   },
@@ -114,11 +167,13 @@ export function detectExpertMode(message: string): RouteResult {
   const scores: Record<ExpertMode, number> = {
     code: 0, seo: 0, security: 0, data: 0, research: 0,
     finance: 0, product: 0, startup: 0, founder: 0,
+    marketing: 0, sales: 0, devops: 0, legal: 0,
   }
 
   const detected: Record<ExpertMode, string[]> = {
     code: [], seo: [], security: [], data: [], research: [],
     finance: [], product: [], startup: [], founder: [],
+    marketing: [], sales: [], devops: [], legal: [],
   }
 
   for (const rule of ROUTING_RULES) {
@@ -150,15 +205,19 @@ export function detectExpertMode(message: string): RouteResult {
 }
 
 export const MODE_LABELS: Record<ExpertMode, string> = {
-  code: '💻 Code Expert',
-  seo: '🔍 SEO Expert',
-  security: '🔒 Security Expert',
-  data: '📊 Data Analyst',
-  research: '🔬 Research Expert',
-  finance: '💰 Finance Expert',
-  product: '🧩 Product Expert',
-  startup: '🚀 Startup Advisor',
-  founder: '🧠 Founder AI',
+  code: '💻 Engineering Agent',
+  seo: '🔍 SEO Command Center',
+  security: '🔒 Security Agent',
+  data: '📊 Data Agent',
+  research: '🔬 Deep Research Engine',
+  finance: '💰 Finance Agent',
+  product: '🧩 Product Agent',
+  startup: '🚀 Founder Agent',
+  founder: '⚡ OneFounder Supreme',
+  marketing: '📣 Marketing Agent',
+  sales: '💼 Sales Agent',
+  devops: '☁️ DevOps Agent',
+  legal: '⚖️ Legal Ops Agent',
 }
 
 export const MODE_COLORS: Record<ExpertMode, string> = {
@@ -171,4 +230,8 @@ export const MODE_COLORS: Record<ExpertMode, string> = {
   product: 'pink',
   startup: 'orange',
   founder: 'indigo',
+  marketing: 'rose',
+  sales: 'cyan',
+  devops: 'slate',
+  legal: 'amber',
 }
