@@ -115,7 +115,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
 
     await db.update(tasks)
       .set(updates)
-      .where(and(eq(tasks.id, req.params.id), eq(tasks.userId, user.id)))
+      .where(and(eq(tasks.id, req.params.id as string), eq(tasks.userId, user.id)))
 
     res.json({ success: true })
   } catch (err: any) {
@@ -127,7 +127,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
   const user = (req as any).user
   try {
     await db.delete(tasks)
-      .where(and(eq(tasks.id, req.params.id), eq(tasks.userId, user.id)))
+      .where(and(eq(tasks.id, req.params.id as string), eq(tasks.userId, user.id)))
     res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })

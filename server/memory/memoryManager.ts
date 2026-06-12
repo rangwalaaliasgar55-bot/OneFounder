@@ -193,7 +193,11 @@ export async function assembleFounderContext(userId: string): Promise<FounderCon
       referenceCount: r.referenceCount || 0,
       lastReferencedAt: r.lastReferencedAt || null,
     })),
-    recentConversations: recentMessages.reverse(),
+    recentConversations: recentMessages.reverse().map(m => ({
+      role: m.role,
+      content: m.content,
+      createdAt: m.createdAt ?? new Date(),
+    })),
     activeProjects,
     businessIdeas: ideas,
     profile: profile[0] ? {

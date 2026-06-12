@@ -62,7 +62,7 @@ router.post('/', requireAuth, async (req, res) => {
 router.delete('/:id', requireAuth, async (req, res) => {
   const user = (req as any).user
   try {
-    await deleteMemory(user.id, req.params.id)
+    await deleteMemory(user.id, req.params.id as string)
     res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })

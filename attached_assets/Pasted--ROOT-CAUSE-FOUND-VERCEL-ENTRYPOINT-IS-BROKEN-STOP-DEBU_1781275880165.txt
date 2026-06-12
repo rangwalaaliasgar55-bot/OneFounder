@@ -1,0 +1,235 @@
+# ROOT CAUSE FOUND — VERCEL ENTRYPOINT IS BROKEN
+
+STOP DEBUGGING BETTER AUTH.
+
+STOP DEBUGGING COOKIES.
+
+STOP DEBUGGING DATABASE.
+
+The server is not starting.
+
+Current production failure:
+
+```text
+Error [ERR_MODULE_NOT_FOUND]
+
+Cannot find module:
+
+/var/task/server/index
+
+imported from:
+
+/var/task/api/server.js
+```
+
+This means Vercel is trying to import:
+
+```js
+server/index
+```
+
+but that file does not exist in the deployed artifact.
+
+═══════════════════════════════
+INVESTIGATE THESE FILES
+═══════════════════════════════
+
+Show full contents of:
+
+```text
+api/server.js
+vercel.json
+package.json
+tsconfig.json
+server/index.ts
+```
+
+Do NOT summarize.
+
+Print full files.
+
+═══════════════════════════════
+CHECK BUILD OUTPUT
+═══════════════════════════════
+
+Run:
+
+```bash
+npm run build
+```
+
+Then show:
+
+```bash
+tree dist
+```
+
+or
+
+```bash
+find dist -type f
+```
+
+I need to see where the compiled server entry actually exists.
+
+Expected possibilities:
+
+```text
+dist/server/index.js
+dist/index.js
+build/server/index.js
+```
+
+etc.
+
+═══════════════════════════════
+CHECK api/server.js
+═══════════════════════════════
+
+Most likely it contains something like:
+
+```js
+import '../server/index'
+```
+
+or
+
+```js
+import '../server/index.js'
+```
+
+or
+
+```js
+import '../server/index.ts'
+```
+
+This path is wrong for Vercel.
+
+It must import the actual compiled output.
+
+Example only:
+
+```js
+import '../dist/server/index.js'
+```
+
+Do NOT hardcode this.
+
+Inspect build output first.
+
+═══════════════════════════════
+CHECK ESM ISSUE
+═══════════════════════════════
+
+Node ESM requires extensions.
+
+Bad:
+
+```js
+import '../server/index'
+```
+
+Good:
+
+```js
+import '../server/index.js'
+```
+
+or
+
+```js
+import '../dist/server/index.js'
+```
+
+Verify if missing extension is causing the issue.
+
+═══════════════════════════════
+CHECK VERCEL CONFIG
+═══════════════════════════════
+
+Verify:
+
+```json
+vercel.json
+```
+
+Functions section.
+
+Build section.
+
+Routes section.
+
+Ensure Vercel points to the correct server entry.
+
+═══════════════════════════════
+CHECK CI FAILURES
+═══════════════════════════════
+
+GitHub Actions currently failing:
+
+```text
+CI / Install, Type-check & Build
+
+Security Audit / TypeScript Type Check
+```
+
+Run:
+
+```bash
+npm run typecheck
+npm run build
+```
+
+Fix ALL failures.
+
+Paste full errors.
+
+═══════════════════════════════
+SUCCESS CRITERIA
+═══════════════════════════════
+
+Must prove:
+
+```bash
+npm run build
+```
+
+passes
+
+AND
+
+```bash
+npm run typecheck
+```
+
+passes
+
+AND
+
+```text
+https://onefounder.vercel.app/auth/get-session
+```
+
+returns
+
+```json
+{
+  "user": null,
+  "session": null
+}
+```
+
+instead of 500.
+
+Required output:
+
+1. Exact root cause
+2. Exact file causing issue
+3. Exact line causing issue
+4. Files changed
+5. Build output tree
+6. Successful deployment log
+7. Successful auth endpoint test
+
+Do not say "fixed" without showing proof.
