@@ -1,6 +1,6 @@
 import { OllamaProvider } from './ollama'
 import { MockAIProvider } from './mock'
-import { makeDeepSeek, makeGroq, makeTogether, makeOpenRouter } from './openai-compatible'
+import { makeDeepSeek, makeGroq, makeOpenRouter } from './openai-compatible'
 import type { AIProvider, AIProviderType, ProviderStatus } from './provider'
 
 let aiProvider: AIProvider | null = null
@@ -51,18 +51,7 @@ export async function getAIProvider(): Promise<AIProvider> {
     }
   }
 
-  // 4. Together AI — free credits on sign-up
-  if (process.env.TOGETHER_API_KEY) {
-    const together = makeTogether()
-    if (await together.isAvailable()) {
-      if (activeProviderName !== 'together') console.log('🧠 OneFounder AI — Together AI online')
-      activeProviderName = 'together'
-      aiProvider = together
-      return aiProvider
-    }
-  }
-
-  // 5. OpenRouter — free models available
+  // 4. OpenRouter — free :free models only, never charged
   if (process.env.OPENROUTER_API_KEY) {
     const or = makeOpenRouter()
     if (await or.isAvailable()) {
@@ -120,7 +109,7 @@ export async function getAIStatus(): Promise<{
     name: 'DeepSeek',
     available: dsAvail,
     active: activeProviderName === 'deepseek',
-    note: 'Free API tier. Best reasoning model. Set DEEPSEEK_API_KEY.',
+    note: 'Limited free quota, then pay-per-token. Best reasoning. Set DEEPSEEK_API_KEY.',
     freeSignupUrl: 'https://platform.deepseek.com',
     envKey: 'DEEPSEEK_API_KEY',
     envKeySet: dsKeySet,
@@ -135,25 +124,10 @@ export async function getAIStatus(): Promise<{
     name: 'Groq',
     available: groqAvail,
     active: activeProviderName === 'groq',
-    note: 'Free tier. Fastest inference. Llama 3.3, DeepSeek-R1. Set GROQ_API_KEY.',
+    note: 'Always free. Rate-limited, never charged. Llama 3.3 70B. Set GROQ_API_KEY.',
     freeSignupUrl: 'https://console.groq.com',
     envKey: 'GROQ_API_KEY',
     envKeySet: groqKeySet,
-  })
-
-  // Together AI
-  const togetherKeySet = !!process.env.TOGETHER_API_KEY
-  let togetherAvail = false
-  if (togetherKeySet) { togetherAvail = await makeTogether().isAvailable() }
-  statuses.push({
-    id: 'together',
-    name: 'Together AI',
-    available: togetherAvail,
-    active: activeProviderName === 'together',
-    note: 'Free $25 credits on sign-up. 200+ open models. Set TOGETHER_API_KEY.',
-    freeSignupUrl: 'https://api.together.ai',
-    envKey: 'TOGETHER_API_KEY',
-    envKeySet: togetherKeySet,
   })
 
   // OpenRouter
@@ -165,7 +139,7 @@ export async function getAIStatus(): Promise<{
     name: 'OpenRouter',
     available: orAvail,
     active: activeProviderName === 'openrouter',
-    note: 'Free tier with DeepSeek, Llama & more. Set OPENROUTER_API_KEY.',
+    note: 'Free :free models (rate-limited, never charged). Using deepseek-chat:free. Set OPENROUTER_API_KEY.',
     freeSignupUrl: 'https://openrouter.ai',
     envKey: 'OPENROUTER_API_KEY',
     envKeySet: orKeySet,

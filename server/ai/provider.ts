@@ -11,7 +11,7 @@ export interface AIProvider {
   research(topic: string): Promise<string>
 }
 
-export type AIProviderType = 'ollama' | 'deepseek' | 'groq' | 'together' | 'openrouter' | 'mock'
+export type AIProviderType = 'ollama' | 'deepseek' | 'groq' | 'openrouter' | 'mock'
 
 export interface AIConfig {
   provider: AIProviderType

@@ -105,21 +105,15 @@ export function makeGroq(): OpenAICompatibleProvider {
   })
 }
 
-export function makeTogether(): OpenAICompatibleProvider {
-  return new OpenAICompatibleProvider({
-    name: 'Together AI',
-    baseUrl: 'https://api.together.xyz/v1',
-    apiKey: process.env.TOGETHER_API_KEY || '',
-    model: process.env.TOGETHER_MODEL || 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
-  })
-}
+// Together AI removed — free credits run out and charges begin. Not safe for "always free".
 
 export function makeOpenRouter(): OpenAICompatibleProvider {
+  // Only use :free tagged models — these are permanently free with rate limiting, never charged
   return new OpenAICompatibleProvider({
     name: 'OpenRouter',
     baseUrl: 'https://openrouter.ai/api/v1',
     apiKey: process.env.OPENROUTER_API_KEY || '',
-    model: process.env.OPENROUTER_MODEL || 'deepseek/deepseek-chat',
+    model: process.env.OPENROUTER_MODEL || 'deepseek/deepseek-chat:free',
     extraHeaders: {
       'HTTP-Referer': 'https://onefoundr.app',
       'X-Title': 'OneFounder',

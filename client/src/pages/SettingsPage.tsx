@@ -77,10 +77,9 @@ interface AIConfig {
 
 const FREE_PROVIDERS_DEFAULT = [
   { id: 'ollama',     name: 'Ollama (Local)',  available: false, active: false, envKeySet: true,  note: 'Free forever. Runs models on your machine. No API key needed.',       freeSignupUrl: 'https://ollama.ai' },
-  { id: 'deepseek',   name: 'DeepSeek',        available: false, active: false, envKeySet: false, note: 'Free API tier. Best reasoning model. Set DEEPSEEK_API_KEY.',          freeSignupUrl: 'https://platform.deepseek.com',  envKey: 'DEEPSEEK_API_KEY' },
-  { id: 'groq',       name: 'Groq',            available: false, active: false, envKeySet: false, note: 'Free tier. Fastest inference. Llama 3.3, DeepSeek-R1. Set GROQ_API_KEY.', freeSignupUrl: 'https://console.groq.com',        envKey: 'GROQ_API_KEY' },
-  { id: 'together',   name: 'Together AI',     available: false, active: false, envKeySet: false, note: 'Free $25 credits on sign-up. 200+ open models. Set TOGETHER_API_KEY.', freeSignupUrl: 'https://api.together.ai',          envKey: 'TOGETHER_API_KEY' },
-  { id: 'openrouter', name: 'OpenRouter',      available: false, active: false, envKeySet: false, note: 'Free tier with DeepSeek, Llama & more. Set OPENROUTER_API_KEY.',      freeSignupUrl: 'https://openrouter.ai',            envKey: 'OPENROUTER_API_KEY' },
+  { id: 'deepseek',   name: 'DeepSeek',        available: false, active: false, envKeySet: false, note: 'Limited free quota then pay-per-token. Best reasoning. Set DEEPSEEK_API_KEY.', freeSignupUrl: 'https://platform.deepseek.com', envKey: 'DEEPSEEK_API_KEY' },
+  { id: 'groq',       name: 'Groq',            available: false, active: false, envKeySet: false, note: 'Always free. Rate-limited, never charged. Llama 3.3 70B. Set GROQ_API_KEY.', freeSignupUrl: 'https://console.groq.com',      envKey: 'GROQ_API_KEY' },
+  { id: 'openrouter', name: 'OpenRouter',      available: false, active: false, envKeySet: false, note: 'Free :free models — rate-limited, never charged. Set OPENROUTER_API_KEY.', freeSignupUrl: 'https://openrouter.ai',         envKey: 'OPENROUTER_API_KEY' },
 ]
 
 const LS_KEY = 'onefoundr_ai_config'
@@ -517,7 +516,7 @@ CORE RULES:
                 <div className="p-3 rounded-lg bg-white/3 border border-white/5">
                   <p className="font-semibold text-white mb-1.5">Option B — Free API key (works on Vercel too)</p>
                   <div className="space-y-1 text-slate-400">
-                    <p>Pick one: <a href="https://console.groq.com" target="_blank" rel="noreferrer" className="text-brand-400 underline">Groq</a> · <a href="https://platform.deepseek.com" target="_blank" rel="noreferrer" className="text-brand-400 underline">DeepSeek</a> · <a href="https://api.together.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">Together AI</a> · <a href="https://openrouter.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">OpenRouter</a></p>
+                    <p>Pick one: <a href="https://console.groq.com" target="_blank" rel="noreferrer" className="text-brand-400 underline">Groq</a> (always free) · <a href="https://platform.deepseek.com" target="_blank" rel="noreferrer" className="text-brand-400 underline">DeepSeek</a> · <a href="https://openrouter.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">OpenRouter</a></p>
                     <p>Sign up → copy your API key → add it to Replit Secrets as <code className="bg-white/10 px-1 rounded font-mono">GROQ_API_KEY</code> (or the relevant key name shown above)</p>
                     <p>Restart the server — AI activates automatically.</p>
                   </div>
