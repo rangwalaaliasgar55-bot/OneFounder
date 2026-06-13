@@ -8,6 +8,14 @@ import { v4 as uuidv4 } from 'uuid'
 import { brain } from '../ai/brain'
 import { detectExpertMode } from '../ai/router'
 import { logActivity } from '../ai/activity'
+import { OllamaOfflineError } from '../ai/provider'
+
+function handleAIError(err: any, res: any) {
+  if (err instanceof OllamaOfflineError || err.code === 'OLLAMA_OFFLINE') {
+    return res.status(503).json({ error: err.message, code: 'OLLAMA_OFFLINE' })
+  }
+  res.status(500).json({ error: err.message || 'AI error' })
+}
 
 const router = Router()
 
@@ -78,8 +86,8 @@ router.post('/send', requireAuth, checkTokens, async (req, res) => {
       confidence: result.confidence,
       webSearchUsed: result.webSearchUsed,
     })
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
+  } catch (err: any) {
+    handleAIError(err, res)
   }
 })
 
@@ -119,7 +127,11 @@ router.post('/stream', requireAuth, checkTokens, async (req, res) => {
       }
     }
   } catch (err: any) {
-    send('error', err.message || 'Stream failed')
+    const isOffline = err instanceof OllamaOfflineError || err.code === 'OLLAMA_OFFLINE'
+    send('error', isOffline
+      ? JSON.stringify({ message: err.message, code: 'OLLAMA_OFFLINE' })
+      : (err.message || 'Stream failed')
+    )
   } finally {
     res.end()
   }

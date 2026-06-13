@@ -11,7 +11,7 @@ export interface AIProvider {
   research(topic: string): Promise<string>
 }
 
-export type AIProviderType = 'ollama' | 'mock'
+export type AIProviderType = 'ollama'
 
 export interface AIConfig {
   provider: AIProviderType
@@ -27,4 +27,12 @@ export interface ProviderStatus {
   models?: string[]
   note?: string
   setupUrl?: string
+}
+
+export class OllamaOfflineError extends Error {
+  code = 'OLLAMA_OFFLINE'
+  constructor() {
+    super('Ollama is not running. Install from https://ollama.ai then run: ollama serve && ollama pull qwen3:8b')
+    this.name = 'OllamaOfflineError'
+  }
 }

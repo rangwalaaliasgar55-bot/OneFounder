@@ -9,6 +9,7 @@ import { OnboardingModal } from './components/OnboardingModal'
 import { ShortcutsModal } from './components/ShortcutsModal'
 import { ToastProvider } from './components/ui/ToastProvider'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { OllamaWizard } from './components/OllamaWizard'
 
 const DashboardPage  = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const MemoryPage     = lazy(() => import('./pages/MemoryPage').then(m => ({ default: m.MemoryPage })))
@@ -99,8 +100,36 @@ function AuthenticatedApp() {
   const [showOnboarding, setShowOnboarding] = useState(
     () => !localStorage.getItem('of_onboarded')
   )
+  const [showOllamaWizard, setShowOllamaWizard] = useState(false)
+  const [ollamaOnline, setOllamaOnline] = useState<boolean | null>(null)
   const gKeyRef = useRef(false)
   const gTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    // Check Ollama status on mount; show wizard if offline and not dismissed
+    const dismissed = localStorage.getItem('of_ollama_wizard_dismissed')
+    fetch('/api/ollama/health', { credentials: 'include' })
+      .then(r => r.json())
+      .then((h: any) => {
+        const online = h.running && h.models?.length > 0
+        setOllamaOnline(online)
+        if (!online && !dismissed) setShowOllamaWizard(true)
+      })
+      .catch(() => {
+        setOllamaOnline(false)
+        if (!dismissed) setShowOllamaWizard(true)
+      })
+  }, [])
+
+  const dismissWizard = () => {
+    localStorage.setItem('of_ollama_wizard_dismissed', 'true')
+    setShowOllamaWizard(false)
+    // Re-check status after wizard closes
+    fetch('/api/ollama/health', { credentials: 'include' })
+      .then(r => r.json())
+      .then((h: any) => setOllamaOnline(h.running && h.models?.length > 0))
+      .catch(() => {})
+  }
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -144,12 +173,29 @@ function AuthenticatedApp() {
   return (
     <>
       {showOnboarding && <OnboardingModal onComplete={handleOnboardingComplete} />}
+      {showOllamaWizard && <OllamaWizard onDismiss={dismissWizard} />}
       <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
       <FloatingAI />
 
       <AppShell onCmdK={() => setCmdOpen(true)} onShortcuts={() => setShortcutsOpen(true)}>
         <AppPrefetch />
+        {/* Ollama offline banner — shown when dismissed wizard but Ollama still offline */}
+        {ollamaOnline === false && !showOllamaWizard && (
+          <div className="mb-4 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-yellow-500/8 border border-yellow-500/15 text-xs">
+            <span className="text-yellow-400 flex-shrink-0">⚠</span>
+            <span className="text-yellow-300/70 flex-1">
+              Ollama is offline — AI features unavailable.
+              Run: <code className="font-mono bg-black/20 px-1 rounded">ollama serve</code>
+            </span>
+            <button
+              onClick={() => setShowOllamaWizard(true)}
+              className="text-yellow-400 hover:text-yellow-300 transition-colors underline underline-offset-2 flex-shrink-0"
+            >
+              Setup →
+            </button>
+          </div>
+        )}
         <Suspense fallback={<PageFallback />}>
           <Routes>
             <Route path="/"          element={<DashboardPage />} />

@@ -2,16 +2,23 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { checkTokens, deductToken } from '../middleware/tokens'
 import { getAIProvider, getAIStatus } from '../ai'
+import { OllamaOfflineError } from '../ai/provider'
 import { getWebContextString } from '../ai/webSearch'
 
 const router = Router()
 
-router.get('/status', async (req, res) => {
+function handleAIError(err: any, res: any) {
+  if (err instanceof OllamaOfflineError || err.code === 'OLLAMA_OFFLINE') {
+    return res.status(503).json({ error: err.message, code: 'OLLAMA_OFFLINE' })
+  }
+  res.status(500).json({ error: err.message || 'AI error' })
+}
+
+router.get('/status', async (_req, res) => {
   const status = await getAIStatus()
   res.json(status)
 })
 
-// GET /api/ai/tokens — current user's token balance
 router.get('/tokens', requireAuth, async (req, res) => {
   const user = (req as any).user
   res.json({
@@ -37,8 +44,8 @@ router.post('/chat', requireAuth, checkTokens, async (req, res) => {
     const response = await ai.chat(withDate)
     if (!user.isAdmin) await deductToken(user.id)
     res.json({ content: response })
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
+  } catch (err: any) {
+    handleAIError(err, res)
   }
 })
 
@@ -53,8 +60,8 @@ router.post('/generate', requireAuth, checkTokens, async (req, res) => {
     const response = await ai.generate(prompt, systemPrompt ? `Today is ${today}.\n\n${systemPrompt}` : `Today is ${today}.`)
     if (!user.isAdmin) await deductToken(user.id)
     res.json({ content: response })
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
+  } catch (err: any) {
+    handleAIError(err, res)
   }
 })
 
@@ -71,8 +78,8 @@ router.post('/research', requireAuth, checkTokens, async (req, res) => {
     const response = await ai.generate(prompt, `You are a business research expert with access to real-time web data. Today is ${today}. Be specific, cite real trends from the web context, and give actionable insights.`)
     if (!user.isAdmin) await deductToken(user.id)
     res.json({ content: response })
-  } catch (error: any) {
-    res.status(500).json({ error: error.message })
+  } catch (err: any) {
+    handleAIError(err, res)
   }
 })
 
