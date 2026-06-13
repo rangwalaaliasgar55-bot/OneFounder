@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS users (
   email             TEXT NOT NULL UNIQUE,
   name              TEXT,
   avatar            TEXT,
+  image             TEXT,
   email_verified    BOOLEAN DEFAULT FALSE,
   created_at        TIMESTAMP DEFAULT NOW(),
   updated_at        TIMESTAMP DEFAULT NOW()
@@ -66,8 +67,10 @@ CREATE TABLE IF NOT EXISTS accounts (
   provider_id                TEXT NOT NULL,
   access_token               TEXT,
   refresh_token              TEXT,
+  id_token                   TEXT,
   access_token_expires_at    TIMESTAMP,
   refresh_token_expires_at   TIMESTAMP,
+  scope                      TEXT,
   expires_at                 TIMESTAMP,
   password                   TEXT,
   created_at                 TIMESTAMP DEFAULT NOW(),
