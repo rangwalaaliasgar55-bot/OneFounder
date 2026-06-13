@@ -76,10 +76,7 @@ interface AIConfig {
 }
 
 const FREE_PROVIDERS_DEFAULT = [
-  { id: 'ollama',     name: 'Ollama (Local)',  available: false, active: false, envKeySet: true,  note: 'Free forever. Runs models on your machine. No API key needed.',       freeSignupUrl: 'https://ollama.ai' },
-  { id: 'deepseek',   name: 'DeepSeek',        available: false, active: false, envKeySet: false, note: 'Limited free quota then pay-per-token. Best reasoning. Set DEEPSEEK_API_KEY.', freeSignupUrl: 'https://platform.deepseek.com', envKey: 'DEEPSEEK_API_KEY' },
-  { id: 'groq',       name: 'Groq',            available: false, active: false, envKeySet: false, note: 'Always free. Rate-limited, never charged. Llama 3.3 70B. Set GROQ_API_KEY.', freeSignupUrl: 'https://console.groq.com',      envKey: 'GROQ_API_KEY' },
-  { id: 'openrouter', name: 'OpenRouter',      available: false, active: false, envKeySet: false, note: 'Free :free models — rate-limited, never charged. Set OPENROUTER_API_KEY.', freeSignupUrl: 'https://openrouter.ai',         envKey: 'OPENROUTER_API_KEY' },
+  { id: 'ollama', name: 'Ollama (Local)', available: false, active: false, note: 'Free forever. Runs models on your machine. Zero cloud costs. No API key needed.', setupUrl: 'https://ollama.ai' },
 ]
 
 const LS_KEY = 'onefoundr_ai_config'
@@ -335,17 +332,16 @@ CORE RULES:
             </div>
           )}
 
-          {/* Free AI Providers */}
+          {/* AI Engine — Ollama */}
           <div className="card">
             <div className="mb-4">
-              <h3 className="text-sm font-semibold text-white">🤖 Free AI Providers</h3>
-              <p className="text-xs text-slate-500 mt-0.5">All free. OneFounder tries them in order: Ollama → DeepSeek → Groq → Together AI → OpenRouter. First available wins.</p>
+              <h3 className="text-sm font-semibold text-white">🤖 AI Engine</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Powered exclusively by Ollama — local inference, zero cloud costs, ₹0/month AI spend.</p>
             </div>
             <div className="space-y-2">
               {(aiStatus?.providers || FREE_PROVIDERS_DEFAULT).map((p: any) => {
                 const isActive = p.active && p.available
                 const isAvail = p.available
-                const hasKey = p.envKeySet
                 return (
                   <div key={p.id} className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${
                     isActive ? 'border-brand-500/30 bg-brand-600/8' : isAvail ? 'border-green-500/20 bg-green-500/5' : 'border-white/5 bg-white/2'
@@ -353,30 +349,32 @@ CORE RULES:
                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0 mt-0.5 ${
                       isActive ? 'bg-brand-500/20' : isAvail ? 'bg-green-500/15' : 'bg-white/5'
                     }`}>
-                      {isActive ? '⚡' : isAvail ? '✓' : p.id === 'ollama' ? '💻' : '🔑'}
+                      {isActive ? '⚡' : isAvail ? '✓' : '💻'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-semibold text-white">{p.name}</span>
                         {isActive && <span className="text-xs bg-brand-500/20 text-brand-400 border border-brand-500/20 px-1.5 py-0.5 rounded-full">Active</span>}
                         {!isActive && isAvail && <span className="text-xs bg-green-500/15 text-green-400 px-1.5 py-0.5 rounded-full">Ready</span>}
-                        {!isAvail && hasKey && <span className="text-xs bg-red-500/15 text-red-400 px-1.5 py-0.5 rounded-full">Unreachable</span>}
-                        {!isAvail && !hasKey && p.id !== 'ollama' && <span className="text-xs bg-white/5 text-slate-500 px-1.5 py-0.5 rounded-full">No key set</span>}
-                        {!isAvail && p.id === 'ollama' && <span className="text-xs bg-white/5 text-slate-500 px-1.5 py-0.5 rounded-full">Not running</span>}
+                        {!isAvail && <span className="text-xs bg-white/5 text-slate-500 px-1.5 py-0.5 rounded-full">Not running</span>}
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{p.note}</p>
-                      {p.envKey && p.id !== 'ollama' && (
-                        <code className="text-xs font-mono text-slate-600 mt-1 block">{p.envKey}</code>
+                      {p.models && p.models.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {p.models.slice(0, 6).map((m: string) => (
+                            <code key={m} className="text-xs bg-white/5 text-slate-400 px-1.5 py-0.5 rounded">{m}</code>
+                          ))}
+                        </div>
                       )}
                     </div>
-                    {p.freeSignupUrl && !isAvail && (
+                    {!isAvail && (
                       <a
-                        href={p.freeSignupUrl}
+                        href={p.setupUrl || 'https://ollama.ai'}
                         target="_blank"
                         rel="noreferrer"
                         className="flex-shrink-0 text-xs px-2.5 py-1.5 rounded-lg bg-brand-600/15 border border-brand-500/20 text-brand-400 hover:bg-brand-600/25 transition-all"
                       >
-                        Get free →
+                        Install →
                       </a>
                     )}
                   </div>
@@ -384,7 +382,7 @@ CORE RULES:
               })}
             </div>
             <p className="text-xs text-slate-600 mt-3">
-              Add API keys to your Replit Secrets or <code className="bg-white/5 px-1 rounded">.env</code> file. Restart the server after adding a key.
+              No API keys needed. All inference runs locally on your machine.
             </p>
           </div>
 
@@ -548,25 +546,17 @@ CORE RULES:
 
           {!isOnline && (
             <div className="glass rounded-xl p-5 border border-yellow-500/15 space-y-4">
-              <p className="text-sm font-semibold text-white">⚡ Enable AI — pick any free option</p>
-              <div className="space-y-3 text-xs">
-                <div className="p-3 rounded-lg bg-white/3 border border-white/5">
-                  <p className="font-semibold text-white mb-1.5">Option A — Ollama (local, no internet needed)</p>
-                  <div className="space-y-1 text-slate-400">
-                    <p>1. Install from <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">ollama.ai</a></p>
-                    <p>2. <code className="bg-white/10 px-1.5 py-0.5 rounded font-mono">ollama serve</code></p>
-                    <p>3. <code className="bg-white/10 px-1.5 py-0.5 rounded font-mono">ollama pull llama3.2</code> (or deepseek-r1, qwen2.5, mistral)</p>
-                  </div>
-                </div>
-                <div className="p-3 rounded-lg bg-white/3 border border-white/5">
-                  <p className="font-semibold text-white mb-1.5">Option B — Free API key (works on Vercel too)</p>
-                  <div className="space-y-1 text-slate-400">
-                    <p>Pick one: <a href="https://console.groq.com" target="_blank" rel="noreferrer" className="text-brand-400 underline">Groq</a> (always free) · <a href="https://platform.deepseek.com" target="_blank" rel="noreferrer" className="text-brand-400 underline">DeepSeek</a> · <a href="https://openrouter.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">OpenRouter</a></p>
-                    <p>Sign up → copy your API key → add it to Replit Secrets as <code className="bg-white/10 px-1 rounded font-mono">GROQ_API_KEY</code> (or the relevant key name shown above)</p>
-                    <p>Restart the server — AI activates automatically.</p>
-                  </div>
+              <p className="text-sm font-semibold text-white">⚡ Enable AI — Install Ollama</p>
+              <div className="p-3 rounded-lg bg-white/3 border border-white/5 text-xs">
+                <p className="font-semibold text-white mb-1.5">Ollama — local inference, zero cost</p>
+                <div className="space-y-1 text-slate-400">
+                  <p>1. Install from <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">ollama.ai</a></p>
+                  <p>2. <code className="bg-white/10 px-1.5 py-0.5 rounded font-mono">ollama serve</code></p>
+                  <p>3. <code className="bg-white/10 px-1.5 py-0.5 rounded font-mono">ollama pull qwen3:8b</code></p>
+                  <p className="text-slate-500 mt-1">Other supported models: <code className="bg-white/5 px-1 rounded">deepseek-r1:7b</code> · <code className="bg-white/5 px-1 rounded">mistral:7b</code> · <code className="bg-white/5 px-1 rounded">llama3.1:8b</code> · <code className="bg-white/5 px-1 rounded">qwen3:14b</code></p>
                 </div>
               </div>
+              <p className="text-xs text-slate-600">No API keys. No cloud. No costs. AI runs on your hardware.</p>
             </div>
           )}
         </div>

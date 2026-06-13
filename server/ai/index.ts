@@ -1,6 +1,5 @@
 import { OllamaProvider } from './ollama'
 import { MockAIProvider } from './mock'
-import { makeDeepSeek, makeGroq, makeOpenRouter } from './openai-compatible'
 import type { AIProvider, AIProviderType, ProviderStatus } from './provider'
 
 let aiProvider: AIProvider | null = null
@@ -17,54 +16,21 @@ export async function getAIProvider(): Promise<AIProvider> {
 
   lastProviderCheck = now
 
-  // 1. Ollama — local, fully free, no API key required
+  // Ollama — local, fully free, no API key, no cloud, no costs
   const ollama = new OllamaProvider(
     process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-    process.env.OLLAMA_MODEL || 'llama3.2'
+    process.env.OLLAMA_MODEL || 'qwen3:8b'
   )
   if (await ollama.isAvailable()) {
-    if (activeProviderName !== 'ollama') console.log('🧠 OneFounder AI — Ollama online')
+    if (activeProviderName !== 'ollama') console.log('🧠 OneFounder AI — Ollama online (local inference)')
     activeProviderName = 'ollama'
     aiProvider = ollama
     return aiProvider
   }
 
-  // 2. DeepSeek — free API tier
-  if (process.env.DEEPSEEK_API_KEY) {
-    const ds = makeDeepSeek()
-    if (await ds.isAvailable()) {
-      if (activeProviderName !== 'deepseek') console.log('🧠 OneFounder AI — DeepSeek online')
-      activeProviderName = 'deepseek'
-      aiProvider = ds
-      return aiProvider
-    }
-  }
-
-  // 3. Groq — free tier, very fast
-  if (process.env.GROQ_API_KEY) {
-    const groq = makeGroq()
-    if (await groq.isAvailable()) {
-      if (activeProviderName !== 'groq') console.log('🧠 OneFounder AI — Groq online')
-      activeProviderName = 'groq'
-      aiProvider = groq
-      return aiProvider
-    }
-  }
-
-  // 4. OpenRouter — free :free models only, never charged
-  if (process.env.OPENROUTER_API_KEY) {
-    const or = makeOpenRouter()
-    if (await or.isAvailable()) {
-      if (activeProviderName !== 'openrouter') console.log('🧠 OneFounder AI — OpenRouter online')
-      activeProviderName = 'openrouter'
-      aiProvider = or
-      return aiProvider
-    }
-  }
-
-  // 6. Demo mode
+  // Demo mode — no cloud fallback
   if (activeProviderName !== 'mock') {
-    console.log('⚠️  OneFounder AI — demo mode. Add an API key or run: ollama serve && ollama pull llama3.2')
+    console.log('⚠️  OneFounder AI — demo mode. Install Ollama: https://ollama.ai  then run: ollama serve && ollama pull qwen3:8b')
   }
   activeProviderName = 'mock'
   aiProvider = new MockAIProvider()
@@ -79,81 +45,33 @@ export async function getAIStatus(): Promise<{
   note?: string
   providers: ProviderStatus[]
 }> {
-  const statuses: ProviderStatus[] = []
-
-  // Ollama
   const ollama = new OllamaProvider(
     process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-    process.env.OLLAMA_MODEL || 'llama3.2'
+    process.env.OLLAMA_MODEL || 'qwen3:8b'
   )
   const ollamaAvail = await ollama.isAvailable()
   const ollamaModels = ollamaAvail ? await ollama.listModels() : []
-  statuses.push({
-    id: 'ollama',
-    name: 'Ollama (Local)',
-    available: ollamaAvail,
-    active: activeProviderName === 'ollama',
-    models: ollamaModels,
-    note: 'Free forever. Runs models on your machine. No API key needed.',
-    freeSignupUrl: 'https://ollama.ai',
-    envKey: 'OLLAMA_BASE_URL',
-    envKeySet: true,
-  })
 
-  // DeepSeek
-  const dsKeySet = !!process.env.DEEPSEEK_API_KEY
-  let dsAvail = false
-  if (dsKeySet) { dsAvail = await makeDeepSeek().isAvailable() }
-  statuses.push({
-    id: 'deepseek',
-    name: 'DeepSeek',
-    available: dsAvail,
-    active: activeProviderName === 'deepseek',
-    note: 'Limited free quota, then pay-per-token. Best reasoning. Set DEEPSEEK_API_KEY.',
-    freeSignupUrl: 'https://platform.deepseek.com',
-    envKey: 'DEEPSEEK_API_KEY',
-    envKeySet: dsKeySet,
-  })
-
-  // Groq
-  const groqKeySet = !!process.env.GROQ_API_KEY
-  let groqAvail = false
-  if (groqKeySet) { groqAvail = await makeGroq().isAvailable() }
-  statuses.push({
-    id: 'groq',
-    name: 'Groq',
-    available: groqAvail,
-    active: activeProviderName === 'groq',
-    note: 'Always free. Rate-limited, never charged. Llama 3.3 70B. Set GROQ_API_KEY.',
-    freeSignupUrl: 'https://console.groq.com',
-    envKey: 'GROQ_API_KEY',
-    envKeySet: groqKeySet,
-  })
-
-  // OpenRouter
-  const orKeySet = !!process.env.OPENROUTER_API_KEY
-  let orAvail = false
-  if (orKeySet) { orAvail = await makeOpenRouter().isAvailable() }
-  statuses.push({
-    id: 'openrouter',
-    name: 'OpenRouter',
-    available: orAvail,
-    active: activeProviderName === 'openrouter',
-    note: 'Free :free models (rate-limited, never charged). Using deepseek-chat:free. Set OPENROUTER_API_KEY.',
-    freeSignupUrl: 'https://openrouter.ai',
-    envKey: 'OPENROUTER_API_KEY',
-    envKeySet: orKeySet,
-  })
-
-  const activeStatus = statuses.find(s => s.active && s.id !== 'mock')
-  const anyAvailable = statuses.some(s => s.available)
+  const statuses: ProviderStatus[] = [
+    {
+      id: 'ollama',
+      name: 'Ollama (Local)',
+      available: ollamaAvail,
+      active: activeProviderName === 'ollama',
+      models: ollamaModels,
+      note: 'Free forever. Runs models on your machine. Zero AI costs. No API key needed.',
+      setupUrl: 'https://ollama.ai',
+    },
+  ]
 
   return {
-    available: anyAvailable,
-    provider: activeStatus ? activeStatus.name : 'OneFounder AI (demo)',
+    available: ollamaAvail,
+    provider: ollamaAvail ? 'Ollama (Local)' : 'OneFounder AI (demo)',
     activeProvider: activeProviderName,
     models: ollamaModels,
-    note: anyAvailable ? undefined : 'Add an API key below or install Ollama to enable AI.',
+    note: ollamaAvail
+      ? undefined
+      : 'Install Ollama to enable AI: https://ollama.ai — then run: ollama serve && ollama pull qwen3:8b',
     providers: statuses,
   }
 }

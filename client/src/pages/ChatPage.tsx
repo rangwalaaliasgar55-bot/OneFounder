@@ -38,25 +38,27 @@ const SUPREME_AGENTS = [
 ]
 
 const MODELS = [
-  { id: 'llama3.2', label: 'Llama 3.2', desc: 'Best for general tasks', badge: 'General' },
-  { id: 'mistral', label: 'Mistral', desc: 'Fast & great for code', badge: 'Code' },
-  { id: 'deepseek-r1', label: 'DeepSeek R1', desc: 'Deep reasoning & research', badge: 'Research' },
-  { id: 'qwen2.5', label: 'Qwen 2.5', desc: 'Security & analysis', badge: 'Security' },
+  { id: 'qwen3:8b',       label: 'Qwen3 8B',        desc: 'Best overall — fast & capable', badge: 'Default' },
+  { id: 'qwen3:14b',      label: 'Qwen3 14B',       desc: 'Higher quality, needs more RAM',  badge: 'Quality' },
+  { id: 'deepseek-r1:7b', label: 'DeepSeek R1 7B',  desc: 'Deep reasoning & research',       badge: 'Research' },
+  { id: 'mistral:7b',     label: 'Mistral 7B',       desc: 'Fast & great for code',           badge: 'Code' },
+  { id: 'llama3.1:8b',    label: 'Llama 3.1 8B',    desc: 'General purpose',                 badge: 'General' },
+  { id: 'llama3.2:3b',    label: 'Llama 3.2 3B',    desc: 'Fastest, least RAM',              badge: 'Fast' },
 ]
 
 const DEFAULT_MODEL_FOR_AGENT: Record<string, string> = {
-  code: 'mistral',
-  data: 'deepseek-r1',
-  research: 'deepseek-r1',
-  security: 'qwen2.5',
-  startup: 'deepseek-r1',
-  seo: 'llama3.2',
-  founder: 'llama3.2',
-  ceo: 'llama3.2',
-  marketing: 'llama3.2',
-  sales: 'llama3.2',
-  operations: 'llama3.2',
-  product: 'llama3.2',
+  code:       'mistral:7b',
+  data:       'deepseek-r1:7b',
+  research:   'deepseek-r1:7b',
+  security:   'qwen3:8b',
+  startup:    'deepseek-r1:7b',
+  seo:        'qwen3:8b',
+  founder:    'qwen3:8b',
+  ceo:        'qwen3:8b',
+  marketing:  'qwen3:8b',
+  sales:      'qwen3:8b',
+  operations: 'qwen3:8b',
+  product:    'qwen3:8b',
 }
 
 const MODE_COLORS: Record<string, string> = {

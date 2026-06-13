@@ -11,13 +11,12 @@ export interface AIProvider {
   research(topic: string): Promise<string>
 }
 
-export type AIProviderType = 'ollama' | 'deepseek' | 'groq' | 'openrouter' | 'mock'
+export type AIProviderType = 'ollama' | 'mock'
 
 export interface AIConfig {
   provider: AIProviderType
   model?: string
   baseUrl?: string
-  apiKey?: string
 }
 
 export interface ProviderStatus {
@@ -27,7 +26,5 @@ export interface ProviderStatus {
   active: boolean
   models?: string[]
   note?: string
-  freeSignupUrl?: string
-  envKey?: string
-  envKeySet?: boolean
+  setupUrl?: string
 }

@@ -7,13 +7,13 @@ A complete SaaS platform for running an entire company from one place.
 - **Backend**: Express.js + TypeScript
 - **Database**: Replit PostgreSQL + Drizzle ORM
 - **Auth**: Better Auth (email, Google, GitHub)
-- **AI**: Ollama (free/open-source) with mock fallback
-- **AI Models**: llama3.2, deepseek-r1, qwen2.5, mistral
+- **AI**: Ollama (local inference only — zero cloud costs)
+- **Runtime**: Node.js 22 LTS
 
 ## Architecture
 - `/client` — React + Vite frontend (port 5000 in dev, port 80 via Replit proxy)
 - `/server` — Express backend (port 3001)
-- `/server/ai` — AI provider abstraction layer
+- `/server/ai` — Ollama provider abstraction layer
 - `/server/db` — Drizzle ORM schema + Neon adapter
 - `/server/routes` — All API routes
 - `tailwind.config.js` — at workspace root (required for Vite inline PostCSS)
@@ -23,6 +23,31 @@ A complete SaaS platform for running an entire company from one place.
 - **Backend**: `npm run dev:server` (port 3001)
 - **Frontend**: `npm run dev:client` (port 5000)
 - **DB Push**: `npm run db:push`
+
+## AI Architecture — Local-First
+
+OneFounder uses **Ollama exclusively**. No cloud AI providers. No API keys. No costs.
+
+```
+User → OneFounder → Ollama → Local Model → Response
+```
+
+Monthly AI cost: **₹0**
+
+### Supported Models
+| Model | Use Case |
+|---|---|
+| `qwen3:8b` | Default — best overall |
+| `qwen3:14b` | Higher quality |
+| `deepseek-r1:7b` | Deep reasoning & research |
+| `mistral:7b` | Fast, great for code |
+| `llama3.1:8b` | General purpose |
+| `llama3.2:3b` | Fastest, minimum RAM |
+
+### Setup
+1. Install Ollama: https://ollama.ai
+2. Run: `ollama serve`
+3. Pull a model: `ollama pull qwen3:8b`
 
 ## Phase 1 Modules (Live)
 1. Dashboard — Company command center
@@ -48,20 +73,31 @@ A complete SaaS platform for running an entire company from one place.
 - Marketplace (Templates & Industry Packs)
 - Investor Mode (Pitch Decks & KPIs)
 
-## AI Setup
-OneFounder works in demo mode without Ollama. For real AI:
-1. Install Ollama: https://ollama.ai
-2. Run: `ollama serve`
-3. Pull a model: `ollama pull llama3.2`
+## Node.js Version
+Node.js 22 LTS — configured in:
+- `package.json` engines: `">=22.0.0"`
+- `.nvmrc`: `22`
+- All GitHub Actions workflows: `node-version: '22'`
+- `vercel.json`: `NODE_VERSION=22`
 
 ## Environment Variables
 - `DATABASE_URL` — PostgreSQL connection string (auto-set by Replit)
 - `BETTER_AUTH_SECRET` — Session encryption secret
 - `BETTER_AUTH_URL` — Auth base URL
 - `OLLAMA_BASE_URL` — Ollama server URL (default: http://localhost:11434)
-- `OLLAMA_MODEL` — Default model (default: llama3.2)
+- `OLLAMA_MODEL` — Default model (default: qwen3:8b)
+
+## Removed Cloud Providers (Migration 2026-06-13)
+- DeepSeek API — removed
+- Groq — removed
+- OpenRouter — removed
+- All cloud AI SDKs — removed
+- All cloud AI API keys — no longer used
+
+See `MIGRATION_REPORT.md` for full details.
 
 ## User preferences
 - Dark mode by default
 - Linear/Notion/Vercel inspired UI
-- Free and open-source AI first (Ollama)
+- Local-first AI (Ollama only — zero cost)
+- Node.js 22 LTS everywhere
