@@ -5,11 +5,10 @@ import { LoginPage } from './pages/LoginPage'
 import { AppShell } from './components/layout/AppShell'
 import { CommandPalette } from './components/CommandPalette'
 import { FloatingAI } from './components/FloatingAI'
-import { OnboardingModal } from './components/OnboardingModal'
 import { ShortcutsModal } from './components/ShortcutsModal'
 import { ToastProvider } from './components/ui/ToastProvider'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { OllamaWizard } from './components/OllamaWizard'
+import { SetupPage } from './pages/SetupPage'
 
 const DashboardPage  = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const MemoryPage     = lazy(() => import('./pages/MemoryPage').then(m => ({ default: m.MemoryPage })))
@@ -95,41 +94,24 @@ const GO_TO_ROUTES: Record<string, string> = {
 
 function AuthenticatedApp() {
   const navigate = useNavigate()
-  const [cmdOpen, setCmdOpen]           = useState(false)
+  const [cmdOpen, setCmdOpen]             = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState(
-    () => !localStorage.getItem('of_onboarded')
-  )
-  const [showOllamaWizard, setShowOllamaWizard] = useState(false)
-  const [ollamaOnline, setOllamaOnline] = useState<boolean | null>(null)
-  const gKeyRef = useRef(false)
+  const [ollamaOnline, setOllamaOnline]   = useState<boolean | null>(null)
+  const gKeyRef  = useRef(false)
   const gTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    // Check Ollama status on mount; show wizard if offline and not dismissed
-    const dismissed = localStorage.getItem('of_ollama_wizard_dismissed')
-    fetch('/api/ollama/health', { credentials: 'include' })
-      .then(r => r.json())
-      .then((h: any) => {
-        const online = h.running && h.models?.length > 0
-        setOllamaOnline(online)
-        if (!online && !dismissed) setShowOllamaWizard(true)
-      })
-      .catch(() => {
-        setOllamaOnline(false)
-        if (!dismissed) setShowOllamaWizard(true)
-      })
+    // Periodic Ollama status check (30s) after onboarding is done
+    const check = () => {
+      fetch('/api/ollama/health', { credentials: 'include' })
+        .then(r => r.json())
+        .then((h: any) => setOllamaOnline(h.running && h.models?.length > 0))
+        .catch(() => setOllamaOnline(false))
+    }
+    check()
+    const t = setInterval(check, 30_000)
+    return () => clearInterval(t)
   }, [])
-
-  const dismissWizard = () => {
-    localStorage.setItem('of_ollama_wizard_dismissed', 'true')
-    setShowOllamaWizard(false)
-    // Re-check status after wizard closes
-    fetch('/api/ollama/health', { credentials: 'include' })
-      .then(r => r.json())
-      .then((h: any) => setOllamaOnline(h.running && h.models?.length > 0))
-      .catch(() => {})
-  }
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -164,24 +146,16 @@ function AuthenticatedApp() {
     return () => window.removeEventListener('keydown', handler)
   }, [navigate])
 
-  const handleOnboardingComplete = (data: any) => {
-    localStorage.setItem('of_onboarded', 'true')
-    localStorage.setItem('of_profile', JSON.stringify(data))
-    setShowOnboarding(false)
-  }
-
   return (
     <>
-      {showOnboarding && <OnboardingModal onComplete={handleOnboardingComplete} />}
-      {showOllamaWizard && <OllamaWizard onDismiss={dismissWizard} />}
       <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
       <FloatingAI />
 
       <AppShell onCmdK={() => setCmdOpen(true)} onShortcuts={() => setShortcutsOpen(true)}>
         <AppPrefetch />
-        {/* Ollama offline banner — shown when dismissed wizard but Ollama still offline */}
-        {ollamaOnline === false && !showOllamaWizard && (
+        {/* Ollama offline banner */}
+        {ollamaOnline === false && (
           <div className="mb-4 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-yellow-500/8 border border-yellow-500/15 text-xs">
             <span className="text-yellow-400 flex-shrink-0">⚠</span>
             <span className="text-yellow-300/70 flex-1">
@@ -189,7 +163,7 @@ function AuthenticatedApp() {
               Run: <code className="font-mono bg-black/20 px-1 rounded">ollama serve</code>
             </span>
             <button
-              onClick={() => setShowOllamaWizard(true)}
+              onClick={() => navigate('/settings')}
               className="text-yellow-400 hover:text-yellow-300 transition-colors underline underline-offset-2 flex-shrink-0"
             >
               Setup →
@@ -228,7 +202,7 @@ function AuthenticatedApp() {
 }
 
 export default function App() {
-  const { user, loading } = useAuth()
+  const { user, loading, refresh } = useAuth()
 
   if (loading) {
     return (
@@ -247,6 +221,15 @@ export default function App() {
         <LoginPrefetch />
         <LoginPage onSuccess={() => window.location.reload()} />
       </>
+    )
+  }
+
+  // Mandatory first-run setup — must complete AI configuration before entering
+  if (!user.onboardingCompleted) {
+    return (
+      <ErrorBoundary>
+        <SetupPage onComplete={async () => { await refresh(); window.location.replace('/') }} />
+      </ErrorBoundary>
     )
   }
 

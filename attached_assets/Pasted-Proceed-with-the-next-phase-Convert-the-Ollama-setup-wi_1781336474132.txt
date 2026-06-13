@@ -1,0 +1,175 @@
+Proceed with the next phase.
+
+Convert the Ollama setup wizard from an optional popup into a mandatory first-run onboarding step.
+
+Requirements:
+
+1. New User Flow
+
+First Login
+→ Account Creation
+→ Ollama Setup
+→ Model Selection
+→ Model Verification
+→ Dashboard
+
+Users must complete AI setup before entering the platform.
+
+2. Onboarding Flow
+
+Step 1:
+Detect Ollama installation.
+
+Step 2:
+Detect whether Ollama service is running.
+
+Step 3:
+Check available RAM.
+
+Step 4:
+Recommend model automatically.
+
+Recommendations:
+
+<8GB RAM
+→ llama3.2:3b
+
+8GB–16GB RAM
+→ qwen3:8b
+
+16GB–32GB RAM
+→ qwen3:14b
+
+32GB+
+→ deepseek-r1:14b
+
+Step 5:
+Install selected model.
+
+Step 6:
+Run inference test.
+
+Step 7:
+Mark setup complete.
+
+Step 8:
+Enter OneFounder.
+
+3. User State
+
+Add:
+
+* ollamaConfigured
+* selectedModel
+* modelVerifiedAt
+* onboardingCompleted
+
+Store in database.
+
+Users should never repeat setup unless they choose to.
+
+4. Dashboard Requirements
+
+Display:
+
+AI Status
+Model
+RAM Usage
+Ollama Version
+Installed Models
+
+Live refresh every 30 seconds.
+
+5. Health Monitoring
+
+Monitor:
+
+* Ollama running
+* Model available
+* Inference success
+* RAM availability
+
+Show warnings before failures occur.
+
+6. Agent Validation
+
+During onboarding verify all agents can execute using the selected model:
+
+* Startup Agent
+* Product Agent
+* Marketing Agent
+* SEO Agent
+* Research Agent
+* Engineering Agent
+* Security Agent
+* Finance Agent
+* Sales Agent
+* Data Agent
+* DevOps Agent
+* Legal Agent
+
+Run a lightweight validation test.
+
+Store results.
+
+7. Remove Friction
+
+Do not require users to manually discover commands.
+
+Provide:
+
+Windows commands
+
+macOS commands
+
+Linux commands
+
+Copy buttons
+
+Direct documentation links
+
+Progress indicators
+
+8. Local-First Guarantee
+
+Display clearly:
+
+"All AI processing runs on your device."
+
+"No cloud AI providers are used."
+
+"No token charges."
+
+"No AI usage fees."
+
+9. Offline Behavior
+
+If Ollama stops:
+
+Disable AI actions.
+
+Keep dashboard available.
+
+Show reconnect instructions.
+
+Allow one-click recheck.
+
+10. Final Requirement
+
+The application should feel like a complete local AI operating system.
+
+No separate popup experience.
+
+No optional setup path.
+
+AI setup is a first-class onboarding workflow integrated into the product experience.
+
+After implementation:
+
+* Run full type-check.
+* Run build validation.
+* Run route validation.
+* Run onboarding flow validation.
+* Generate ONBOARDING_IMPLEMENTATION_REPORT.md.
+* Generate LOCAL_FIRST_AUDIT.md.
+* Confirm Node.js 22 compatibility across all new code.

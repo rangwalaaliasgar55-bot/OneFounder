@@ -33,6 +33,7 @@ import memoryRoutes from './routes/memory'
 import tasksRoutes from './routes/tasks'
 import adminRoutes from './routes/admin'
 import ollamaRoutes from './routes/ollama'
+import setupRoutes from './routes/setup'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -126,6 +127,8 @@ app.use('/api/memory', memoryRoutes)
 app.use('/api/tasks', tasksRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/ollama', ollamaRoutes)
+app.use('/api/setup', setupRoutes)
+app.use('/api', setupRoutes) // serves /api/me
 
 app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', version: '2.0.0', name: 'OneFounder' })

@@ -7,6 +7,13 @@ export interface User {
   email: string
   image?: string
   avatar?: string
+  isAdmin?: boolean
+  tokenBalance?: number
+  tokenUsed?: number
+  onboardingCompleted?: boolean
+  ollamaConfigured?: boolean
+  selectedModel?: string
+  modelVerifiedAt?: string | null
 }
 
 export function useAuth() {
@@ -16,7 +23,15 @@ export function useAuth() {
   const refresh = useCallback(async () => {
     try {
       const session = await authApi.getSession()
-      setUser(session?.user || null)
+      if (!session?.user) { setUser(null); return }
+
+      // Fetch extended profile (onboardingCompleted etc.) from /api/me
+      try {
+        const me = await fetch('/api/me', { credentials: 'include' }).then(r => r.ok ? r.json() : null)
+        setUser({ ...session.user, ...(me ?? {}) })
+      } catch {
+        setUser(session.user)
+      }
     } catch {
       setUser(null)
     } finally {

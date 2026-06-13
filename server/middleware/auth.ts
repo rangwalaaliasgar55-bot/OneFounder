@@ -9,9 +9,17 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     const session = await auth.api.getSession({ headers: req.headers as any })
     if (!session?.user) return res.status(401).json({ error: 'Unauthorized' })
 
-    // Enrich with DB fields (isAdmin, tokenBalance) not stored in Better Auth session
+    // Enrich with DB fields not stored in Better Auth session
     const [dbUser] = await db
-      .select({ isAdmin: users.isAdmin, tokenBalance: users.tokenBalance, tokenUsed: users.tokenUsed })
+      .select({
+        isAdmin: users.isAdmin,
+        tokenBalance: users.tokenBalance,
+        tokenUsed: users.tokenUsed,
+        onboardingCompleted: users.onboardingCompleted,
+        ollamaConfigured: users.ollamaConfigured,
+        selectedModel: users.selectedModel,
+        modelVerifiedAt: users.modelVerifiedAt,
+      })
       .from(users)
       .where(eq(users.id, session.user.id))
       .limit(1)

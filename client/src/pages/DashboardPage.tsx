@@ -1,8 +1,119 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
 import { PageLoader, LoadingSpinner } from '../components/ui/LoadingSpinner'
+
+interface OllamaStatus {
+  running: boolean
+  models: string[]
+  totalRamGb: number
+  freeRamGb: number
+  ramWarning: string | null
+  version?: string
+}
+
+function AIStatusWidget({ selectedModel }: { selectedModel?: string }) {
+  const [status, setStatus] = useState<OllamaStatus | null>(null)
+  const [lastCheck, setLastCheck] = useState<Date | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const check = async () => {
+    try {
+      const h = await api.get<OllamaStatus>('/ollama/health')
+      setStatus(h)
+    } catch {
+      setStatus({ running: false, models: [], totalRamGb: 0, freeRamGb: 0, ramWarning: null })
+    }
+    setLastCheck(new Date())
+  }
+
+  useEffect(() => {
+    check()
+    timerRef.current = setInterval(check, 30_000)
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [])
+
+  const online = status?.running && (status?.models?.length ?? 0) > 0
+  const activeModel = selectedModel || status?.models?.[0] || '—'
+  const ramPct = status?.totalRamGb ? Math.round((1 - status.freeRamGb / status.totalRamGb) * 100) : 0
+
+  return (
+    <div className={`card border ${online ? 'border-green-500/15' : 'border-yellow-500/15'}`}>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+          🤖 AI Engine
+          <span className={`inline-flex w-2 h-2 rounded-full ${online ? 'bg-green-400 animate-pulse' : 'bg-yellow-400'}`} />
+        </h2>
+        <div className="flex items-center gap-2">
+          {lastCheck && (
+            <span className="text-xs text-slate-600" title={lastCheck.toLocaleTimeString()}>
+              {lastCheck.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <button onClick={check} className="text-xs text-slate-600 hover:text-slate-400 transition-colors" title="Refresh">↻</button>
+        </div>
+      </div>
+
+      {!status ? (
+        <div className="text-xs text-slate-600 py-2">Checking...</div>
+      ) : (
+        <div className="space-y-2.5">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+              <div className="text-xs text-slate-600 mb-0.5">Status</div>
+              <div className={`text-xs font-semibold ${online ? 'text-green-400' : 'text-yellow-400'}`}>
+                {online ? '● Online' : '○ Offline'}
+              </div>
+            </div>
+            <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+              <div className="text-xs text-slate-600 mb-0.5">Active model</div>
+              <div className="text-xs font-semibold text-white truncate">{activeModel}</div>
+            </div>
+          </div>
+
+          {status.totalRamGb > 0 && (
+            <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+              <div className="flex justify-between text-xs text-slate-600 mb-1">
+                <span>RAM usage</span>
+                <span>{status.freeRamGb} GB free / {status.totalRamGb} GB</span>
+              </div>
+              <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${ramPct > 80 ? 'bg-red-500' : ramPct > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                  style={{ width: `${Math.min(ramPct, 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {status.models.length > 0 && (
+            <div>
+              <div className="text-xs text-slate-600 mb-1">Installed models</div>
+              <div className="flex flex-wrap gap-1">
+                {status.models.map(m => (
+                  <span key={m} className={`text-xs px-1.5 py-0.5 rounded ${m === activeModel ? 'bg-brand-500/15 text-brand-400 border border-brand-500/20' : 'bg-white/[0.04] text-slate-500'}`}>
+                    {m}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!online && (
+            <div className="text-xs text-yellow-400/70 bg-yellow-500/5 border border-yellow-500/10 rounded-lg px-2.5 py-2">
+              Run <code className="font-mono bg-black/20 px-1 rounded">ollama serve</code> to enable AI features
+            </div>
+          )}
+
+          <div className="text-xs text-slate-700 pt-0.5">
+            🔒 Local inference · No cloud · ₹0/month · Refreshes every 30s
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface Stats {
   ideas: number
@@ -503,6 +614,8 @@ export function DashboardPage() {
               </div>
             </div>
           )}
+
+          <AIStatusWidget selectedModel={user?.selectedModel ?? undefined} />
 
           <div className="card bg-gradient-to-br from-brand-600/10 to-violet-600/10 border-brand-500/20">
             <div className="text-2xl mb-2">🤖</div>

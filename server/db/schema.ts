@@ -19,6 +19,11 @@ export const users = pgTable('users', {
   isAdmin: boolean('is_admin').default(false),
   tokenBalance: integer('token_balance').default(100).notNull(),
   tokenUsed: integer('token_used').default(0).notNull(),
+  // Onboarding & Ollama setup state
+  onboardingCompleted: boolean('onboarding_completed').default(false),
+  ollamaConfigured: boolean('ollama_configured').default(false),
+  selectedModel: text('selected_model'),
+  modelVerifiedAt: timestamp('model_verified_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })
