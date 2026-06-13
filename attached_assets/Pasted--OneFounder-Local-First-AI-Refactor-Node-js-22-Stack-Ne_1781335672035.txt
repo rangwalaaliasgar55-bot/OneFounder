@@ -1,0 +1,463 @@
+# OneFounder – Local-First AI Refactor (Node.js 22)
+
+### Stack: Next.js 14 · Node.js 22 LTS · Vercel · GitHub · Ollama · Neon PostgreSQL · Prisma
+
+## Goal
+
+Refactor OneFounder into a fully local-first AI platform with zero AI API costs.
+
+Requirements:
+
+* Remove OpenAI
+* Remove Anthropic/Claude
+* Remove Gemini
+* Remove DeepSeek API
+* Remove OpenRouter
+* Remove Groq
+* Remove all cloud AI providers
+* Remove all cloud LLM routing
+* Remove all paid inference services
+
+Only Ollama remains.
+
+Users provide their own compute resources.
+
+All AI processing happens on the user's machine.
+
+Monthly AI cost target:
+
+₹0
+
+---
+
+# CRITICAL ARCHITECTURE CHANGE
+
+Remove current architecture:
+
+User
+→ OneFounder
+→ Cloud AI Provider
+→ Response
+
+Replace with:
+
+User
+→ OneFounder
+→ Local Agent Runtime
+→ Ollama
+→ Local Model
+→ Response
+
+No external AI inference.
+
+No token billing.
+
+No usage-based costs.
+
+---
+
+# NODE.JS REQUIREMENTS
+
+Upgrade entire project to Node.js 22 LTS.
+
+Replace all references to:
+
+* Node 14
+* Node 16
+* Node 18
+* Node 20
+
+With:
+
+Node.js 22
+
+Update:
+
+package.json
+
+```json
+{
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
+```
+
+GitHub Actions:
+
+```yaml
+node-version: '22'
+```
+
+Vercel:
+
+Use Node.js 22 runtime.
+
+All builds, linting, type-checking, Prisma generation, and deployment validation must execute successfully on Node.js 22.
+
+---
+
+# REMOVE ALL CLOUD AI PROVIDERS
+
+Delete:
+
+* OpenAI provider
+* Anthropic provider
+* Gemini provider
+* DeepSeek API provider
+* OpenRouter provider
+* Groq provider
+
+Delete:
+
+* openai.ts
+* anthropic.ts
+* gemini.ts
+* deepseek.ts
+* openrouter.ts
+* groq.ts
+* ai router files used only for provider switching
+
+Delete packages:
+
+```bash
+npm uninstall openai
+npm uninstall @anthropic-ai/sdk
+npm uninstall @google/generative-ai
+npm uninstall groq-sdk
+npm uninstall @langchain/openai
+npm uninstall @langchain/anthropic
+```
+
+Remove every cloud AI environment variable:
+
+```env
+OPENAI_API_KEY
+ANTHROPIC_API_KEY
+GOOGLE_API_KEY
+GEMINI_API_KEY
+DEEPSEEK_API_KEY
+OPENROUTER_API_KEY
+GROQ_API_KEY
+```
+
+No cloud AI keys should exist anywhere.
+
+---
+
+# AI PROVIDER
+
+Only provider:
+
+```ts
+type AIProviderType = 'ollama'
+```
+
+No fallback providers.
+
+No cloud routing.
+
+No multi-provider architecture.
+
+No external inference.
+
+---
+
+# LOCAL MODEL SUPPORT
+
+Supported models:
+
+```text
+qwen3:4b
+qwen3:8b
+qwen3:14b
+qwen3:30b
+
+deepseek-r1:7b
+deepseek-r1:14b
+deepseek-r1:32b
+
+mistral:7b
+
+llama3.2:3b
+llama3.1:8b
+```
+
+Default:
+
+```env
+OLLAMA_MODEL=qwen3:8b
+```
+
+---
+
+# USER-OWNED COMPUTE MODEL
+
+OneFounder must not host AI.
+
+Users run:
+
+```bash
+ollama serve
+```
+
+Users download models:
+
+```bash
+ollama pull qwen3:8b
+```
+
+or
+
+```bash
+ollama pull deepseek-r1:14b
+```
+
+AI runs entirely on the user's hardware.
+
+No GPU costs for OneFounder.
+
+No inference costs for OneFounder.
+
+No token costs for OneFounder.
+
+---
+
+# AGENT SYSTEM
+
+Keep all existing agents.
+
+Startup Agent
+
+Product Agent
+
+Marketing Agent
+
+SEO Agent
+
+Research Agent
+
+Engineering Agent
+
+Security Agent
+
+Finance Agent
+
+Sales Agent
+
+Data Agent
+
+DevOps Agent
+
+Legal Agent
+
+All agents must operate through Ollama only.
+
+No cloud inference.
+
+No cloud dependencies.
+
+---
+
+# MEMORY SYSTEM
+
+Keep:
+
+* Founder memory
+* Long-term memory
+* Conversation memory
+* User preferences
+* Knowledge memory
+
+Store in:
+
+Neon PostgreSQL
+
+Persist across sessions.
+
+---
+
+# RAG SYSTEM
+
+Keep:
+
+* Chunking
+* Retrieval
+* Context assembly
+* Knowledge search
+
+Use local embeddings.
+
+Embeddings must be generated via Ollama.
+
+No external embedding APIs.
+
+---
+
+# PERFORMANCE OPTIMIZATION
+
+Implement:
+
+* Streaming responses
+* Context compression
+* Conversation summarization
+* Memory compression
+* Local caching
+* Agent orchestration optimization
+
+Reduce RAM usage.
+
+Reduce context waste.
+
+Improve response speed.
+
+---
+
+# ONBOARDING FLOW
+
+During onboarding:
+
+Step 1
+
+Check Ollama installation.
+
+Step 2
+
+Check Ollama connectivity.
+
+Step 3
+
+Check installed models.
+
+Step 4
+
+Allow model selection.
+
+Step 5
+
+Download recommended model if missing.
+
+Recommended:
+
+```text
+qwen3:8b
+```
+
+Step 6
+
+Verify successful inference.
+
+---
+
+# DATABASE
+
+Use:
+
+Neon PostgreSQL
+
+Prisma
+
+Remove SQLite persistence where required for production.
+
+Memory must survive deployments.
+
+Memory must survive restarts.
+
+---
+
+# API REQUIREMENTS
+
+All chat endpoints:
+
+* Streaming enabled
+* Ollama only
+* No external AI calls
+
+Every response must originate from Ollama.
+
+No hidden provider fallbacks.
+
+---
+
+# SECURITY REQUIREMENTS
+
+Verify:
+
+* No AI keys remain
+* No cloud AI SDKs remain
+* No external inference requests occur
+* No provider switching remains
+
+Generate audit report proving removal.
+
+---
+
+# CI/CD
+
+GitHub Actions:
+
+Node.js 22 only.
+
+Checks:
+
+* Build
+* Lint
+* Type-check
+* Prisma generation
+
+Fail CI if any cloud AI provider is reintroduced.
+
+---
+
+# MIGRATION REPORT
+
+Generate:
+
+MIGRATION_REPORT.md
+
+Include:
+
+Removed providers
+
+Removed packages
+
+Removed files
+
+Removed API keys
+
+Remaining architecture
+
+Supported models
+
+Node.js version
+
+Verification results
+
+---
+
+# FINAL DEFINITION OF DONE
+
+The migration is complete only if:
+
+1. Node.js 22 is configured everywhere.
+2. Next.js 14 remains unchanged.
+3. OpenAI removed.
+4. Claude removed.
+5. Gemini removed.
+6. DeepSeek API removed.
+7. OpenRouter removed.
+8. Groq removed.
+9. All cloud AI SDKs removed.
+10. All cloud AI keys removed.
+11. Only Ollama remains.
+12. All 12 agents work through Ollama.
+13. Memory persists correctly.
+14. RAG works locally.
+15. Streaming works.
+16. CI passes on Node.js 22.
+17. No external AI calls exist.
+18. Monthly AI cost is ₹0.
+19. Audit report generated.
+20. Migration report generated.
+
+Deliver all code changes, updated configuration files, migration report, audit report, and verification results.
