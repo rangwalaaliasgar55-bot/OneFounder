@@ -1,9 +1,9 @@
 import { Router } from 'express'
-import { requireAuth } from '../middleware/auth'
-import { db } from '../db'
-import { users, tokenTransactions } from '../db/schema'
+import { requireAuth } from '../middleware/auth.js'
+import { db } from '../db/index.js'
+import { users, tokenTransactions } from '../db/schema.js'
 import { eq, desc, sql } from 'drizzle-orm'
-import { grantTokens } from '../middleware/tokens'
+import { grantTokens } from '../middleware/tokens.js'
 
 const router = Router()
 

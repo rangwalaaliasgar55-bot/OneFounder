@@ -1,6 +1,6 @@
-import { OllamaProvider } from './ollama'
-import { OllamaOfflineError } from './provider'
-import type { AIProvider, AIProviderType, ProviderStatus } from './provider'
+import { OllamaProvider } from './ollama.js'
+import { OllamaOfflineError } from './provider.js'
+import type { AIProvider, AIProviderType, ProviderStatus } from './provider.js'
 
 let aiProvider: OllamaProvider | null = null
 let lastCheck = 0

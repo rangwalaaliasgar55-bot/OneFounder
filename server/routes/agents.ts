@@ -1,8 +1,8 @@
 import { Router } from 'express'
-import { requireAuth } from '../middleware/auth'
-import { executeMultiAgent, type SpecialistType } from '../agents/supervisorAgent'
-import { storeMemory } from '../memory/memoryManager'
-import { extractAndStoreMemories } from '../ai/memory'
+import { requireAuth } from '../middleware/auth.js'
+import { executeMultiAgent, type SpecialistType } from '../agents/supervisorAgent.js'
+import { storeMemory } from '../memory/memoryManager.js'
+import { extractAndStoreMemories } from '../ai/memory.js'
 
 const router = Router()
 
@@ -64,7 +64,7 @@ router.post('/stream', requireAuth, async (req, res) => {
   }
 
   try {
-    const { executeMultiAgent } = await import('../agents/supervisorAgent')
+    const { executeMultiAgent } = await import('../agents/supervisorAgent.js')
     const result = await executeMultiAgent(user.id, query, agents)
 
     send('agents_selected', { agents: result.agentsUsed })

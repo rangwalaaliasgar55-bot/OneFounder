@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { requireAuth } from '../middleware/auth'
-import { db } from '../db'
-import { journeyMilestones } from '../db/schema'
+import { requireAuth } from '../middleware/auth.js'
+import { db } from '../db/index.js'
+import { journeyMilestones } from '../db/schema.js'
 import { eq, desc } from 'drizzle-orm'
 
 const router = Router()

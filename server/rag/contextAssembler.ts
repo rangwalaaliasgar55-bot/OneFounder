@@ -1,4 +1,4 @@
-import { retrieveRelevantChunks, type RetrievedChunk } from './retriever'
+import { retrieveRelevantChunks, type RetrievedChunk } from './retriever.js'
 
 export interface RAGContext {
   chunks: RetrievedChunk[]

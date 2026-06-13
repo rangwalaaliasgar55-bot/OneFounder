@@ -1,10 +1,10 @@
-import { db } from '../db'
+import { db } from '../db/index.js'
 import {
   founderProfiles, businessIdeas, projects, tasks, leads,
   contentPieces, financeEntries, researchReports, businessPlans,
   seoKeywords, chatMessages, aiMemories, userActivityLog, aiInsights,
   knowledgeBase, journeyMilestones,
-} from '../db/schema'
+} from '../db/schema.js'
 import { eq, desc, and, gte, lte } from 'drizzle-orm'
 
 export interface FounderContext {

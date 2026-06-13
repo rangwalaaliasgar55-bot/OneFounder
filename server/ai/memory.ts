@@ -1,7 +1,7 @@
-import { db } from '../db'
-import { aiMemories } from '../db/schema'
+import { db } from '../db/index.js'
+import { aiMemories } from '../db/schema.js'
 import { eq, desc, and, sql } from 'drizzle-orm'
-import { getAIProvider } from './index'
+import { getAIProvider } from './index.js'
 
 export async function extractAndStoreMemories(userId: string, userMessage: string, assistantResponse: string, source: string = 'chat'): Promise<void> {
   try {

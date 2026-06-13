@@ -1,5 +1,5 @@
-import { db } from '../db'
-import { aiMemories, chatMessages, projects, businessIdeas, tasks, founderProfiles } from '../db/schema'
+import { db } from '../db/index.js'
+import { aiMemories, chatMessages, projects, businessIdeas, tasks, founderProfiles } from '../db/schema.js'
 import { eq, desc, and, inArray, sql } from 'drizzle-orm'
 
 export type MemoryType = 'episodic' | 'semantic' | 'procedural' | 'working' | 'goal' | 'decision' | 'preference' | 'fact' | 'pattern'

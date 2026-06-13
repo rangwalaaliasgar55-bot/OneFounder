@@ -1,12 +1,12 @@
 import { Router } from 'express'
-import { requireAuth } from '../middleware/auth'
-import { db } from '../db'
-import { chatMessages } from '../db/schema'
+import { requireAuth } from '../middleware/auth.js'
+import { db } from '../db/index.js'
+import { chatMessages } from '../db/schema.js'
 import { eq, desc, and } from 'drizzle-orm'
-import { getAIProvider } from '../ai'
+import { getAIProvider } from '../ai/index.js'
 import { v4 as uuidv4 } from 'uuid'
-import { extractAndStoreMemories } from '../ai/memory'
-import { logActivity } from '../ai/activity'
+import { extractAndStoreMemories } from '../ai/memory.js'
+import { logActivity } from '../ai/activity.js'
 
 const router = Router()
 

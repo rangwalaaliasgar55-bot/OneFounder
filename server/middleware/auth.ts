@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
-import { auth } from '../auth'
-import { db } from '../db'
-import { users } from '../db/schema'
+import { auth } from '../auth.js'
+import { db } from '../db/index.js'
+import { users } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {

@@ -1,9 +1,9 @@
 import { Router } from 'express'
-import { requireAuth } from '../middleware/auth'
-import { db } from '../db'
-import { seoKeywords, seoAudits, seoBriefs, backlinks } from '../db/schema'
+import { requireAuth } from '../middleware/auth.js'
+import { db } from '../db/index.js'
+import { seoKeywords, seoAudits, seoBriefs, backlinks } from '../db/schema.js'
 import { eq, desc, and } from 'drizzle-orm'
-import { getAIProvider } from '../ai'
+import { getAIProvider } from '../ai/index.js'
 
 const router = Router()
 

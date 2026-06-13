@@ -1,15 +1,15 @@
 import { Router } from 'express'
-import { requireAuth } from '../middleware/auth'
-import { db } from '../db'
+import { requireAuth } from '../middleware/auth.js'
+import { db } from '../db/index.js'
 import {
   aiMemories, aiInsights, userActivityLog,
   tasks, leads, financeEntries, contentPieces,
   businessIdeas, projects, seoKeywords,
-} from '../db/schema'
+} from '../db/schema.js'
 import { eq, desc, and, gte, count } from 'drizzle-orm'
-import { getAIProvider } from '../ai'
-import { assembleFounderContext } from '../ai/context'
-import { logActivity } from '../ai/activity'
+import { getAIProvider } from '../ai/index.js'
+import { assembleFounderContext } from '../ai/context.js'
+import { logActivity } from '../ai/activity.js'
 
 const router = Router()
 

@@ -1,5 +1,5 @@
-import { getAIProvider } from '../ai/index'
-import { storeSemanticMemory } from '../memory/memoryManager'
+import { getAIProvider } from '../ai/index.js'
+import { storeSemanticMemory } from '../memory/memoryManager.js'
 
 export type EntityType = 
   | 'startup'

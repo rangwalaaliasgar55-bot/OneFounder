@@ -1,8 +1,8 @@
 import { Router } from 'express'
-import { requireAuth } from '../middleware/auth'
-import { generateTaskPlan, saveTasksToDatabase, generateDailyBriefing, generateSprintPlan, generateLaunchChecklist } from '../tasks/taskPlanner'
-import { db } from '../db'
-import { tasks } from '../db/schema'
+import { requireAuth } from '../middleware/auth.js'
+import { generateTaskPlan, saveTasksToDatabase, generateDailyBriefing, generateSprintPlan, generateLaunchChecklist } from '../tasks/taskPlanner.js'
+import { db } from '../db/index.js'
+import { tasks } from '../db/schema.js'
 import { eq, and, desc } from 'drizzle-orm'
 
 const router = Router()

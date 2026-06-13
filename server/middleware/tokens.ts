@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
-import { db } from '../db'
-import { users, tokenTransactions } from '../db/schema'
+import { db } from '../db/index.js'
+import { users, tokenTransactions } from '../db/schema.js'
 import { eq, sql } from 'drizzle-orm'
 
 export async function checkTokens(req: Request, res: Response, next: NextFunction) {

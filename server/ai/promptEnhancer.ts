@@ -1,5 +1,5 @@
-import type { ExpertMode } from './router'
-import { buildMasterPrompt, MODE_ADDITIONS } from './masterPrompt'
+import type { ExpertMode } from './router.js'
+import { buildMasterPrompt, MODE_ADDITIONS } from './masterPrompt.js'
 
 const TODAY = () => new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 

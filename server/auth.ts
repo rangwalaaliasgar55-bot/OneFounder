@@ -1,7 +1,7 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { db } from './db'
-import { users, sessions, accounts, verifications } from './db/schema'
+import { db } from './db/index.js'
+import { users, sessions, accounts, verifications } from './db/schema.js'
 import dotenv from 'dotenv'
 dotenv.config()
 

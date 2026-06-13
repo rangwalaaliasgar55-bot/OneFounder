@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { requireAuth } from '../middleware/auth'
-import { getAllMemories, getMemoriesByType, storeMemory, deleteMemory, buildMemoryContext } from '../memory/memoryManager'
-import { retrieveRelevantMemories } from '../memory/memoryRetrieval'
+import { requireAuth } from '../middleware/auth.js'
+import { getAllMemories, getMemoriesByType, storeMemory, deleteMemory, buildMemoryContext } from '../memory/memoryManager.js'
+import { retrieveRelevantMemories } from '../memory/memoryRetrieval.js'
 
 const router = Router()
 

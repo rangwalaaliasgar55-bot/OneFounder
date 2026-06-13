@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import Anthropic from "@anthropic-ai/sdk";
-import { chatStorage } from "./storage";
+import { chatStorage } from "./storage.js";
 
 const anthropic = new Anthropic({
   apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,

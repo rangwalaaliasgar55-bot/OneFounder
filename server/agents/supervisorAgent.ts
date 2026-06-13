@@ -1,8 +1,8 @@
-import { getAIProvider } from '../ai/index'
-import { buildMasterPrompt } from '../ai/masterPrompt'
-import { getMemoryContextForQuery } from '../memory/memoryRetrieval'
-import { buildMemoryContext } from '../memory/memoryManager'
-import { assembleRAGContext } from '../rag/contextAssembler'
+import { getAIProvider } from '../ai/index.js'
+import { buildMasterPrompt } from '../ai/masterPrompt.js'
+import { getMemoryContextForQuery } from '../memory/memoryRetrieval.js'
+import { buildMemoryContext } from '../memory/memoryManager.js'
+import { assembleRAGContext } from '../rag/contextAssembler.js'
 
 export type SpecialistType = 
   | 'research'

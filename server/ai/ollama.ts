@@ -1,4 +1,4 @@
-import type { AIProvider, AIMessage } from './provider'
+import type { AIProvider, AIMessage } from './provider.js'
 
 export class OllamaProvider implements AIProvider {
   private baseUrl: string

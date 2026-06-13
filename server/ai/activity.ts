@@ -1,5 +1,5 @@
-import { db } from '../db'
-import { userActivityLog } from '../db/schema'
+import { db } from '../db/index.js'
+import { userActivityLog } from '../db/schema.js'
 
 export async function logActivity(
   userId: string,

@@ -1,5 +1,5 @@
-import { db } from '../db'
-import { aiMemories } from '../db/schema'
+import { db } from '../db/index.js'
+import { aiMemories } from '../db/schema.js'
 import { eq, desc, and, like, or, sql } from 'drizzle-orm'
 
 export interface RelevantMemory {

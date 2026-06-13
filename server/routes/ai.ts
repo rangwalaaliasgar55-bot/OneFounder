@@ -1,9 +1,9 @@
 import { Router } from 'express'
-import { requireAuth } from '../middleware/auth'
-import { checkTokens, deductToken } from '../middleware/tokens'
-import { getAIProvider, getAIStatus } from '../ai'
-import { OllamaOfflineError } from '../ai/provider'
-import { getWebContextString } from '../ai/webSearch'
+import { requireAuth } from '../middleware/auth.js'
+import { checkTokens, deductToken } from '../middleware/tokens.js'
+import { getAIProvider, getAIStatus } from '../ai/index.js'
+import { OllamaOfflineError } from '../ai/provider.js'
+import { getWebContextString } from '../ai/webSearch.js'
 
 const router = Router()
 

@@ -1,14 +1,14 @@
 import { Router } from 'express'
-import { requireAuth } from '../middleware/auth'
-import { checkTokens, deductToken } from '../middleware/tokens'
-import { db } from '../db'
-import { chatMessages } from '../db/schema'
+import { requireAuth } from '../middleware/auth.js'
+import { checkTokens, deductToken } from '../middleware/tokens.js'
+import { db } from '../db/index.js'
+import { chatMessages } from '../db/schema.js'
 import { eq, desc, and } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
-import { brain } from '../ai/brain'
-import { detectExpertMode } from '../ai/router'
-import { logActivity } from '../ai/activity'
-import { OllamaOfflineError } from '../ai/provider'
+import { brain } from '../ai/brain.js'
+import { detectExpertMode } from '../ai/router.js'
+import { logActivity } from '../ai/activity.js'
+import { OllamaOfflineError } from '../ai/provider.js'
 
 function handleAIError(err: any, res: any) {
   if (err instanceof OllamaOfflineError || err.code === 'OLLAMA_OFFLINE') {

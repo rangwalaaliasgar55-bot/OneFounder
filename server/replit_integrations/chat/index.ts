@@ -1,3 +1,3 @@
-export { registerChatRoutes } from "./routes";
-export { chatStorage, type IChatStorage } from "./storage";
+export { registerChatRoutes } from "./routes.js";
+export { chatStorage, type IChatStorage } from "./storage.js";
 

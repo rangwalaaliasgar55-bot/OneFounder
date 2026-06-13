@@ -1,8 +1,8 @@
-import { db } from '../db'
-import { tasks, projects } from '../db/schema'
+import { db } from '../db/index.js'
+import { tasks, projects } from '../db/schema.js'
 import { eq, and, desc } from 'drizzle-orm'
-import { getAIProvider } from '../ai/index'
-import { buildMemoryContext } from '../memory/memoryManager'
+import { getAIProvider } from '../ai/index.js'
+import { buildMemoryContext } from '../memory/memoryManager.js'
 import { v4 as uuidv4 } from 'uuid'
 
 export interface PlannedTask {

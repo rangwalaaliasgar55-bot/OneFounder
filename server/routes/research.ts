@@ -1,10 +1,10 @@
 import { Router } from 'express'
-import { requireAuth } from '../middleware/auth'
-import { db } from '../db'
-import { researchReports } from '../db/schema'
+import { requireAuth } from '../middleware/auth.js'
+import { db } from '../db/index.js'
+import { researchReports } from '../db/schema.js'
 import { eq, desc, and } from 'drizzle-orm'
-import { getAIProvider } from '../ai'
-import { getWebContextString } from '../ai/webSearch'
+import { getAIProvider } from '../ai/index.js'
+import { getWebContextString } from '../ai/webSearch.js'
 
 const router = Router()
 

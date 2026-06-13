@@ -1,7 +1,7 @@
-import { db } from '../db'
-import { knowledgeBase } from '../db/schema'
+import { db } from '../db/index.js'
+import { knowledgeBase } from '../db/schema.js'
 import { eq, desc, like, or, and, sql } from 'drizzle-orm'
-import { chunkText, type TextChunk } from './chunker'
+import { chunkText, type TextChunk } from './chunker.js'
 
 export interface RetrievedChunk {
   content: string
