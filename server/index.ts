@@ -141,11 +141,13 @@ app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', version: '2.0.0', name: 'OneFounder' })
 })
 
-// Global error handler
+// Global error handler - return detailed errors in all environments for debugging
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('[Error]', err.message || err)
+  console.error('[Error Stack]', err.stack)
   res.status(err.status || 500).json({
-    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : (err.message || 'Internal server error'),
+    error: err.message || 'Internal server error',
+    stack: process.env.NODE_ENV === 'production' ? undefined : err.stack,
   })
 })
 
