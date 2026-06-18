@@ -4,7 +4,7 @@
     "NODE_VERSION": "22"
   },
   "installCommand": "npm install --include=dev --legacy-peer-deps",
-  "buildCommand": "npm run build:client && npx drizzle-kit push --force",
+  "buildCommand": "npm run build:client",
   "outputDirectory": "dist/client",
   "functions": {
     "api/server.ts": {

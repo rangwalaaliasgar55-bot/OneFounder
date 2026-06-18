@@ -231,9 +231,9 @@ export class OneFounderBrain {
     }
 
     try {
-      const ai = await getAIProvider()
       const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
-      const ollamaModel = req.model || process.env.OLLAMA_MODEL || 'llama3.2'
+      // req.model lets callers override the default model at runtime
+      const ollamaModel = req.model || process.env.OLLAMA_MODEL || 'qwen3:8b'
 
       let fullResponse = ''
       let ollamaStreamed = false
@@ -269,10 +269,13 @@ export class OneFounderBrain {
           ollamaStreamed = true
         }
       } catch {
-        // Ollama not available — fall through to provider fallback
+        // Ollama streaming unavailable — fall through to non-streaming provider
       }
 
       if (!ollamaStreamed) {
+        // getAIProvider() is called here (after streaming fails) so we only
+        // incur the availability check cost when we actually need the fallback
+        const ai = await getAIProvider()
         const response = await ai.chat(messages)
         fullResponse = response
         for (const word of response.split(' ')) {

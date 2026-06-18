@@ -33,7 +33,8 @@ import memoryRoutes from './routes/memory.js'
 import tasksRoutes from './routes/tasks.js'
 import adminRoutes from './routes/admin.js'
 import ollamaRoutes from './routes/ollama.js'
-import setupRoutes from './routes/setup.js'
+import setupRoutes, { meHandler } from './routes/setup.js'
+import { requireAuth } from './middleware/auth.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -85,11 +86,13 @@ app.use(cors({
       process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined,
     ].filter(Boolean) as string[]
 
+    // Only allow Replit preview domains as a wildcard (your own dev env).
+    // Vercel URLs must be listed explicitly via VERCEL_URL / VERCEL_PROJECT_PRODUCTION_URL —
+    // a blanket *.vercel.app wildcard would let any other Vercel tenant hit this API.
     const isAllowed =
       allowedExact.includes(origin) ||
       /\.replit\.dev$/.test(origin) ||
-      /\.repl\.co$/.test(origin) ||
-      /\.vercel\.app$/.test(origin)
+      /\.repl\.co$/.test(origin)
 
     callback(isAllowed ? null : new Error('Not allowed by CORS'), isAllowed)
   },
@@ -128,7 +131,7 @@ app.use('/api/tasks', tasksRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/ollama', ollamaRoutes)
 app.use('/api/setup', setupRoutes)
-app.use('/api', setupRoutes) // serves /api/me
+app.get('/api/me', requireAuth, meHandler) // Extended user profile (onboarding state, token balance, etc.)
 
 app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', version: '2.0.0', name: 'OneFounder' })
