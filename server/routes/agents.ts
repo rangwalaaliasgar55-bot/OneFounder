@@ -29,7 +29,7 @@ router.post('/execute', requireAuth, async (req, res) => {
     res.json({
       synthesis: result.synthesis,
       agentsUsed: result.agentsUsed,
-      agentResults: result.agentResults.map(r => ({
+      agentResults: (result.agentResults || []).map(r => ({
         agent: r.agent,
         response: r.response,
         confidence: r.confidence,
@@ -69,7 +69,7 @@ router.post('/stream', requireAuth, async (req, res) => {
 
     send('agents_selected', { agents: result.agentsUsed })
 
-    for (const agentResult of result.agentResults) {
+    for (const agentResult of (result.agentResults || [])) {
       send('agent_complete', {
         agent: agentResult.agent,
         executionTimeMs: agentResult.executionTimeMs,
