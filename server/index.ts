@@ -34,6 +34,7 @@ import tasksRoutes from './routes/tasks.js'
 import adminRoutes from './routes/admin.js'
 import ollamaRoutes from './routes/ollama.js'
 import setupRoutes, { meHandler } from './routes/setup.js'
+import debugRoutes from './routes/debug.js'
 import { requireAuth } from './middleware/auth.js'
 
 const app = express()
@@ -103,6 +104,9 @@ app.use(limiter)
 app.all('/auth/*', toNodeHandler(auth))
 app.use(express.json({ limit: '1mb' }))
 app.use(express.urlencoded({ extended: true, limit: '1mb' }))
+
+// Debug route (remove in production)
+app.use('/api/debug', debugRoutes)
 
 // Routes
 app.use('/api/ai', aiLimiter, aiRoutes)
