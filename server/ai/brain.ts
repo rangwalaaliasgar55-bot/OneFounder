@@ -135,7 +135,8 @@ export class OneFounderBrain {
     }
 
     const ai = await getAIProvider()
-    const response = await ai.chat(messages)
+    const chatResponse = await ai.chat(messages)
+    const response = chatResponse.content
 
     await db.insert(chatMessages).values({
       userId: req.userId,
@@ -276,9 +277,9 @@ export class OneFounderBrain {
         // getAIProvider() is called here (after streaming fails) so we only
         // incur the availability check cost when we actually need the fallback
         const ai = await getAIProvider()
-        const response = await ai.chat(messages)
-        fullResponse = response
-        for (const word of response.split(' ')) {
+        const chatResponse = await ai.chat(messages)
+        fullResponse = chatResponse.content
+        for (const word of fullResponse.split(' ')) {
           yield { type: 'token', data: word + ' ' }
           await new Promise(r => setTimeout(r, 8))
         }

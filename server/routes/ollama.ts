@@ -153,7 +153,7 @@ router.delete('/models/:name', requireAuth, async (req, res) => {
   const user = (req as any).user
   if (!user.isAdmin) return res.status(403).json({ error: 'Admin only' })
 
-  const name = decodeURIComponent(req.params.name)
+  const name = decodeURIComponent(req.params.name as string)
   try {
     const r = await fetch(`${OLLAMA_BASE()}/api/delete`, {
       method: 'DELETE',

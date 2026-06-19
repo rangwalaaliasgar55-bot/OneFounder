@@ -134,7 +134,8 @@ async function runSpecialistAgent(
       { role: 'user' as const, content: query },
     ]
 
-    const response = await ai.chat(messages)
+    const chatResponse = await ai.chat(messages)
+    const response = chatResponse.content
     return {
       agent,
       response,
@@ -185,7 +186,8 @@ Synthesize into a single, comprehensive, elite-tier response:`
     { role: 'user' as const, content: synthesisPrompt },
   ]
 
-  return await ai.chat(messages)
+  const chatResponse = await ai.chat(messages)
+  return chatResponse.content
 }
 
 export async function executeMultiAgent(

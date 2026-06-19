@@ -157,7 +157,8 @@ router.post('/chat', requireAuth, async (req, res) => {
 
   try {
     const ai = await getAIProvider()
-    const response = await ai.chat(messages)
+    const chatResponse = await ai.chat(messages)
+    const response = chatResponse.content
 
     const [saved] = await db.insert(chatMessages).values({
       userId: user.id,

@@ -108,7 +108,7 @@ router.post('/:id/tasks', requireAuth, async (req, res) => {
     const { title, description, status, priority, dueDate, milestoneId } = req.body
     if (!title) return res.status(400).json({ error: 'Task title is required' })
     const [task] = await db.insert(tasks).values({
-      projectId: req.params.id,
+      projectId: req.params.id as string,
       userId: user.id,
       title,
       description,
