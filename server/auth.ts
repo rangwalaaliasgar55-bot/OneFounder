@@ -11,10 +11,12 @@ if (!secret) {
 }
 
 // Resolve the public base URL — must match what the browser sees
-// In Replit dev: the Replit domain (port 80) proxies to Vite (5000) which proxies /auth to backend (3001)
+// Priority: BETTER_AUTH_URL > REPLIT domains > CLIENT_URL > localhost
 const baseURL = (() => {
+  if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL
   if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`
   if (process.env.REPLIT_DOMAINS) return `https://${process.env.REPLIT_DOMAINS.split(',')[0].trim()}`
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
   if (process.env.CLIENT_URL) return process.env.CLIENT_URL
   return 'http://localhost:5000'
 })()
