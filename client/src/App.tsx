@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { useOllamaStatus } from './hooks/useOllamaStatus'
+import { ParticleField } from './components/ui/ParticleField'
 import { LoginPage } from './pages/LoginPage'
 import { AppShell } from './components/layout/AppShell'
 import { CommandPalette } from './components/CommandPalette'
@@ -142,17 +143,18 @@ function AuthenticatedApp() {
 
       <AppShell onCmdK={() => setCmdOpen(true)} onShortcuts={() => setShortcutsOpen(true)}>
         <AppPrefetch />
-        {/* Ollama offline banner */}
+        {/* Ollama offline banner — 3D glass */}
         {!ollamaOnline && ollamaOnline !== null && (
-          <div className="mb-4 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-yellow-500/8 border border-yellow-500/15 text-xs">
-            <span className="text-yellow-400 flex-shrink-0">⚠</span>
+          <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-yellow-500/5 border border-yellow-500/15 text-xs animate-slide-down"
+            style={{ boxShadow: '0 4px 16px rgba(245,158,11,0.08), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+            <span className="text-yellow-400 flex-shrink-0 text-base">⚠️</span>
             <span className="text-yellow-300/70 flex-1">
               Ollama is offline — AI features unavailable.
-              Run: <code className="font-mono bg-black/20 px-1 rounded">ollama serve</code>
+              Run: <code className="font-mono bg-black/30 px-1.5 py-0.5 rounded text-yellow-300/90">ollama serve</code>
             </span>
             <button
               onClick={() => navigate('/settings')}
-              className="text-yellow-400 hover:text-yellow-300 transition-colors underline underline-offset-2 flex-shrink-0"
+              className="text-yellow-400 hover:text-yellow-300 transition-colors underline underline-offset-2 flex-shrink-0 font-medium"
             >
               Setup →
             </button>
@@ -194,10 +196,23 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#060b18' }}>
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-brand-600 flex items-center justify-center text-2xl animate-pulse">🚀</div>
-          <div className="text-slate-500 text-sm">Loading OneFounder...</div>
+      <div className="flex items-center justify-center min-h-screen relative" style={{ backgroundColor: '#060b18' }}>
+        {/* Ambient orbs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-brand-500/10 blur-[80px] animate-float" />
+          <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full bg-violet-500/8 blur-[60px] animate-float" style={{ animationDelay: '1s' }} />
+        </div>
+        <div className="flex flex-col items-center gap-5 relative z-10">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-violet-600 flex items-center justify-center text-3xl shadow-lg shadow-brand-500/30 animate-pulse-glow">
+            🚀
+          </div>
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="text-white font-bold text-lg tracking-tight">OneFounder</div>
+            <div className="text-slate-500 text-xs">Loading your workspace...</div>
+          </div>
+          <div className="w-32 h-1 rounded-full bg-white/5 overflow-hidden">
+            <div className="h-full w-1/2 rounded-full bg-gradient-to-r from-brand-500 to-violet-500 animate-shimmer" />
+          </div>
         </div>
       </div>
     )
@@ -205,10 +220,11 @@ export default function App() {
 
   if (!user) {
     return (
-      <>
+      <div className="relative">
+        <ParticleField particleCount={50} color="99,102,241" speed={0.2} connectDistance={100} />
         <LoginPrefetch />
         <LoginPage onSuccess={() => window.location.reload()} />
-      </>
+      </div>
     )
   }
 

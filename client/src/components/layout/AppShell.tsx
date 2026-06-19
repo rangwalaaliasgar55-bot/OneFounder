@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { FloatingOrbs } from '../ui/FloatingOrbs'
 
 const NAV_SECTIONS = [
   {
@@ -73,7 +74,8 @@ export function AppShell({ children, onCmdK, onShortcuts }: AppShellProps) {
     : user?.email?.slice(0, 2).toUpperCase() ?? '??'
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#060b18' }}>
+    <div className="flex h-screen overflow-hidden relative" style={{ backgroundColor: '#060b18' }}>
+      <FloatingOrbs />
       {mobileOpen && (
         <div
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
@@ -87,11 +89,15 @@ export function AppShell({ children, onCmdK, onShortcuts }: AppShellProps) {
         transition-all duration-300 ease-in-out
         ${collapsed ? 'w-[52px]' : 'w-[210px]'}
         ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `} style={{ background: 'rgba(8,13,26,0.95)', backdropFilter: 'blur(24px)' }}>
+      `} style={{
+        background: 'linear-gradient(180deg, rgba(8,13,26,0.97) 0%, rgba(6,11,24,0.99) 100%)',
+        backdropFilter: 'blur(32px) saturate(1.3)',
+        boxShadow: '1px 0 24px rgba(0,0,0,0.3)',
+      }}>
 
         {/* Logo row */}
         <div className={`flex items-center gap-2.5 py-4 border-b border-white/[0.06] ${collapsed ? 'px-3 justify-center' : 'px-4'}`}>
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-violet-600 flex items-center justify-center text-sm flex-shrink-0 shadow-lg shadow-brand-900/50">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-violet-600 flex items-center justify-center text-sm flex-shrink-0 shadow-lg shadow-brand-500/30 animate-pulse-glow">
             🚀
           </div>
           {!collapsed && (
@@ -189,7 +195,7 @@ export function AppShell({ children, onCmdK, onShortcuts }: AppShellProps) {
         <div className="p-1.5 border-t border-white/[0.06] space-y-px">
           {!collapsed && (
             <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg">
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-brand-500 to-violet-600 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+              <div className="w-6 h-6 rounded-full avatar-3d flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
                 {initials}
               </div>
               <div className="flex-1 min-w-0">

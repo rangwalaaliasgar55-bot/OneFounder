@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
 import { PageLoader, LoadingSpinner } from '../components/ui/LoadingSpinner'
+import { StatCard3D } from '../components/ui/StatCard3D'
+import { ProgressRing3D } from '../components/ui/ProgressRing3D'
+import { AnimatedCounter } from '../components/ui/AnimatedCounter'
+import { SkeletonDashboard } from '../components/ui/Skeleton'
 
 interface OllamaStatus {
   running: boolean
@@ -239,7 +243,7 @@ export function DashboardPage() {
 
   useEffect(() => { loadHealthScore() }, [])
 
-  if (loading) return <PageLoader />
+  if (loading) return <SkeletonDashboard />
 
   const greeting = () => {
     const h = new Date().getHours()
@@ -249,13 +253,13 @@ export function DashboardPage() {
   }
 
   const statCards = [
-    { label: 'Business Ideas', value: data?.stats.ideas ?? 0, icon: '💡', page: '/ideas', color: 'from-brand-600/20 to-brand-800/10' },
-    { label: 'Active Projects', value: data?.stats.projects ?? 0, icon: '🎯', page: '/projects', color: 'from-violet-600/20 to-violet-800/10' },
-    { label: 'Open Tasks', value: data?.stats.tasks ?? 0, icon: '✅', page: '/projects', color: 'from-emerald-600/20 to-emerald-800/10' },
-    { label: 'CRM Leads', value: data?.stats.leads ?? 0, icon: '👥', page: '/crm', color: 'from-orange-600/20 to-orange-800/10' },
-    { label: 'Content Pieces', value: data?.stats.content ?? 0, icon: '✍️', page: '/content', color: 'from-pink-600/20 to-pink-800/10' },
-    { label: 'Research Reports', value: data?.stats.reports ?? 0, icon: '🔍', page: '/research', color: 'from-cyan-600/20 to-cyan-800/10' },
-    { label: 'Business Plans', value: data?.stats.plans ?? 0, icon: '📋', page: '/planner', color: 'from-amber-600/20 to-amber-800/10' },
+    { label: 'Business Ideas', value: data?.stats.ideas ?? 0, icon: '💡', page: '/ideas', color: 'brand' as const },
+    { label: 'Active Projects', value: data?.stats.projects ?? 0, icon: '🎯', page: '/projects', color: 'violet' as const },
+    { label: 'Open Tasks', value: data?.stats.tasks ?? 0, icon: '✅', page: '/projects', color: 'emerald' as const },
+    { label: 'CRM Leads', value: data?.stats.leads ?? 0, icon: '👥', page: '/crm', color: 'orange' as const },
+    { label: 'Content Pieces', value: data?.stats.content ?? 0, icon: '✍️', page: '/content', color: 'pink' as const },
+    { label: 'Research Reports', value: data?.stats.reports ?? 0, icon: '🔍', page: '/research', color: 'cyan' as const },
+    { label: 'Business Plans', value: data?.stats.plans ?? 0, icon: '📋', page: '/planner', color: 'amber' as const },
   ]
 
   const quickActions = [
@@ -276,12 +280,12 @@ export function DashboardPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      {/* Morning Briefing Card */}
-      <div className="mb-6 glass-strong rounded-2xl p-5 border border-brand-500/20 bg-gradient-to-br from-brand-600/10 to-violet-600/5">
+      {/* Morning Briefing Card — 3D glass */}
+      <div className="mb-6 card-3d border-brand-500/20 bg-gradient-to-br from-brand-600/10 to-violet-600/5">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">
-              {greeting()}, {user?.name?.split(' ')[0] || 'Founder'} 👋
+              {greeting()}, <span className="gradient-text-glow">{user?.name?.split(' ')[0] || 'Founder'}</span> 👋
             </h1>
             <p className="text-slate-400 text-sm mt-0.5">Here's your business snapshot for today.</p>
           </div>
@@ -344,24 +348,24 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Stats row */}
+      {/* Stats row — 3D animated cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-8">
-        {statCards.map(card => (
-          <button
+        {statCards.map((card, i) => (
+          <StatCard3D
             key={card.label}
-            onClick={() => navigate(card.page)}
-            className={`glass-strong rounded-xl p-4 text-left hover:scale-105 transition-all duration-200 bg-gradient-to-br ${card.color} border border-white/10 hover:border-white/20`}
-          >
-            <div className="text-2xl mb-2">{card.icon}</div>
-            <div className="text-2xl font-bold text-white">{card.value}</div>
-            <div className="text-xs text-slate-400 mt-0.5">{card.label}</div>
-          </button>
+            label={card.label}
+            value={card.value}
+            icon={card.icon}
+            page={card.page}
+            color={card.color}
+            delay={i * 60}
+          />
         ))}
       </div>
 
       {/* Business Health Score + CEO Brief row */}
       <div className="grid lg:grid-cols-5 gap-6 mb-6">
-        <div className="lg:col-span-2 card">
+        <div className="lg:col-span-2 card-3d">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-white">🏥 Business Health Score</h2>
             {healthScore && (
@@ -378,11 +382,12 @@ export function DashboardPage() {
             <div>
               <div className="flex items-center gap-5 mb-5">
                 <div className="relative flex-shrink-0">
-                  <ScoreRing score={healthScore.overall} size={88} />
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-2xl font-bold text-white">{healthScore.overall}</span>
-                    <span className="text-xs text-slate-500">/ 100</span>
-                  </div>
+                  <ProgressRing3D
+                    value={healthScore.overall}
+                    size={88}
+                    strokeWidth={7}
+                    color={healthScore.overall >= 70 ? '#22c55e' : healthScore.overall >= 45 ? '#f59e0b' : '#ef4444'}
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className={`text-sm font-semibold mb-1 ${
@@ -414,8 +419,8 @@ export function DashboardPage() {
           )}
         </div>
 
-        {/* AI CEO Brief */}
-        <div className="lg:col-span-3 card bg-gradient-to-br from-brand-600/5 to-violet-600/5 border-brand-500/10">
+        {/* AI CEO Brief — 3D glass */}
+        <div className="lg:col-span-3 card-3d bg-gradient-to-br from-brand-600/5 to-violet-600/5 border-brand-500/10">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-white">🤖 AI CEO Daily Brief</h2>
             {brief && (
@@ -529,14 +534,15 @@ export function DashboardPage() {
       {/* Main content grid */}
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="card">
+          <div className="card-3d">
             <h2 className="text-base font-semibold text-white mb-4">Quick Actions</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {quickActions.map(action => (
+              {quickActions.map((action, i) => (
                 <button
                   key={action.label}
                   onClick={() => navigate(action.page)}
-                  className="glass rounded-xl p-4 text-left hover:bg-white/10 hover:border-white/20 transition-all duration-200 border border-white/5"
+                  className={`card-hover text-left animate-slide-up stagger-${i + 1}`}
+                  style={{ animationFillMode: 'both' }}
                 >
                   <div className="text-2xl mb-2">{action.icon}</div>
                   <div className="text-sm font-semibold text-white">{action.label}</div>
