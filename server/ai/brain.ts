@@ -233,7 +233,7 @@ export class OneFounderBrain {
     try {
       const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
       // req.model lets callers override the default model at runtime
-      const ollamaModel = req.model || process.env.OLLAMA_MODEL || 'qwen3:8b'
+      const ollamaModel = req.model || process.env.OLLAMA_MODEL || 'qwen2.5-coder:3b'
 
       let fullResponse = ''
       let ollamaStreamed = false

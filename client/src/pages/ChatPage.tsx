@@ -38,7 +38,7 @@ const SUPREME_AGENTS = [
 ]
 
 const MODELS = [
-  { id: 'qwen3:8b',       label: 'Qwen3 8B',        desc: 'Best overall — fast & capable', badge: 'Default' },
+  { id: 'qwen2.5-coder:3b',       label: 'Qwen3 8B',        desc: 'Best overall — fast & capable', badge: 'Default' },
   { id: 'qwen3:14b',      label: 'Qwen3 14B',       desc: 'Higher quality, needs more RAM',  badge: 'Quality' },
   { id: 'deepseek-r1:7b', label: 'DeepSeek R1 7B',  desc: 'Deep reasoning & research',       badge: 'Research' },
   { id: 'mistral:7b',     label: 'Mistral 7B',       desc: 'Fast & great for code',           badge: 'Code' },
@@ -50,15 +50,15 @@ const DEFAULT_MODEL_FOR_AGENT: Record<string, string> = {
   code:       'mistral:7b',
   data:       'deepseek-r1:7b',
   research:   'deepseek-r1:7b',
-  security:   'qwen3:8b',
+  security:   'qwen2.5-coder:3b',
   startup:    'deepseek-r1:7b',
-  seo:        'qwen3:8b',
-  founder:    'qwen3:8b',
-  ceo:        'qwen3:8b',
-  marketing:  'qwen3:8b',
-  sales:      'qwen3:8b',
-  operations: 'qwen3:8b',
-  product:    'qwen3:8b',
+  seo:        'qwen2.5-coder:3b',
+  founder:    'qwen2.5-coder:3b',
+  ceo:        'qwen2.5-coder:3b',
+  marketing:  'qwen2.5-coder:3b',
+  sales:      'qwen2.5-coder:3b',
+  operations: 'qwen2.5-coder:3b',
+  product:    'qwen2.5-coder:3b',
 }
 
 const MODE_COLORS: Record<string, string> = {
@@ -150,7 +150,7 @@ export function ChatPage() {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [activeMode, setActiveMode] = useState<string | null>(null)
-  const [selectedModel, setSelectedModel] = useState('llama3.2')
+  const [selectedModel, setSelectedModel] = useState('qwen2.5-coder:3b')
   const [showModelPicker, setShowModelPicker] = useState(false)
   const [supremeAutoSelect, setSupremeAutoSelect] = useState(true)
   const [supremeSelected, setSupremeSelected] = useState<string[]>([])
@@ -185,7 +185,7 @@ export function ChatPage() {
     setSessionId(uuidv4())
     setMessages([])
     setActiveMode(null)
-    const defaultModel = DEFAULT_MODEL_FOR_AGENT[id] || 'llama3.2'
+    const defaultModel = DEFAULT_MODEL_FOR_AGENT[id] || 'qwen2.5-coder:3b'
     setSelectedModel(defaultModel)
   }
 

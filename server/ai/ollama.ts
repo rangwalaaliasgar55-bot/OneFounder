@@ -4,7 +4,7 @@ export class OllamaProvider implements AIProvider {
   private baseUrl: string
   private model: string
 
-  constructor(baseUrl = 'http://localhost:11434', model = 'llama3.2') {
+  constructor(baseUrl = 'http://localhost:11434', model = 'qwen2.5-coder:3b') {
     this.baseUrl = baseUrl
     this.model = model
   }

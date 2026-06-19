@@ -21,7 +21,7 @@ export function OllamaWizard({ onDismiss }: OllamaWizardProps) {
   const [step, setStep] = useState<Step>('check')
   const [health, setHealth] = useState<OllamaHealth | null>(null)
   const [checking, setChecking] = useState(false)
-  const [selectedModel, setSelectedModel] = useState('qwen3:8b')
+  const [selectedModel, setSelectedModel] = useState('qwen2.5-coder:3b')
   const [pullLog, setPullLog] = useState<string[]>([])
   const [pullPct, setPullPct] = useState(0)
   const [pulling, setPulling] = useState(false)

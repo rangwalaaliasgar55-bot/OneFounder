@@ -15,7 +15,7 @@ export async function getAIProvider(): Promise<AIProvider> {
   lastCheck = now
   const ollama = new OllamaProvider(
     process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-    process.env.OLLAMA_MODEL || 'qwen3:8b'
+    process.env.OLLAMA_MODEL || 'qwen2.5-coder:3b'
   )
 
   if (await ollama.isAvailable()) {
@@ -37,7 +37,7 @@ export async function getAIStatus(): Promise<{
 }> {
   const ollama = new OllamaProvider(
     process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-    process.env.OLLAMA_MODEL || 'qwen3:8b'
+    process.env.OLLAMA_MODEL || 'qwen2.5-coder:3b'
   )
   const available = await ollama.isAvailable()
   const models = available ? await ollama.listModels() : []
