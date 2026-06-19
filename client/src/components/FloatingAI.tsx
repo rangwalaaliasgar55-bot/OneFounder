@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -41,6 +41,7 @@ export function FloatingAI() {
 
     try {
       const res = await fetch('/api/ai/stream', {
+        credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: msg, sessionId }),
@@ -66,7 +67,7 @@ export function FloatingAI() {
               modeLabel = parsed.modeLabel || modeLabel
               if (parsed.sessionId) setSessionId(parsed.sessionId)
               setMessages(prev => {
-                const updated = [...prev]
+                const updated = prev.map(m => ({ ...m }))
                 const last = updated[updated.length - 1]
                 if (last?.role === 'assistant') last.mode = modeLabel
                 return updated
@@ -74,7 +75,7 @@ export function FloatingAI() {
             } else if (data.type === 'token') {
               assistantMsg += data.data
               setMessages(prev => {
-                const updated = [...prev]
+                const updated = prev.map(m => ({ ...m }))
                 const last = updated[updated.length - 1]
                 if (last?.role === 'assistant') last.content = assistantMsg
                 return updated

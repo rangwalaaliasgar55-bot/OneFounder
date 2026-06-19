@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { requireAuth } from '../middleware/auth.js'
 import os from 'os'
 
 const router = Router()
@@ -14,8 +15,7 @@ const RECOMMENDED_MODELS = [
   { id: 'llama3.2:3b',   label: 'Llama 3.2 3B',   ram: '4GB',  desc: 'Fastest — minimum RAM' },
 ]
 
-// GET /api/ollama/health
-router.get('/health', async (_req, res) => {
+router.get('/health', requireAuth, async (_req, res) => {
   try {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 3000)
@@ -53,8 +53,10 @@ router.get('/health', async (_req, res) => {
   }
 })
 
-// POST /api/ollama/pull — SSE streaming pull progress
-router.post('/pull', async (req, res) => {
+router.post('/pull', requireAuth, async (req, res) => {
+  const user = (req as any).user
+  if (!user.isAdmin) return res.status(403).json({ error: 'Admin only' })
+
   const { model } = req.body
   if (!model || typeof model !== 'string') return res.status(400).json({ error: 'model required' })
 
@@ -63,7 +65,12 @@ router.post('/pull', async (req, res) => {
   res.setHeader('Connection', 'keep-alive')
   res.flushHeaders()
 
-  const send = (data: object) => res.write(`data: ${JSON.stringify(data)}\n\n`)
+  let clientDisconnected = false
+  req.on('close', () => { clientDisconnected = true })
+
+  const send = (data: object) => {
+    if (!clientDisconnected) res.write(`data: ${JSON.stringify(data)}\n\n`)
+  }
 
   try {
     send({ status: 'starting', message: `Pulling ${model}...` })
@@ -72,7 +79,7 @@ router.post('/pull', async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: model, stream: true }),
-      signal: AbortSignal.timeout(600_000), // 10 min for large models
+      signal: AbortSignal.timeout(600_000),
     })
 
     if (!r.ok || !r.body) {
@@ -85,7 +92,7 @@ router.post('/pull', async (req, res) => {
     const decoder = new TextDecoder()
     let buf = ''
 
-    while (true) {
+    while (!clientDisconnected) {
       const { done, value } = await reader.read()
       if (done) break
       buf += decoder.decode(value, { stream: true })
@@ -107,7 +114,7 @@ router.post('/pull', async (req, res) => {
       }
     }
 
-    send({ status: 'done', message: `${model} is ready!` })
+    if (!clientDisconnected) send({ status: 'done', message: `${model} is ready!` })
   } catch (err: any) {
     send({ status: 'error', message: err.message || 'Pull failed' })
   }
@@ -115,8 +122,7 @@ router.post('/pull', async (req, res) => {
   res.end()
 })
 
-// POST /api/ollama/test — quick inference test
-router.post('/test', async (req, res) => {
+router.post('/test', requireAuth, async (req, res) => {
   const model = req.body?.model || process.env.OLLAMA_MODEL || 'qwen3:8b'
   const start = Date.now()
   try {
@@ -143,8 +149,10 @@ router.post('/test', async (req, res) => {
   }
 })
 
-// DELETE /api/ollama/models/:name — delete a local model
-router.delete('/models/:name', async (req, res) => {
+router.delete('/models/:name', requireAuth, async (req, res) => {
+  const user = (req as any).user
+  if (!user.isAdmin) return res.status(403).json({ error: 'Admin only' })
+
   const name = decodeURIComponent(req.params.name)
   try {
     const r = await fetch(`${OLLAMA_BASE()}/api/delete`, {

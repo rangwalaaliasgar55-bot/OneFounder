@@ -20,35 +20,44 @@ function handleAIError(err: any, res: any) {
 const router = Router()
 
 router.get('/sessions', requireAuth, async (req, res) => {
-  const user = (req as any).user
-  const messages = await db.select().from(chatMessages)
-    .where(eq(chatMessages.userId, user.id))
-    .orderBy(desc(chatMessages.createdAt))
+  try {
+    const user = (req as any).user
+    const messages = await db.select().from(chatMessages)
+      .where(eq(chatMessages.userId, user.id))
+      .orderBy(desc(chatMessages.createdAt))
+      .limit(500)
 
-  const sessions = new Map<string, any>()
-  messages.forEach(m => {
-    if (!sessions.has(m.sessionId)) {
-      sessions.set(m.sessionId, {
-        id: m.sessionId,
-        lastMessage: m.content.substring(0, 80),
-        createdAt: m.createdAt,
-        role: m.role,
-      })
-    }
-  })
+    const sessions = new Map<string, any>()
+    messages.forEach(m => {
+      if (!sessions.has(m.sessionId)) {
+        sessions.set(m.sessionId, {
+          id: m.sessionId,
+          lastMessage: m.content.substring(0, 80),
+          createdAt: m.createdAt,
+          role: m.role,
+        })
+      }
+    })
 
-  res.json(Array.from(sessions.values()))
+    res.json(Array.from(sessions.values()))
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to load sessions' })
+  }
 })
 
 router.get('/:sessionId', requireAuth, async (req, res) => {
-  const user = (req as any).user
-  const messages = await db.select().from(chatMessages)
-    .where(and(
-      eq(chatMessages.userId, user.id),
-      eq(chatMessages.sessionId, req.params.sessionId as string)
-    ))
-    .orderBy(chatMessages.createdAt)
-  res.json(messages)
+  try {
+    const user = (req as any).user
+    const messages = await db.select().from(chatMessages)
+      .where(and(
+        eq(chatMessages.userId, user.id),
+        eq(chatMessages.sessionId, req.params.sessionId as string)
+      ))
+      .orderBy(chatMessages.createdAt)
+    res.json(messages)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to load messages' })
+  }
 })
 
 router.post('/send', requireAuth, checkTokens, async (req, res) => {
@@ -57,7 +66,7 @@ router.post('/send', requireAuth, checkTokens, async (req, res) => {
   if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message required' })
   if (message.length > 4000) return res.status(400).json({ error: 'Message too long (max 4000 chars)' })
 
-  await logActivity(user.id, 'sent_message', 'chat', sessionId, { agentType }).catch(() => {})
+  logActivity(user.id, 'sent_message', 'chat', sessionId, { agentType }).catch(() => {})
 
   try {
     const result = await brain.process({
@@ -77,7 +86,10 @@ router.post('/send', requireAuth, checkTokens, async (req, res) => {
       orderBy: [desc(chatMessages.createdAt)],
     })
 
-    if (!user.isAdmin) await deductToken(user.id)
+    if (!user.isAdmin) {
+      const deducted = await deductToken(user.id)
+      if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
+    }
     res.json({
       message: saved || { id: uuidv4(), role: 'assistant', content: result.response },
       sessionId: result.sessionId,
@@ -103,8 +115,13 @@ router.post('/stream', requireAuth, checkTokens, async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no')
   res.flushHeaders()
 
+  let clientDisconnected = false
+  req.on('close', () => { clientDisconnected = true })
+
   const send = (event: string, data: string) => {
-    res.write(`event: ${event}\ndata: ${data}\n\n`)
+    if (!clientDisconnected) {
+      res.write(`event: ${event}\ndata: ${data}\n\n`)
+    }
   }
 
   try {
@@ -119,10 +136,13 @@ router.post('/stream', requireAuth, checkTokens, async (req, res) => {
 
     let deducted = false
     for await (const chunk of gen) {
+      if (clientDisconnected) break
       send(chunk.type, typeof chunk.data === 'string' ? chunk.data : JSON.stringify(chunk.data))
       if ((chunk.type === 'done' || chunk.type === 'error') && !deducted) {
         deducted = true
-        if (!user.isAdmin && chunk.type === 'done') await deductToken(user.id).catch(() => {})
+        if (!user.isAdmin && chunk.type === 'done') {
+          await deductToken(user.id).catch(() => {})
+        }
         break
       }
     }
@@ -137,11 +157,15 @@ router.post('/stream', requireAuth, checkTokens, async (req, res) => {
   }
 })
 
-router.get('/route/analyze', async (req, res) => {
-  const { message } = req.query
-  if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message required' })
-  const result = detectExpertMode(message)
-  res.json(result)
+router.get('/route/analyze', requireAuth, async (req, res) => {
+  try {
+    const { message } = req.query
+    if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message required' })
+    const result = detectExpertMode(message)
+    res.json(result)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to analyze route' })
+  }
 })
 
 export default router

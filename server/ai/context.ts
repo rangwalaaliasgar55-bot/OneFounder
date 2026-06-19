@@ -68,9 +68,12 @@ export async function assembleFounderContext(userId: string): Promise<FounderCon
   const doneTasks = allTasks.filter(t => t.status === 'done')
   const activeLeads = allLeads.filter(l => !['won', 'lost'].includes(l.status ?? ''))
   const wonLeads = allLeads.filter(l => l.status === 'won')
-  const mrr = allFinance.filter(f => f.type === 'subscription' && f.recurring).reduce((s, f) => s + f.amount, 0)
-  const totalRevenue = allFinance.filter(f => f.type === 'revenue').reduce((s, f) => s + f.amount, 0)
-  const totalExpenses = allFinance.filter(f => f.type === 'expense').reduce((s, f) => s + f.amount, 0)
+  
+  // Finance amounts are stored in cents - divide by 100 for display
+  const mrr = allFinance.filter(f => f.type === 'subscription' && f.recurring).reduce((s, f) => s + f.amount, 0) / 100
+  const totalRevenue = allFinance.filter(f => f.type === 'revenue').reduce((s, f) => s + f.amount, 0) / 100
+  const totalExpenses = allFinance.filter(f => f.type === 'expense').reduce((s, f) => s + f.amount, 0) / 100
+  
   const activeIdeas = allIdeas.filter(i => i.status === 'building' || i.status === 'validated')
   const activeProjects = allProjects.filter(p => p.status === 'active')
   const publishedContent = allContent.filter(c => c.status === 'published')
@@ -80,7 +83,7 @@ export async function assembleFounderContext(userId: string): Promise<FounderCon
     : 'Founder profile not yet set up'
 
   const businessSnapshot = [
-    `MRR: $${mrr} | Revenue: $${totalRevenue} | Expenses: $${totalExpenses} | Profit: $${totalRevenue - totalExpenses}`,
+    `MRR: $${mrr.toFixed(2)} | Revenue: $${totalRevenue.toFixed(2)} | Expenses: $${totalExpenses.toFixed(2)} | Profit: $${(totalRevenue - totalExpenses).toFixed(2)}`,
     `Ideas: ${allIdeas.length} total (${activeIdeas.length} active) | Projects: ${allProjects.length} (${activeProjects.length} active)`,
     `Tasks: ${pendingTasks.length} pending, ${doneTasks.length} done`,
     `Leads: ${allLeads.length} total (${activeLeads.length} active, ${wonLeads.length} won)`,
@@ -108,9 +111,9 @@ export async function assembleFounderContext(userId: string): Promise<FounderCon
     : 'No activity logged this week'
 
   const financialContext = mrr > 0
-    ? `Recurring revenue of $${mrr}/mo. Total tracked revenue: $${totalRevenue}. ${wonLeads.length} paying customers.`
+    ? `Recurring revenue of $${mrr.toFixed(2)}/mo. Total tracked revenue: $${totalRevenue.toFixed(2)}. ${wonLeads.length} paying customers.`
     : totalRevenue > 0
-    ? `$${totalRevenue} in one-time revenue tracked. No recurring subscriptions yet. Focus on converting leads to MRR.`
+    ? `$${totalRevenue.toFixed(2)} in one-time revenue tracked. No recurring subscriptions yet. Focus on converting leads to MRR.`
     : 'Pre-revenue stage. Focus is on getting first paying customer.'
 
   return {

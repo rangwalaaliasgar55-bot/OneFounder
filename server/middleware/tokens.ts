@@ -29,22 +29,32 @@ export async function checkTokens(req: Request, res: Response, next: NextFunctio
   next()
 }
 
-export async function deductToken(userId: string): Promise<void> {
-  await db
+/**
+ * Atomically deduct one token. Returns true if successful, false if insufficient balance.
+ * Uses a single atomic UPDATE with WHERE guard to prevent race conditions.
+ */
+export async function deductToken(userId: string): Promise<boolean> {
+  const result = await db
     .update(users)
     .set({
       tokenBalance: sql`${users.tokenBalance} - 1`,
       tokenUsed: sql`${users.tokenUsed} + 1`,
       updatedAt: new Date(),
     })
-    .where(eq(users.id, userId))
+    .where(sql`${users.id} = ${userId} AND ${users.tokenBalance} > 0`)
+    .returning({ id: users.id })
 
-  await db.insert(tokenTransactions).values({
+  if (result.length === 0) return false
+
+  // Log transaction (fire-and-forget, non-critical)
+  db.insert(tokenTransactions).values({
     userId,
     amount: -1,
     type: 'deduct',
     note: 'AI request',
-  })
+  }).catch(() => {})
+
+  return true
 }
 
 export async function grantTokens(userId: string, amount: number, note = 'Admin grant'): Promise<void> {

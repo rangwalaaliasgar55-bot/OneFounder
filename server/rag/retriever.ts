@@ -23,6 +23,8 @@ function bm25Score(
   query: string[],
   doc: string,
   avgDocLength: number,
+  totalDocs: number,
+  docFreqs: Map<string, number>,
   k1 = 1.5,
   b = 0.75
 ): number {
@@ -36,7 +38,11 @@ function bm25Score(
   for (const term of query) {
     const tf = termFreq[term] || 0
     if (tf === 0) continue
-    const idf = Math.log(1 + 1 / (0.5 + 0.5))
+    
+    // Proper IDF calculation: log(1 + (N - n + 0.5) / (n + 0.5))
+    const docsWithTerm = docFreqs.get(term) || 0
+    const idf = Math.log(1 + (totalDocs - docsWithTerm + 0.5) / (docsWithTerm + 0.5))
+    
     const numerator = tf * (k1 + 1)
     const denominator = tf + k1 * (1 - b + b * (docLen / avgDocLength))
     score += idf * (numerator / denominator)
@@ -81,9 +87,21 @@ export async function retrieveRelevantChunks(
 
   const queryTokens = tokenize(query)
   const avgLen = allChunks.reduce((sum, c) => sum + c.chunk.wordCount, 0) / allChunks.length
+  const totalDocs = allChunks.length
+
+  // Pre-compute document frequencies for each query term
+  const docFreqs = new Map<string, number>()
+  for (const term of queryTokens) {
+    let count = 0
+    for (const { chunk } of allChunks) {
+      const tokens = tokenize(chunk.content)
+      if (tokens.includes(term)) count++
+    }
+    docFreqs.set(term, count)
+  }
 
   const scored = allChunks.map(({ chunk, docId, docTitle }) => {
-    const bm25 = bm25Score(queryTokens, chunk.content, avgLen)
+    const bm25 = bm25Score(queryTokens, chunk.content, avgLen, totalDocs, docFreqs)
     const kw = keywordScore(query, chunk.content)
     const score = bm25 * 0.6 + kw * 0.4
     return { chunk, docId, docTitle, score }

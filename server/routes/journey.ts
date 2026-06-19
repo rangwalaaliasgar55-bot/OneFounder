@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { db } from '../db/index.js'
 import { journeyMilestones } from '../db/schema.js'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and } from 'drizzle-orm'
 
 const router = Router()
 
@@ -25,39 +25,50 @@ const DEFAULT_MILESTONES = [
 ]
 
 router.get('/', requireAuth, async (req, res) => {
-  const user = (req as any).user
-  let milestones = await db.select().from(journeyMilestones)
-    .where(eq(journeyMilestones.userId, user.id))
-    .orderBy(journeyMilestones.order)
+  try {
+    const user = (req as any).user
+    let milestones = await db.select().from(journeyMilestones)
+      .where(eq(journeyMilestones.userId, user.id))
+      .orderBy(journeyMilestones.order)
 
-  // Seed defaults if none exist
-  if (milestones.length === 0) {
-    const inserted = await Promise.all(DEFAULT_MILESTONES.map(async (m) => {
-      const [row] = await db.insert(journeyMilestones).values({
-        userId: user.id, key: m.key, stage: m.stage, title: m.title,
-        description: m.description, icon: m.icon, xp: m.xp, order: m.order,
-        completed: false,
-      }).returning()
-      return row
-    }))
-    milestones = inserted.sort((a, b) => a.order - b.order)
+    if (milestones.length === 0) {
+      const inserted = await Promise.all(DEFAULT_MILESTONES.map(async (m) => {
+        const [row] = await db.insert(journeyMilestones).values({
+          userId: user.id, key: m.key, stage: m.stage, title: m.title,
+          description: m.description, icon: m.icon, xp: m.xp, order: m.order,
+          completed: false,
+        }).returning()
+        return row
+      }))
+      milestones = inserted.sort((a, b) => a.order - b.order)
+    }
+
+    res.json(milestones)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to load milestones' })
   }
-
-  res.json(milestones)
 })
 
 router.patch('/:id', requireAuth, async (req, res) => {
-  const { completed, notes } = req.body
-  const [updated] = await db.update(journeyMilestones)
-    .set({
-      completed: completed ?? undefined,
-      completedAt: completed ? new Date() : null,
-      notes: notes ?? undefined,
-      updatedAt: new Date(),
-    })
-    .where(eq(journeyMilestones.id, req.params.id as string))
-    .returning()
-  res.json(updated)
+  try {
+    const user = (req as any).user
+    const { completed, notes } = req.body
+    const updateData: any = { updatedAt: new Date() }
+    if (completed !== undefined) {
+      updateData.completed = completed
+      updateData.completedAt = completed ? new Date() : null
+    }
+    if (notes !== undefined) updateData.notes = notes
+
+    const [updated] = await db.update(journeyMilestones)
+      .set(updateData)
+      .where(and(eq(journeyMilestones.id, req.params.id as string), eq(journeyMilestones.userId, user.id)))
+      .returning()
+    if (!updated) return res.status(404).json({ error: 'Not found' })
+    res.json(updated)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to update milestone' })
+  }
 })
 
 export default router

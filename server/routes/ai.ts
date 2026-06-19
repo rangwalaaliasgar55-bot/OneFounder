@@ -15,8 +15,12 @@ function handleAIError(err: any, res: any) {
 }
 
 router.get('/status', async (_req, res) => {
-  const status = await getAIStatus()
-  res.json(status)
+  try {
+    const status = await getAIStatus()
+    res.json(status)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to get AI status' })
+  }
 })
 
 router.get('/tokens', requireAuth, async (req, res) => {
@@ -42,7 +46,10 @@ router.post('/chat', requireAuth, checkTokens, async (req, res) => {
     )
     const ai = await getAIProvider()
     const response = await ai.chat(withDate)
-    if (!user.isAdmin) await deductToken(user.id)
+    if (!user.isAdmin) {
+      const deducted = await deductToken(user.id)
+      if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
+    }
     res.json({ content: response })
   } catch (err: any) {
     handleAIError(err, res)
@@ -58,7 +65,10 @@ router.post('/generate', requireAuth, checkTokens, async (req, res) => {
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     const ai = await getAIProvider()
     const response = await ai.generate(prompt, systemPrompt ? `Today is ${today}.\n\n${systemPrompt}` : `Today is ${today}.`)
-    if (!user.isAdmin) await deductToken(user.id)
+    if (!user.isAdmin) {
+      const deducted = await deductToken(user.id)
+      if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
+    }
     res.json({ content: response })
   } catch (err: any) {
     handleAIError(err, res)
@@ -72,11 +82,14 @@ router.post('/research', requireAuth, checkTokens, async (req, res) => {
   if (topic.length > 300) return res.status(400).json({ error: 'Topic too long (max 300 chars)' })
   try {
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-    const webContext = await getWebContextString(`${topic} latest trends news 2025`)
+    const webContext = await getWebContextString(`${topic} latest trends news 2026`)
     const ai = await getAIProvider()
     const prompt = `Today is ${today}. Research the following topic: "${topic}"\n\n${webContext}\n\nUsing the real-time data above AND your training knowledge, provide a comprehensive, specific, and actionable research report.`
     const response = await ai.generate(prompt, `You are a business research expert with access to real-time web data. Today is ${today}. Be specific, cite real trends from the web context, and give actionable insights.`)
-    if (!user.isAdmin) await deductToken(user.id)
+    if (!user.isAdmin) {
+      const deducted = await deductToken(user.id)
+      if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
+    }
     res.json({ content: response })
   } catch (err: any) {
     handleAIError(err, res)

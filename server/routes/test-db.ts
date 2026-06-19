@@ -1,13 +1,15 @@
 import { Router } from 'express'
+import { requireAuth } from '../middleware/auth.js'
 import { db } from '../db/index.js'
 import { users } from '../db/schema.js'
-import { sql } from 'drizzle-orm'
 
 const router = Router()
 
-router.get('/check', async (req, res) => {
+router.get('/check', requireAuth, async (req, res) => {
+  const user = (req as any).user
+  if (!user.isAdmin) return res.status(403).json({ error: 'Admin only' })
+
   try {
-    // Try to query the users table
     const result = await db.select().from(users).limit(1)
     res.json({
       success: true,
@@ -20,7 +22,6 @@ router.get('/check', async (req, res) => {
       success: false,
       message: 'Database error',
       error: error.message,
-      code: error.code,
     })
   }
 })
