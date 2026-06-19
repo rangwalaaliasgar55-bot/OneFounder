@@ -11,12 +11,13 @@ if (!secret) {
 }
 
 // Resolve the public base URL — must match what the browser sees
-// Priority: BETTER_AUTH_URL > REPLIT domains > CLIENT_URL > localhost
+// Priority: BETTER_AUTH_URL > VERCEL_URL > REPLIT domains > CLIENT_URL > localhost
 const baseURL = (() => {
+  // On Vercel, VERCEL_URL is automatically set to the deployment URL
   if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
   if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`
   if (process.env.REPLIT_DOMAINS) return `https://${process.env.REPLIT_DOMAINS.split(',')[0].trim()}`
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
   if (process.env.CLIENT_URL) return process.env.CLIENT_URL
   return 'http://localhost:5000'
 })()
