@@ -222,6 +222,15 @@ export function OllamaWizard({ onDismiss }: OllamaWizardProps) {
               >
                 {checking ? 'Checking...' : '↻ Check again'}
               </button>
+
+              <div className="pt-2 border-t border-white/[0.04]">
+                <button
+                  onClick={onDismiss}
+                  className="w-full py-2 text-xs text-slate-600 hover:text-slate-400 transition-colors"
+                >
+                  Skip for now
+                </button>
+              </div>
             </div>
           )}
 

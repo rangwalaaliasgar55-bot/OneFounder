@@ -331,6 +331,13 @@ export function SetupPage({ onComplete }: SetupPageProps) {
               >
                 Set up AI Engine →
               </button>
+
+              <button
+                onClick={() => setStep('profile')}
+                className="w-full py-2 text-xs text-slate-600 hover:text-slate-400 transition-colors"
+              >
+                Skip AI setup for now
+              </button>
             </div>
           )}
 
@@ -388,6 +395,16 @@ export function SetupPage({ onComplete }: SetupPageProps) {
               <p className="text-xs text-center text-slate-700">
                 Already have Ollama? Just run <code className="bg-white/5 px-1 rounded">ollama serve</code> and click above.
               </p>
+
+              <div className="pt-2 border-t border-white/[0.04]">
+                <button
+                  onClick={() => setStep('profile')}
+                  className="w-full py-2 text-xs text-slate-600 hover:text-slate-400 transition-colors"
+                >
+                  Skip Ollama setup for now
+                </button>
+                <p className="text-[10px] text-slate-700 text-center mt-1">You can set up AI later from Settings</p>
+              </div>
             </div>
           )}
 
