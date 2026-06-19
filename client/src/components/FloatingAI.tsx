@@ -121,11 +121,11 @@ export function FloatingAI() {
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-violet-600 flex items-center justify-center text-sm">🤖</div>
             <div className="flex-1 min-w-0">
               <div className="text-xs font-semibold text-white">AI Quick Chat</div>
-              <div className="text-[10px] text-slate-600">Ask anything, get answers instantly</div>
+              <div className="text-[10px] text-slate-400">Ask anything, get answers instantly</div>
             </div>
             <button
               onClick={() => { setMessages([]); setSessionId(undefined) }}
-              className="text-[10px] text-slate-700 hover:text-slate-400 transition-colors"
+              className="text-[10px] text-slate-400 hover:text-slate-200 transition-colors"
               title="Clear chat"
             >
               Clear
@@ -136,7 +136,7 @@ export function FloatingAI() {
           <div className="flex-1 overflow-y-auto p-3 space-y-3" style={{ minHeight: '200px', maxHeight: '360px' }}>
             {messages.length === 0 && (
               <div className="space-y-2">
-                <p className="text-[11px] text-slate-600 text-center py-2">Quick prompts to get started:</p>
+                <p className="text-[11px] text-slate-400 text-center py-2">Quick prompts to get started:</p>
                 {QUICK_PROMPTS.map(p => (
                   <button
                     key={p}
@@ -153,10 +153,10 @@ export function FloatingAI() {
                 {msg.role === 'assistant' && (
                   <div className="flex flex-col gap-1 max-w-[90%]">
                     {msg.mode && (
-                      <span className="text-[9px] text-slate-600 px-1">{msg.mode}</span>
+                      <span className="text-[9px] text-slate-400 px-1">{msg.mode}</span>
                     )}
                     <div className="bg-white/[0.05] border border-white/[0.06] rounded-xl rounded-tl-sm px-3 py-2 text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap">
-                      {msg.content || <span className="animate-pulse text-slate-600">●●●</span>}
+                      {msg.content || <span className="animate-pulse text-slate-400">●●●</span>}
                     </div>
                   </div>
                 )}
@@ -196,7 +196,7 @@ export function FloatingAI() {
                 )}
               </button>
             </div>
-            <p className="text-[9px] text-slate-700 mt-1.5 text-center">Enter to send · Powered by Ollama</p>
+            <p className="text-[9px] text-slate-500 mt-1.5 text-center">Enter to send · Powered by Ollama</p>
           </div>
         </div>
       )}

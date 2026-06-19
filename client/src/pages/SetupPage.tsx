@@ -334,7 +334,7 @@ export function SetupPage({ onComplete }: SetupPageProps) {
 
               <button
                 onClick={() => setStep('profile')}
-                className="w-full py-2 text-xs text-slate-600 hover:text-slate-400 transition-colors"
+                className="w-full py-2 text-xs text-slate-400 hover:text-slate-200 transition-colors font-medium"
               >
                 Skip AI setup for now
               </button>
@@ -392,18 +392,18 @@ export function SetupPage({ onComplete }: SetupPageProps) {
                 {checking ? 'Checking...' : '↻ Ollama is running — continue'}
               </button>
 
-              <p className="text-xs text-center text-slate-700">
+              <p className="text-xs text-center text-slate-400">
                 Already have Ollama? Just run <code className="bg-white/5 px-1 rounded">ollama serve</code> and click above.
               </p>
 
               <div className="pt-2 border-t border-white/[0.04]">
                 <button
                   onClick={() => setStep('profile')}
-                  className="w-full py-2 text-xs text-slate-600 hover:text-slate-400 transition-colors"
+                  className="w-full py-2 text-xs text-slate-400 hover:text-slate-200 transition-colors font-medium"
                 >
                   Skip Ollama setup for now
                 </button>
-                <p className="text-[10px] text-slate-700 text-center mt-1">You can set up AI later from Settings</p>
+                <p className="text-[10px] text-slate-500 text-center mt-1">You can set up AI later from Settings</p>
               </div>
             </div>
           )}
@@ -653,7 +653,7 @@ export function SetupPage({ onComplete }: SetupPageProps) {
                 {saving ? 'Saving...' : 'Enter OneFounder →'}
               </button>
 
-              <button onClick={completeSetup} className="w-full py-1.5 text-xs text-slate-700 hover:text-slate-500 transition-colors">
+              <button onClick={completeSetup} className="w-full py-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors font-medium">
                 Skip for now
               </button>
             </div>

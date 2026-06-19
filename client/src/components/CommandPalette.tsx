@@ -84,17 +84,17 @@ export function CommandPalette({ open, onClose }: Props) {
             placeholder="Search pages, actions…"
             className="flex-1 bg-transparent text-sm text-white placeholder-slate-600 outline-none"
           />
-          <kbd className="text-[10px] text-slate-600 border border-white/[0.08] rounded px-1.5 py-0.5 font-mono">ESC</kbd>
+          <kbd className="text-[10px] text-slate-400 border border-white/[0.08] rounded px-1.5 py-0.5 font-mono">ESC</kbd>
         </div>
 
         {/* Results */}
         <div className="max-h-80 overflow-y-auto py-2">
           {filtered.length === 0 && (
-            <div className="px-4 py-8 text-center text-xs text-slate-600">No results for "{query}"</div>
+            <div className="px-4 py-8 text-center text-xs text-slate-400">No results for "{query}"</div>
           )}
           {sections.map(section => (
             <div key={section}>
-              <div className="px-4 py-1.5 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">{section}</div>
+              <div className="px-4 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{section}</div>
               {filtered.filter(c => c.section === section).map((cmd, idx) => {
                 const globalIdx = filtered.indexOf(cmd)
                 return (
@@ -109,7 +109,7 @@ export function CommandPalette({ open, onClose }: Props) {
                     <span className="text-base w-5 text-center flex-shrink-0">{cmd.icon}</span>
                     <span className="text-sm font-medium">{cmd.label}</span>
                     {selected === globalIdx && (
-                      <kbd className="ml-auto text-[10px] text-slate-600 border border-white/[0.08] rounded px-1.5 py-0.5 font-mono">↵</kbd>
+                      <kbd className="ml-auto text-[10px] text-slate-400 border border-white/[0.08] rounded px-1.5 py-0.5 font-mono">↵</kbd>
                     )}
                   </button>
                 )
@@ -120,9 +120,9 @@ export function CommandPalette({ open, onClose }: Props) {
 
         {/* Footer */}
         <div className="flex items-center gap-3 px-4 py-2 border-t border-white/[0.06]">
-          <span className="text-[10px] text-slate-700">↑↓ navigate</span>
-          <span className="text-[10px] text-slate-700">↵ open</span>
-          <span className="text-[10px] text-slate-700">esc close</span>
+          <span className="text-[10px] text-slate-400">↑↓ navigate</span>
+          <span className="text-[10px] text-slate-400">↵ open</span>
+          <span className="text-[10px] text-slate-400">esc close</span>
         </div>
       </div>
     </div>

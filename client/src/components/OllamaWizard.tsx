@@ -146,7 +146,7 @@ export function OllamaWizard({ onDismiss }: OllamaWizardProps) {
                 <p className="text-xs text-slate-500">Local AI — zero cost, zero cloud</p>
               </div>
             </div>
-            <button onClick={onDismiss} className="text-slate-600 hover:text-slate-400 transition-colors text-lg leading-none">✕</button>
+            <button onClick={onDismiss} className="text-slate-400 hover:text-slate-400 transition-colors text-lg leading-none">✕</button>
           </div>
 
           {/* Step indicator */}
@@ -159,7 +159,7 @@ export function OllamaWizard({ onDismiss }: OllamaWizardProps) {
                       ? 'bg-brand-500 text-white'
                       : visibleSteps.indexOf(step) === i
                         ? 'bg-brand-600/30 border border-brand-500/40 text-brand-400'
-                        : 'bg-white/5 text-slate-600'
+                        : 'bg-white/5 text-slate-400'
                   }`}>
                     {visibleSteps.indexOf(step) > i ? '✓' : i + 1}
                   </div>
@@ -211,7 +211,7 @@ export function OllamaWizard({ onDismiss }: OllamaWizardProps) {
                 <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-2">
                   <p className="text-xs font-semibold text-white">Step 3 — Pull a model</p>
                   <code className="block text-xs font-mono text-slate-300 bg-black/30 px-3 py-2 rounded-lg">ollama pull qwen3:8b</code>
-                  <p className="text-xs text-slate-600">~5 GB download. Also: deepseek-r1:7b · mistral:7b · llama3.2:3b</p>
+                  <p className="text-xs text-slate-400">~5 GB download. Also: deepseek-r1:7b · mistral:7b · llama3.2:3b</p>
                 </div>
               </div>
 
@@ -226,7 +226,7 @@ export function OllamaWizard({ onDismiss }: OllamaWizardProps) {
               <div className="pt-2 border-t border-white/[0.04]">
                 <button
                   onClick={onDismiss}
-                  className="w-full py-2 text-xs text-slate-600 hover:text-slate-400 transition-colors"
+                  className="w-full py-2 text-xs text-slate-400 hover:text-slate-200 transition-colors font-medium"
                 >
                   Skip for now
                 </button>
@@ -269,7 +269,7 @@ export function OllamaWizard({ onDismiss }: OllamaWizardProps) {
                         {m.default && <span className="ml-2 text-xs text-brand-400 bg-brand-500/10 px-1.5 py-0.5 rounded-full">recommended</span>}
                         <p className="text-xs text-slate-500 mt-0.5">{m.desc}</p>
                       </div>
-                      <span className="text-xs text-slate-600 flex-shrink-0">{m.ram} RAM</span>
+                      <span className="text-xs text-slate-400 flex-shrink-0">{m.ram} RAM</span>
                     </div>
                   </button>
                 ))}
@@ -309,7 +309,7 @@ export function OllamaWizard({ onDismiss }: OllamaWizardProps) {
               {/* Log */}
               <div ref={pullLogRef} className="h-32 overflow-y-auto bg-black/30 rounded-xl p-3 font-mono text-xs text-slate-500 space-y-0.5">
                 {pullLog.map((line, i) => <div key={i}>{line}</div>)}
-                {pullLog.length === 0 && <div className="text-slate-700">Waiting...</div>}
+                {pullLog.length === 0 && <div className="text-slate-400">Waiting...</div>}
               </div>
 
               {!pulling && pullLog.length === 0 && (
@@ -402,10 +402,10 @@ export function OllamaWizard({ onDismiss }: OllamaWizardProps) {
         {/* Footer */}
         {step !== 'check' && step !== 'done' && (
           <div className="px-6 pb-4 flex justify-between items-center">
-            <p className="text-xs text-slate-700">
+            <p className="text-xs text-slate-400">
               {health?.totalRamGb && `${health.totalRamGb} GB RAM`}
             </p>
-            <button onClick={onDismiss} className="text-xs text-slate-700 hover:text-slate-500 transition-colors">
+            <button onClick={onDismiss} className="text-xs text-slate-400 hover:text-slate-200 transition-colors font-medium">
               Skip for now
             </button>
           </div>

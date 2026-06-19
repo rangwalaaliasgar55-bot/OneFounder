@@ -48,7 +48,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 An unexpected error occurred in this part of the app. Your data is safe.
               </p>
               {this.state.error && (
-                <p className="mt-3 text-xs text-slate-600 font-mono bg-slate-900 rounded-lg px-3 py-2 text-left break-all">
+                <p className="mt-3 text-xs text-slate-400 font-mono bg-slate-900 rounded-lg px-3 py-2 text-left break-all">
                   {this.state.error.message}
                 </p>
               )}
