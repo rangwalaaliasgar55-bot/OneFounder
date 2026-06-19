@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
-import { EmptyState } from '../components/ui/EmptyState'
+import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
 import { LoadingSpinner, PageLoader } from '../components/ui/LoadingSpinner'
 
@@ -472,8 +472,8 @@ export function SeoPage() {
           </div>
 
           {filtered.length === 0 ? (
-            <EmptyState icon="🔑" title="No keywords yet" description="Add keywords manually or let AI discover opportunities"
-              action={<div className="flex gap-2"><button onClick={()=>setShowAdd(true)} className="btn-secondary">Add Keyword</button><button onClick={()=>setShowSuggest(true)} className="btn-primary">🤖 AI Suggest</button></div>} />
+            <EmptyStateAnimated icon="🔑" title="No keywords yet" description="Add keywords manually or let AI discover opportunities"
+              action={{ label: '🤖 AI Suggest', onClick: () => setShowSuggest(true) }} />
           ) : (
             <div className="card p-0 overflow-hidden">
               <table className="w-full text-sm">
@@ -604,8 +604,8 @@ export function SeoPage() {
           )}
 
           {Object.keys(clusterGroups).length === 0 ? (
-            <EmptyState icon="🧩" title="No clusters yet" description="Add keywords and click Re-cluster with AI to group them into topic pillars"
-              action={<button onClick={clusterKeywords} disabled={keywords.length<3} className="btn-primary">🧩 Cluster Keywords</button>} />
+            <EmptyStateAnimated icon="🧩" title="No clusters yet" description="Add keywords and click Re-cluster with AI to group them into topic pillars"
+              action={{ label: '🧩 Cluster Keywords', onClick: clusterKeywords }} />
           ) : (
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
               {Object.entries(clusterGroups).map(([cluster, kws]) => {
@@ -730,8 +730,8 @@ export function SeoPage() {
           </div>
 
           {blFiltered.length === 0 ? (
-            <EmptyState icon="🔗" title="No backlinks tracked" description="Add backlinks manually or use AI to find link building opportunities"
-              action={<div className="flex gap-2"><button onClick={()=>setShowAddBacklink(true)} className="btn-secondary">Add Backlink</button><button onClick={()=>setTab('Tools')} className="btn-primary">🔍 Find Opportunities</button></div>} />
+            <EmptyStateAnimated icon="🔗" title="No backlinks tracked" description="Add backlinks manually or use AI to find link building opportunities"
+              action={{ label: '🔍 Find Opportunities', onClick: () => setTab('Tools') }} />
           ) : (
             <div className="card p-0 overflow-hidden">
               <table className="w-full text-sm">

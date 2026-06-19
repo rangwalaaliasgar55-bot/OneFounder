@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
-import { EmptyState } from '../components/ui/EmptyState'
+import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
 import { PageLoader } from '../components/ui/LoadingSpinner'
+import { AnimatedCounter } from '../components/ui/AnimatedCounter'
+import { AnimatedBarChart } from '../components/ui/AnimatedBarChart'
+import { MeshGradient } from '../components/ui/MeshGradient'
 
 const CATEGORIES = {
   revenue: ['Sales', 'Consulting', 'Subscription', 'Services', 'Affiliate', 'Other'],
@@ -64,7 +67,8 @@ export function FinancePage() {
   const monthGroups = groupByMonth(filtered)
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto relative">
+      <MeshGradient />
       <PageHeader
         icon="💰"
         title="Finance Tracker"
@@ -73,20 +77,26 @@ export function FinancePage() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="card bg-gradient-to-br from-brand-600/10 to-brand-800/5 border border-brand-500/20">
+        <div className="stat-card-3d bg-gradient-to-br from-brand-600/10 to-brand-800/5 border border-brand-500/20">
           <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">🔄 Monthly Recurring Revenue</div>
-          <div className="text-2xl font-bold text-brand-400">${summary?.mrr?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</div>
+          <div className="text-2xl font-bold text-brand-400">
+            $<AnimatedCounter value={summary?.mrr || 0} decimals={2} duration={1000} />
+          </div>
           <div className="text-xs text-slate-500 mt-1">ARR: ${((summary?.mrr || 0) * 12).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
         </div>
-        <div className="card bg-gradient-to-br from-green-600/10 to-green-800/5 border border-green-500/20">
+        <div className="stat-card-3d bg-gradient-to-br from-green-600/10 to-green-800/5 border border-green-500/20">
           <div className="text-xs text-slate-400 mb-1 flex items-center gap-1">💰 This Month Revenue</div>
-          <div className="text-2xl font-bold text-green-400">${summary?.monthRevenue?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</div>
+          <div className="text-2xl font-bold text-green-400">
+            $<AnimatedCounter value={summary?.monthRevenue || 0} decimals={2} duration={1000} />
+          </div>
         </div>
-        <div className="card bg-gradient-to-br from-red-600/10 to-red-800/5 border border-red-500/20">
+        <div className="stat-card-3d bg-gradient-to-br from-red-600/10 to-red-800/5 border border-red-500/20">
           <div className="text-xs text-slate-400 mb-1">💸 This Month Expenses</div>
-          <div className="text-2xl font-bold text-red-400">${summary?.monthExpenses?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</div>
+          <div className="text-2xl font-bold text-red-400">
+            $<AnimatedCounter value={summary?.monthExpenses || 0} decimals={2} duration={1000} />
+          </div>
         </div>
-        <div className={`card bg-gradient-to-br ${(summary?.profit || 0) >= 0 ? 'from-emerald-600/10 to-emerald-800/5 border border-emerald-500/20' : 'from-red-600/10 to-red-800/5 border border-red-500/20'}`}>
+        <div className={`stat-card-3d bg-gradient-to-br ${(summary?.profit || 0) >= 0 ? 'from-emerald-600/10 to-emerald-800/5 border border-emerald-500/20' : 'from-red-600/10 to-red-800/5 border border-red-500/20'}`}>
           <div className="text-xs text-slate-400 mb-1">📊 Net Profit (Month)</div>
           <div className={`text-2xl font-bold ${(summary?.profit || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             {(summary?.profit || 0) >= 0 ? '+' : ''}${summary?.profit?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
@@ -111,11 +121,11 @@ export function FinancePage() {
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState
+        <EmptyStateAnimated
           icon="💰"
           title="No entries yet"
           description="Track your first revenue or expense to get started"
-          action={<button onClick={() => setShowModal(true)} className="btn-primary">Add Entry</button>}
+          action={{ label: 'Add Entry', onClick: () => setShowModal(true) }}
         />
       ) : (
         <div className="space-y-6">

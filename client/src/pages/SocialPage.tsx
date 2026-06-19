@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
-import { EmptyState } from '../components/ui/EmptyState'
+import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
 import { LoadingSpinner, PageLoader } from '../components/ui/LoadingSpinner'
 
@@ -162,16 +162,11 @@ export function SocialPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState
+        <EmptyStateAnimated
           icon="📱"
           title="No posts yet"
           description="Create your first social media post manually or generate one with AI"
-          action={
-            <div className="flex gap-2">
-              <button onClick={() => setShowComposer(true)} className="btn-secondary">Compose Post</button>
-              <button onClick={() => setShowGenerator(true)} className="btn-primary">✨ AI Generate</button>
-            </div>
-          }
+          action={{ label: '✨ AI Generate', onClick: () => setShowGenerator(true) }}
         />
       ) : (
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">

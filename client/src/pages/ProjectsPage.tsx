@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
-import { EmptyState } from '../components/ui/EmptyState'
+import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
 import { PageLoader } from '../components/ui/LoadingSpinner'
+import { MeshGradient } from '../components/ui/MeshGradient'
 
 const TASK_STATUS = ['todo', 'in_progress', 'done']
 const STATUS_LABELS: Record<string, string> = { todo: 'To Do', in_progress: 'In Progress', done: 'Done' }
@@ -83,11 +84,11 @@ export function ProjectsPage() {
       />
 
       {projects.length === 0 ? (
-        <EmptyState
+        <EmptyStateAnimated
           icon="🎯"
           title="No projects yet"
           description="Create your first project to start tracking progress and managing tasks"
-          action={<button onClick={() => setShowProjectModal(true)} className="btn-primary">Create Project</button>}
+          action={{ label: 'Create Project', onClick: () => setShowProjectModal(true) }}
         />
       ) : (
         <div className="flex gap-6 h-[calc(100vh-200px)]">

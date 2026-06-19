@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
-import { EmptyState } from '../components/ui/EmptyState'
+import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
 import { LoadingSpinner, PageLoader } from '../components/ui/LoadingSpinner'
+import { TiltCard } from '../components/ui/TiltCard'
+import { Confetti, useConfetti } from '../components/ui/Confetti'
+import { MeshGradient } from '../components/ui/MeshGradient'
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-slate-500/20 text-slate-400',
@@ -30,6 +33,7 @@ export function IdeasPage() {
   const [form, setForm] = useState({
     skills: '', interests: '', budget: '', availableTime: '', location: '', experience: ''
   })
+  const { active: confettiActive, celebrate } = useConfetti()
 
   useEffect(() => {
     api.get<any[]>('/ideas').then(setIdeas).finally(() => setLoading(false))
@@ -41,6 +45,7 @@ export function IdeasPage() {
     try {
       const newIdeas = await api.post<any[]>('/ideas/generate', form)
       setIdeas(prev => [...newIdeas, ...prev])
+      celebrate()
     } catch (err: any) {
       alert(err.message)
     } finally {
@@ -63,7 +68,9 @@ export function IdeasPage() {
   if (loading) return <PageLoader />
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto relative">
+      <MeshGradient />
+      <Confetti active={confettiActive} />
       <PageHeader
         icon="💡"
         title="Idea Lab"
@@ -86,20 +93,21 @@ export function IdeasPage() {
       )}
 
       {ideas.length === 0 && !generating ? (
-        <EmptyState
+        <EmptyStateAnimated
           icon="💡"
           title="No ideas yet"
           description="Generate AI-powered startup ideas based on your skills, interests, and goals"
-          action={<button onClick={() => setShowModal(true)} className="btn-primary">Generate Ideas</button>}
+          action={{ label: 'Generate Ideas', onClick: () => setShowModal(true) }}
         />
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {ideas.map(idea => (
-            <div
+          {ideas.map((idea, i) => (
+            <TiltCard
               key={idea.id}
-              onClick={() => setSelected(idea)}
-              className="card-hover group"
+              className={`card-hover group animate-slide-up stagger-${Math.min(i + 1, 7)}`}
+              tiltAmount={8}
             >
+              <div onClick={() => setSelected(idea)} className="cursor-pointer">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">{TYPE_EMOJIS[idea.type] || TYPE_EMOJIS.default}</span>
@@ -139,7 +147,8 @@ export function IdeasPage() {
                   </div>
                 )}
               </div>
-            </div>
+              </div>
+            </TiltCard>
           ))}
         </div>
       )}

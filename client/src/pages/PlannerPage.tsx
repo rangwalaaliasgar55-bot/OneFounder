@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
-import { EmptyState } from '../components/ui/EmptyState'
+import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
 import { LoadingSpinner, PageLoader } from '../components/ui/LoadingSpinner'
 
@@ -93,11 +93,11 @@ export function PlannerPage() {
       )}
 
       {plans.length === 0 && !generating ? (
-        <EmptyState
+        <EmptyStateAnimated
           icon="📋"
           title="No business plans yet"
           description="Generate a complete business plan with AI — includes business model, pricing, acquisition strategy, and financial projections"
-          action={<button onClick={() => setShowModal(true)} className="btn-primary">Create Business Plan</button>}
+          action={{ label: 'Create Business Plan', onClick: () => setShowModal(true) }}
         />
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">

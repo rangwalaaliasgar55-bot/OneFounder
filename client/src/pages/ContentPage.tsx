@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
-import { EmptyState } from '../components/ui/EmptyState'
+import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
 import { LoadingSpinner, PageLoader } from '../components/ui/LoadingSpinner'
 
@@ -170,11 +170,11 @@ export function ContentPage() {
           </div>
 
           {filtered.length === 0 ? (
-            <EmptyState
+            <EmptyStateAnimated
               icon="✍️"
               title="No content yet"
               description="Generate blogs, LinkedIn posts, Twitter threads, newsletters, and more with AI"
-              action={<button onClick={() => setShowModal(true)} className="btn-primary">Generate Content</button>}
+              action={{ label: 'Generate Content', onClick: () => setShowModal(true) }}
             />
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">

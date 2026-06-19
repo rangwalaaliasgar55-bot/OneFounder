@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
-import { EmptyState } from '../components/ui/EmptyState'
+import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
 import { PageLoader } from '../components/ui/LoadingSpinner'
+import { TiltCard } from '../components/ui/TiltCard'
+import { MeshGradient } from '../components/ui/MeshGradient'
+import { AnimatedCounter } from '../components/ui/AnimatedCounter'
 
 const STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost']
 const STAGE_COLORS: Record<string, string> = {
@@ -90,11 +93,11 @@ export function CRMPage() {
       </div>
 
       {leads.length === 0 ? (
-        <EmptyState
+        <EmptyStateAnimated
           icon="👥"
           title="No leads yet"
           description="Add your first lead and start tracking your sales pipeline"
-          action={<button onClick={() => setShowModal(true)} className="btn-primary">Add Lead</button>}
+          action={{ label: 'Add Lead', onClick: () => setShowModal(true) }}
         />
       ) : view === 'pipeline' ? (
         <div className="flex gap-4 overflow-x-auto pb-4">

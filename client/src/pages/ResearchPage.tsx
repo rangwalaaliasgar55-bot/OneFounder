@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
-import { EmptyState } from '../components/ui/EmptyState'
+import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
 import { LoadingSpinner, PageLoader } from '../components/ui/LoadingSpinner'
 
@@ -63,11 +63,11 @@ export function ResearchPage() {
       )}
 
       {reports.length === 0 && !analyzing ? (
-        <EmptyState
+        <EmptyStateAnimated
           icon="🔍"
           title="No research reports yet"
           description="Enter a market niche and get instant competitor analysis, SWOT, trends, and keyword research"
-          action={<button onClick={() => setShowModal(true)} className="btn-primary">Analyze a Market</button>}
+          action={{ label: 'Analyze a Market', onClick: () => setShowModal(true) }}
         />
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
