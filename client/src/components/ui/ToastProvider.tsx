@@ -8,27 +8,49 @@ const ICONS: Record<ToastType, string> = {
   warning: '⚠',
 }
 
-const STYLES: Record<ToastType, string> = {
-  success: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
-  error:   'border-red-500/40 bg-red-500/10 text-red-300',
-  info:    'border-brand-500/40 bg-brand-500/10 text-brand-300',
-  warning: 'border-amber-500/40 bg-amber-500/10 text-amber-300',
+const GLOW_COLORS: Record<ToastType, string> = {
+  success: 'rgba(16,185,129,0.15)',
+  error: 'rgba(239,68,68,0.15)',
+  info: 'rgba(99,102,241,0.15)',
+  warning: 'rgba(245,158,11,0.15)',
 }
 
-const ICON_STYLES: Record<ToastType, string> = {
+const BORDER_COLORS: Record<ToastType, string> = {
+  success: 'rgba(16,185,129,0.3)',
+  error: 'rgba(239,68,68,0.3)',
+  info: 'rgba(99,102,241,0.3)',
+  warning: 'rgba(245,158,11,0.3)',
+}
+
+const ICON_BG: Record<ToastType, string> = {
   success: 'bg-emerald-500/20 text-emerald-400',
-  error:   'bg-red-500/20 text-red-400',
-  info:    'bg-brand-500/20 text-brand-400',
+  error: 'bg-red-500/20 text-red-400',
+  info: 'bg-brand-500/20 text-brand-400',
   warning: 'bg-amber-500/20 text-amber-400',
 }
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
   return (
     <div
-      className={`flex items-start gap-3 px-4 py-3 rounded-xl border backdrop-blur-xl shadow-xl animate-slide-up max-w-sm w-full ${STYLES[toast.type]}`}
-      style={{ background: 'rgba(8,13,26,0.92)' }}
+      className="flex items-start gap-3 px-4 py-3.5 rounded-xl animate-slide-up max-w-sm w-full relative overflow-hidden"
+      style={{
+        background: 'linear-gradient(145deg, rgba(15,23,42,0.95) 0%, rgba(8,13,26,0.98) 100%)',
+        backdropFilter: 'blur(24px) saturate(1.5)',
+        border: `1px solid ${BORDER_COLORS[toast.type]}`,
+        boxShadow: `
+          0 8px 32px rgba(0,0,0,0.4),
+          0 0 0 1px rgba(0,0,0,0.2),
+          inset 0 1px 0 rgba(255,255,255,0.06),
+          0 0 20px ${GLOW_COLORS[toast.type]}
+        `,
+      }}
     >
-      <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 ${ICON_STYLES[toast.type]}`}>
+      {/* Top highlight */}
+      <div
+        className="absolute top-0 left-0 right-0 h-px"
+        style={{ background: `linear-gradient(90deg, transparent 0%, ${BORDER_COLORS[toast.type]} 50%, transparent 100%)` }}
+      />
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 ${ICON_BG[toast.type]}`}>
         {ICONS[toast.type]}
       </div>
       <p className="flex-1 text-sm leading-relaxed text-slate-200">{toast.message}</p>
@@ -62,9 +84,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toasts, toast, dismiss }}>
       {children}
-      <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 items-end pointer-events-none">
-        {toasts.map(t => (
-          <div key={t.id} className="pointer-events-auto">
+      <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-3 items-end pointer-events-none">
+        {toasts.map((t, i) => (
+          <div
+            key={t.id}
+            className="pointer-events-auto"
+            style={{
+              animation: `slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) ${i * 0.05}s both`,
+            }}
+          >
             <ToastItem toast={t} onDismiss={dismiss} />
           </div>
         ))}

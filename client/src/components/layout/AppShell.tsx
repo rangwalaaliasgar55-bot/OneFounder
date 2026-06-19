@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { FloatingOrbs } from '../ui/FloatingOrbs'
+import { CursorGlow } from '../ui/CursorGlow'
 
 const NAV_SECTIONS = [
   {
@@ -76,6 +77,7 @@ export function AppShell({ children, onCmdK, onShortcuts }: AppShellProps) {
   return (
     <div className="flex h-screen overflow-hidden relative" style={{ backgroundColor: '#060b18' }}>
       <FloatingOrbs />
+      <CursorGlow />
       {mobileOpen && (
         <div
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"

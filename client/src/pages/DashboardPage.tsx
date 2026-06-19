@@ -7,6 +7,10 @@ import { StatCard3D } from '../components/ui/StatCard3D'
 import { ProgressRing3D } from '../components/ui/ProgressRing3D'
 import { AnimatedCounter } from '../components/ui/AnimatedCounter'
 import { SkeletonDashboard } from '../components/ui/Skeleton'
+import { AnimatedGradientText } from '../components/ui/AnimatedGradientText'
+import { TiltCard } from '../components/ui/TiltCard'
+import { Confetti, useConfetti } from '../components/ui/Confetti'
+import { MeshGradient } from '../components/ui/MeshGradient'
 
 interface OllamaStatus {
   running: boolean
@@ -194,6 +198,7 @@ export function DashboardPage() {
 
   const [morningInsights, setMorningInsights] = useState<MorningInsight | null>(null)
   const [morningLoading, setMorningLoading] = useState(false)
+  const { active: confettiActive, celebrate } = useConfetti()
 
   useEffect(() => {
     Promise.all([
@@ -279,13 +284,16 @@ export function DashboardPage() {
     : 'Demo Mode'
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto relative">
+      <MeshGradient />
+      <Confetti active={confettiActive} />
+
       {/* Morning Briefing Card — 3D glass */}
       <div className="mb-6 card-3d border-brand-500/20 bg-gradient-to-br from-brand-600/10 to-violet-600/5">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">
-              {greeting()}, <span className="gradient-text-glow">{user?.name?.split(' ')[0] || 'Founder'}</span> 👋
+              {greeting()}, <AnimatedGradientText className="font-bold">{user?.name?.split(' ')[0] || 'Founder'}</AnimatedGradientText> 👋
             </h1>
             <p className="text-slate-400 text-sm mt-0.5">Here's your business snapshot for today.</p>
           </div>
@@ -365,7 +373,7 @@ export function DashboardPage() {
 
       {/* Business Health Score + CEO Brief row */}
       <div className="grid lg:grid-cols-5 gap-6 mb-6">
-        <div className="lg:col-span-2 card-3d">
+        <TiltCard className="lg:col-span-2 card-3d">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-white">🏥 Business Health Score</h2>
             {healthScore && (
@@ -417,7 +425,7 @@ export function DashboardPage() {
           ) : (
             <button onClick={loadHealthScore} className="btn-primary w-full">Calculate Health Score</button>
           )}
-        </div>
+        </TiltCard>
 
         {/* AI CEO Brief — 3D glass */}
         <div className="lg:col-span-3 card-3d bg-gradient-to-br from-brand-600/5 to-violet-600/5 border-brand-500/10">
