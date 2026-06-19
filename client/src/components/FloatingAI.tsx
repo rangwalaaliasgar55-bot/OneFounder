@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { playSound } from '../lib/sounds'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -32,6 +33,7 @@ export function FloatingAI() {
   const send = async (text?: string) => {
     const msg = (text || input).trim()
     if (!msg || streaming) return
+    playSound('click')
     setInput('')
     setMessages(prev => [...prev, { role: 'user', content: msg }])
     setStreaming(true)
@@ -99,7 +101,7 @@ export function FloatingAI() {
     <>
       {/* Floating button */}
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { setOpen(o => !o); playSound('pop') }}
         className={`fixed bottom-6 left-6 z-[90] w-12 h-12 rounded-2xl shadow-2xl flex items-center justify-center text-xl transition-all duration-200 ${
           open
             ? 'bg-slate-700 rotate-45 shadow-slate-900/60'
@@ -113,8 +115,13 @@ export function FloatingAI() {
       {/* Chat drawer */}
       {open && (
         <div
-          className="fixed bottom-22 left-6 z-[90] w-80 rounded-2xl border border-white/[0.1] shadow-2xl shadow-black/60 flex flex-col overflow-hidden"
-          style={{ background: 'rgba(8,13,26,0.97)', backdropFilter: 'blur(24px)', maxHeight: '70vh' }}
+          className="fixed bottom-22 left-6 z-[90] w-80 rounded-2xl border border-white/[0.1] flex flex-col overflow-hidden animate-scale-in"
+          style={{
+            background: 'linear-gradient(145deg, rgba(15,23,42,0.97) 0%, rgba(8,13,26,0.99) 100%)',
+            backdropFilter: 'blur(40px) saturate(1.5)',
+            maxHeight: '70vh',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 40px rgba(99,102,241,0.08)',
+          }}
         >
           {/* Header */}
           <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.06]">
@@ -156,7 +163,14 @@ export function FloatingAI() {
                       <span className="text-[9px] text-slate-400 px-1">{msg.mode}</span>
                     )}
                     <div className="bg-white/[0.05] border border-white/[0.06] rounded-xl rounded-tl-sm px-3 py-2 text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap">
-                      {msg.content || <span className="animate-pulse text-slate-400">●●●</span>}
+                      {msg.content || (
+                        <div className="flex items-center gap-1">
+                          {[0, 1, 2].map(j => (
+                            <div key={j} className="w-1.5 h-1.5 rounded-full bg-brand-400" style={{ animation: 'typingBounce 1.4s ease-in-out infinite', animationDelay: `${j * 0.2}s`, opacity: 0.4 }} />
+                          ))}
+                          <style>{`@keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }`}</style>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

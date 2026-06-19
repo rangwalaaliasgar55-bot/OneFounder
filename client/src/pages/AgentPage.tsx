@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { api } from '../lib/api'
 import { v4 as uuidv4 } from 'uuid'
+import { MeshGradient } from '../components/ui/MeshGradient'
 
 const SPECIALIST_AGENTS = [
   { id: 'research', icon: '🔬', name: 'Research Agent', desc: 'Market intelligence & competitive analysis', color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
@@ -161,7 +162,8 @@ export function AgentPage() {
   const agentForDisplay = SPECIALIST_AGENTS.find(a => a.id === expandedAgent)
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto relative">
+      <MeshGradient />
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           ⚡ Supreme Multi-Agent Mode

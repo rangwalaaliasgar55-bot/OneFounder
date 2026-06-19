@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { PageHeader } from '../components/ui/PageHeader'
+import { MeshGradient } from '../components/ui/MeshGradient'
 
 const KPI_DATA = [
   { label: 'MRR', value: '$0', change: '—', icon: '💰', color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
@@ -135,7 +136,8 @@ export function InvestorPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 max-w-6xl mx-auto space-y-6 relative">
+      <MeshGradient />
       <PageHeader
         title="Investor Mode"
         description="KPIs, pitch deck, cap table & fundraising pipeline"

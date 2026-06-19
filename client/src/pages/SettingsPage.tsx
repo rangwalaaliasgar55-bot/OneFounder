@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
+import { MeshGradient } from '../components/ui/MeshGradient'
 
 /* ─── OG modules ─────────────────────────────────────────────────── */
 const OG_MODULES = [
@@ -228,7 +229,8 @@ CORE RULES:
   ]
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-4xl mx-auto relative">
+      <MeshGradient />
       <PageHeader icon="⚙️" title="Settings" description="Configure your OneFounder workspace and AI" />
 
       {/* Tabs */}

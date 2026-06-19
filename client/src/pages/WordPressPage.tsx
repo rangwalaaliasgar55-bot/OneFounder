@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
+import { MeshGradient } from '../components/ui/MeshGradient'
 
 interface WPSite {
   id: string
@@ -108,7 +109,8 @@ export function WordPressPage() {
   ]
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-5xl mx-auto relative">
+      <MeshGradient />
       <PageHeader icon="🌐" title="Website Manager" description="Manage your WordPress sites, posts and SEO" />
 
       <div className="flex gap-2 mb-6">

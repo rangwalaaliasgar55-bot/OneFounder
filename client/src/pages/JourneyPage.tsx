@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import { SkeletonListPage } from '../components/ui/PageSkeletons'
+import { MeshGradient } from '../components/ui/MeshGradient'
 
 const STAGE_COLORS: Record<string, string> = {
   'Idea': 'from-yellow-600/30 to-yellow-800/10 border-yellow-500/30',
@@ -76,7 +77,8 @@ export function JourneyPage() {
   const progressPct = level === nextLevel ? 100 : Math.round(((completedXp - level.minXp) / (nextLevel.minXp - level.minXp)) * 100)
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-5xl mx-auto relative">
+      <MeshGradient />
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-1">🗺️ Founder Journey</h1>

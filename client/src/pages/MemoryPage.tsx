@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
+import { MeshGradient } from '../components/ui/MeshGradient'
 
 interface Memory {
   id: string
@@ -112,7 +113,8 @@ export function MemoryPage() {
   const allTypes = ['all', ...Object.keys(stats)]
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-5xl mx-auto relative">
+      <MeshGradient />
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">

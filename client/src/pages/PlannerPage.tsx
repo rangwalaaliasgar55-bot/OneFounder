@@ -5,6 +5,7 @@ import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { SkeletonListPage } from '../components/ui/PageSkeletons'
+import { MeshGradient } from '../components/ui/MeshGradient'
 
 export function PlannerPage() {
   const [plans, setPlans] = useState<any[]>([])
@@ -71,7 +72,8 @@ export function PlannerPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto relative">
+      <MeshGradient />
       <PageHeader
         icon="📋"
         title="Business Planner"
