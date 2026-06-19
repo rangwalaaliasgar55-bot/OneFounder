@@ -1,12 +1,13 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { checkTokens, deductToken } from '../middleware/tokens.js'
 import { executeMultiAgent, type SpecialistType } from '../agents/supervisorAgent.js'
 import { storeMemory } from '../memory/memoryManager.js'
 import { extractAndStoreMemories } from '../ai/memory.js'
 
 const router = Router()
 
-router.post('/execute', requireAuth, async (req, res) => {
+router.post('/execute', requireAuth, checkTokens, async (req, res) => {
   const user = (req as any).user
   const { query, agents, stream } = req.body
 
@@ -15,6 +16,12 @@ router.post('/execute', requireAuth, async (req, res) => {
   }
   if (query.length > 8000) {
     return res.status(400).json({ error: 'Query too long (max 8000 chars)' })
+  }
+
+  // Deduct token BEFORE the AI call
+  if (!user.isAdmin) {
+    const deducted = await deductToken(user.id)
+    if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
   }
 
   try {
@@ -45,7 +52,7 @@ router.post('/execute', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/stream', requireAuth, async (req, res) => {
+router.post('/stream', requireAuth, checkTokens, async (req, res) => {
   const user = (req as any).user
   const { query, agents } = req.body
 
@@ -61,6 +68,16 @@ router.post('/stream', requireAuth, async (req, res) => {
 
   const send = (event: string, data: any) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+  }
+
+  // Deduct token BEFORE the AI call
+  if (!user.isAdmin) {
+    const deducted = await deductToken(user.id)
+    if (!deducted) {
+      send('error', { message: 'Insufficient tokens', code: 'NO_TOKENS' })
+      res.end()
+      return
+    }
   }
 
   try {

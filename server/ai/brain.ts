@@ -1,4 +1,4 @@
-import { detectExpertMode, type ExpertMode, type RouteResult } from './router.js'
+import { detectExpertMode, type ExpertMode, type RouteResult, MODE_LABELS } from './router.js'
 import { enhancePrompt } from './promptEnhancer.js'
 import { getAIProvider } from './index.js'
 import { assembleFounderContext, type FounderContext } from './context.js'
@@ -36,22 +36,6 @@ export interface BrainStreamChunk {
   data: string | Partial<BrainResponse>
 }
 
-const MODE_LABELS: Record<ExpertMode, string> = {
-  code: '💻 Engineering Agent',
-  seo: '🔍 SEO Command Center',
-  security: '🔒 Security Agent',
-  data: '📊 Data Agent',
-  research: '🔬 Deep Research Engine',
-  finance: '💰 Finance Agent',
-  product: '🧩 Product Agent',
-  startup: '🚀 Founder Agent',
-  founder: '⚡ OneFounder Supreme',
-  marketing: '📣 Marketing Agent',
-  sales: '💼 Sales Agent',
-  devops: '☁️ DevOps Agent',
-  legal: '⚖️ Legal Ops Agent',
-}
-
 function formatContext(ctx: FounderContext): string {
   return [
     `Founder Stage: ${ctx.stage} | Industry: ${ctx.industry} | Goal: ${ctx.goals}`,
@@ -86,14 +70,14 @@ export class OneFounderBrain {
 
     try {
       const [ctx, memCtx, ragCtx] = await Promise.all([
-        assembleFounderContext(req.userId).catch(() => null),
-        getMemoryContextForQuery(req.userId, req.message).catch(() => ''),
-        assembleRAGContext(req.userId, req.message).catch(() => ''),
+        assembleFounderContext(req.userId).catch((e) => { console.warn('[Brain] Context assembly failed:', e.message); return null }),
+        getMemoryContextForQuery(req.userId, req.message).catch((e) => { console.warn('[Brain] Memory retrieval failed:', e.message); return '' }),
+        assembleRAGContext(req.userId, req.message).catch((e) => { console.warn('[Brain] RAG assembly failed:', e.message); return '' }),
       ])
       if (ctx) founderContext = formatContext(ctx)
       memoryContext = memCtx
       ragContext = ragCtx
-    } catch {}
+    } catch (e: any) { console.warn('[Brain] Context build error:', e.message) }
 
     const { systemPrompt, enhancedMessage } = enhancePrompt(req.message, route.mode, founderContext)
 
@@ -120,9 +104,11 @@ export class OneFounderBrain {
       } catch {}
     }
 
+    // Window to last 50 messages to stay within model context limits
     const history = await db.select().from(chatMessages)
       .where(and(eq(chatMessages.userId, req.userId), eq(chatMessages.sessionId, session)))
       .orderBy(chatMessages.createdAt)
+      .limit(50)
 
     const messages = [
       { role: 'system' as const, content: finalSystemPrompt },
@@ -185,14 +171,14 @@ export class OneFounderBrain {
 
     try {
       const [ctx, memCtx, ragCtx] = await Promise.all([
-        assembleFounderContext(req.userId).catch(() => null),
-        getMemoryContextForQuery(req.userId, req.message).catch(() => ''),
-        assembleRAGContext(req.userId, req.message).catch(() => ''),
+        assembleFounderContext(req.userId).catch((e) => { console.warn('[Brain] Context assembly failed:', e.message); return null }),
+        getMemoryContextForQuery(req.userId, req.message).catch((e) => { console.warn('[Brain] Memory retrieval failed:', e.message); return '' }),
+        assembleRAGContext(req.userId, req.message).catch((e) => { console.warn('[Brain] RAG assembly failed:', e.message); return '' }),
       ])
       if (ctx) founderContext = formatContext(ctx)
       memoryContext = memCtx
       ragContext = ragCtx
-    } catch {}
+    } catch (e: any) { console.warn('[Brain] Context build error:', e.message) }
 
     const { systemPrompt, enhancedMessage } = enhancePrompt(req.message, route.mode, founderContext)
 
@@ -217,9 +203,11 @@ export class OneFounderBrain {
       } catch {}
     }
 
+    // Window to last 50 messages to stay within model context limits
     const history = await db.select().from(chatMessages)
       .where(and(eq(chatMessages.userId, req.userId), eq(chatMessages.sessionId, session)))
       .orderBy(chatMessages.createdAt)
+      .limit(50)
 
     const messages = [
       { role: 'system' as const, content: finalSystemPrompt },

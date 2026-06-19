@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { checkTokens, deductToken } from '../middleware/tokens.js'
 import { db } from '../db/index.js'
 import {
   aiMemories, aiInsights, userActivityLog,
@@ -85,9 +86,15 @@ router.patch('/insights/:id/dismiss', requireAuth, async (req, res) => {
 })
 
 // ─── Generate Proactive Insights ─────────────────────────────────────────────
-router.post('/insights/generate', requireAuth, async (req, res) => {
+router.post('/insights/generate', requireAuth, checkTokens, async (req, res) => {
   const user = (req as any).user
   const uid = user.id
+
+  // Deduct token BEFORE the AI call
+  if (!user.isAdmin) {
+    const deducted = await deductToken(uid)
+    if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
+  }
 
   try {
     const context = await assembleFounderContext(uid)
@@ -217,8 +224,15 @@ router.post('/log', requireAuth, async (req, res) => {
 })
 
 // ─── Weekly Executive Review ──────────────────────────────────────────────────
-router.post('/weekly-review', requireAuth, async (req, res) => {
+router.post('/weekly-review', requireAuth, checkTokens, async (req, res) => {
   const user = (req as any).user
+
+  // Deduct token BEFORE the AI call
+  if (!user.isAdmin) {
+    const deducted = await deductToken(user.id)
+    if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
+  }
+
   try {
     const context = await assembleFounderContext(user.id)
     const ai = await getAIProvider()

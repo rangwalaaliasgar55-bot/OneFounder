@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useNavigate } from 'react-router-dom'
+import { api } from '../lib/api'
 
 interface UserRow {
   id: string
@@ -15,12 +16,6 @@ interface UserRow {
 interface Stats {
   totals: { totalUsers: number; totalTokensUsed: number; totalTokensRemaining: number }
   recentActivity: { id: string; userId: string; amount: number; type: string; note: string | null; createdAt: string }[]
-}
-
-async function apiFetch(url: string, opts?: RequestInit) {
-  const r = await fetch(url, { credentials: 'include', ...opts })
-  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.statusText) }
-  return r.json()
 }
 
 export function AdminPage() {
@@ -44,8 +39,8 @@ export function AdminPage() {
     setLoading(true); setError('')
     try {
       const [u, s] = await Promise.all([
-        apiFetch('/api/admin/users'),
-        apiFetch('/api/admin/stats'),
+        api.get<UserRow[]>('/admin/users'),
+        api.get<Stats>('/admin/stats'),
       ])
       setUsers(u); setStats(s)
     } catch (e: any) { setError(e.message) }
@@ -57,11 +52,7 @@ export function AdminPage() {
     if (!amount || amount <= 0) return
     setBusy(b => ({ ...b, [userId]: true }))
     try {
-      await apiFetch(`/api/admin/users/${userId}/grant`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount }),
-      })
+      await api.post(`/admin/users/${userId}/grant`, { amount })
       setGrantInputs(g => ({ ...g, [userId]: '' }))
       await loadAll()
     } catch (e: any) { alert(e.message) }
@@ -71,11 +62,7 @@ export function AdminPage() {
   async function setBalance(userId: string, balance: number) {
     setBusy(b => ({ ...b, [`set_${userId}`]: true }))
     try {
-      await apiFetch(`/api/admin/users/${userId}/set-tokens`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ balance }),
-      })
+      await api.post(`/admin/users/${userId}/set-tokens`, { balance })
       await loadAll()
     } catch (e: any) { alert(e.message) }
     finally { setBusy(b => ({ ...b, [`set_${userId}`]: false })) }
@@ -85,7 +72,7 @@ export function AdminPage() {
     if (!confirm('Toggle admin status for this user?')) return
     setBusy(b => ({ ...b, [`admin_${userId}`]: true }))
     try {
-      await apiFetch(`/api/admin/users/${userId}/toggle-admin`, { method: 'POST' })
+      await api.post(`/admin/users/${userId}/toggle-admin`, {})
       await loadAll()
     } catch (e: any) { alert(e.message) }
     finally { setBusy(b => ({ ...b, [`admin_${userId}`]: false })) }

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
+import { useOllamaStatus } from './hooks/useOllamaStatus'
 import { LoginPage } from './pages/LoginPage'
 import { AppShell } from './components/layout/AppShell'
 import { CommandPalette } from './components/CommandPalette'
@@ -96,22 +97,9 @@ function AuthenticatedApp() {
   const navigate = useNavigate()
   const [cmdOpen, setCmdOpen]             = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
-  const [ollamaOnline, setOllamaOnline]   = useState<boolean | null>(null)
+  const { online: ollamaOnline } = useOllamaStatus()
   const gKeyRef  = useRef(false)
   const gTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    // Periodic Ollama status check (30s) after onboarding is done
-    const check = () => {
-      fetch('/api/ollama/health', { credentials: 'include' })
-        .then(r => r.json())
-        .then((h: any) => setOllamaOnline(h.running && h.models?.length > 0))
-        .catch(() => setOllamaOnline(false))
-    }
-    check()
-    const t = setInterval(check, 30_000)
-    return () => clearInterval(t)
-  }, [])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -155,7 +143,7 @@ function AuthenticatedApp() {
       <AppShell onCmdK={() => setCmdOpen(true)} onShortcuts={() => setShortcutsOpen(true)}>
         <AppPrefetch />
         {/* Ollama offline banner */}
-        {ollamaOnline === false && (
+        {!ollamaOnline && ollamaOnline !== null && (
           <div className="mb-4 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-yellow-500/8 border border-yellow-500/15 text-xs">
             <span className="text-yellow-400 flex-shrink-0">⚠</span>
             <span className="text-yellow-300/70 flex-1">

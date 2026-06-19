@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { checkTokens, deductToken } from '../middleware/tokens.js'
 import { generateTaskPlan, saveTasksToDatabase, generateDailyBriefing, generateSprintPlan, generateLaunchChecklist } from '../tasks/taskPlanner.js'
 import { db } from '../db/index.js'
 import { tasks } from '../db/schema.js'
@@ -7,12 +8,18 @@ import { eq, and, desc } from 'drizzle-orm'
 
 const router = Router()
 
-router.post('/plan', requireAuth, async (req, res) => {
+router.post('/plan', requireAuth, checkTokens, async (req, res) => {
   const user = (req as any).user
   const { goal, timeframe, projectId, save } = req.body
 
   if (!goal || typeof goal !== 'string') return res.status(400).json({ error: 'Goal required' })
   if (goal.length > 2000) return res.status(400).json({ error: 'Goal too long' })
+
+  // Deduct token BEFORE the AI call
+  if (!user.isAdmin) {
+    const deducted = await deductToken(user.id)
+    if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
+  }
 
   try {
     const plan = await generateTaskPlan(
@@ -34,11 +41,17 @@ router.post('/plan', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/sprint', requireAuth, async (req, res) => {
+router.post('/sprint', requireAuth, checkTokens, async (req, res) => {
   const user = (req as any).user
   const { goal, projectId, save } = req.body
 
   if (!goal) return res.status(400).json({ error: 'Sprint goal required' })
+
+  // Deduct token BEFORE the AI call
+  if (!user.isAdmin) {
+    const deducted = await deductToken(user.id)
+    if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
+  }
 
   try {
     const plan = await generateSprintPlan(user.id, goal, projectId)
@@ -52,11 +65,17 @@ router.post('/sprint', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/launch-checklist', requireAuth, async (req, res) => {
+router.post('/launch-checklist', requireAuth, checkTokens, async (req, res) => {
   const user = (req as any).user
   const { productName, save } = req.body
 
   if (!productName) return res.status(400).json({ error: 'Product name required' })
+
+  // Deduct token BEFORE the AI call
+  if (!user.isAdmin) {
+    const deducted = await deductToken(user.id)
+    if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
+  }
 
   try {
     const plan = await generateLaunchChecklist(user.id, productName)
@@ -70,8 +89,15 @@ router.post('/launch-checklist', requireAuth, async (req, res) => {
   }
 })
 
-router.get('/briefing', requireAuth, async (req, res) => {
+router.get('/briefing', requireAuth, checkTokens, async (req, res) => {
   const user = (req as any).user
+
+  // Deduct token BEFORE the AI call
+  if (!user.isAdmin) {
+    const deducted = await deductToken(user.id)
+    if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
+  }
+
   try {
     const briefing = await generateDailyBriefing(user.id)
     res.json({ briefing })

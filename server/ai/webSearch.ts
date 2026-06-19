@@ -4,6 +4,10 @@
  * Uses DuckDuckGo Instant Answer API + Google News RSS.
  */
 
+// Cache web search results for 5 minutes to avoid hitting APIs repeatedly
+const searchCache = new Map<string, { data: WebContext; timestamp: number }>()
+const SEARCH_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
 export interface SearchResult {
   title: string
   snippet: string
@@ -111,12 +115,19 @@ async function fetchGoogleNews(query: string): Promise<SearchResult[]> {
  * Used to inject real-time knowledge into AI prompts.
  */
 export async function gatherWebContext(query: string, includeNews = true): Promise<WebContext> {
+  // Check cache first
+  const cacheKey = `${query}:${includeNews}`
+  const cached = searchCache.get(cacheKey)
+  if (cached && (Date.now() - cached.timestamp) < SEARCH_CACHE_TTL) {
+    return cached.data
+  }
+
   const [ddg, news] = await Promise.all([
     duckduckgoSearch(query),
     includeNews ? fetchGoogleNews(query) : Promise.resolve([]),
   ])
 
-  return {
+  const result: WebContext = {
     query,
     instantAnswer: ddg.instantAnswer,
     results: ddg.results,
@@ -124,6 +135,10 @@ export async function gatherWebContext(query: string, includeNews = true): Promi
     relatedTopics: ddg.relatedTopics,
     fetchedAt: new Date().toISOString(),
   }
+
+  // Cache the result
+  searchCache.set(cacheKey, { data: result, timestamp: Date.now() })
+  return result
 }
 
 /**

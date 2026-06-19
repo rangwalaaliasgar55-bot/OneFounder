@@ -7,6 +7,14 @@ import {
 } from '../db/schema.js'
 import { eq, desc, and, gte, lte } from 'drizzle-orm'
 
+// Simple TTL cache for founder context (avoids 11 DB queries on every brain request)
+const contextCache = new Map<string, { data: FounderContext; timestamp: number }>()
+const CONTEXT_CACHE_TTL = 60_000 // 60 seconds
+
+export function invalidateContextCache(userId: string) {
+  contextCache.delete(userId)
+}
+
 export interface FounderContext {
   profile: any
   goals: string
@@ -21,8 +29,13 @@ export interface FounderContext {
 }
 
 export async function assembleFounderContext(userId: string): Promise<FounderContext> {
+  // Check cache first
+  const cached = contextCache.get(userId)
+  if (cached && (Date.now() - cached.timestamp) < CONTEXT_CACHE_TTL) {
+    return cached.data
+  }
+
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
   const [
     profile,
@@ -116,7 +129,7 @@ export async function assembleFounderContext(userId: string): Promise<FounderCon
     ? `$${totalRevenue.toFixed(2)} in one-time revenue tracked. No recurring subscriptions yet. Focus on converting leads to MRR.`
     : 'Pre-revenue stage. Focus is on getting first paying customer.'
 
-  return {
+  const result: FounderContext = {
     profile: p || null,
     goals: p?.primaryGoal || 'grow the business',
     stage: p?.stage || 'idea',
@@ -128,6 +141,10 @@ export async function assembleFounderContext(userId: string): Promise<FounderCon
     urgentItems,
     financialContext,
   }
+
+  // Cache the result
+  contextCache.set(userId, { data: result, timestamp: Date.now() })
+  return result
 }
 
 export function buildSystemPromptWithContext(basePrompt: string, context: FounderContext): string {

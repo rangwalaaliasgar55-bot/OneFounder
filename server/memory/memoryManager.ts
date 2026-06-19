@@ -172,14 +172,13 @@ export async function assembleFounderContext(userId: string): Promise<FounderCon
       .limit(10),
   ])
 
-  await Promise.all(
-    memories.map(m =>
-      db.update(aiMemories)
-        .set({ referenceCount: (m.referenceCount || 0) + 1, lastReferencedAt: new Date() })
-        .where(eq(aiMemories.id, m.id))
-        .catch(() => {})
-    )
-  )
+  // Batch update reference counts in a single query (avoids N individual writes)
+  if (memories.length > 0) {
+    db.update(aiMemories)
+      .set({ referenceCount: sql`${aiMemories.referenceCount} + 1`, lastReferencedAt: new Date() })
+      .where(eq(aiMemories.userId, userId))
+      .catch(() => {})
+  }
 
   return {
     memories: memories.map(r => ({

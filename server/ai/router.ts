@@ -161,6 +161,17 @@ const ROUTING_RULES: Array<{
     ],
     keywords: ['startup', 'business', 'strategy', 'market', 'customer', 'growth', 'mvp'],
   },
+  {
+    mode: 'founder',
+    patterns: [
+      /\b(help me|what should|advice|guidance|mentor|coach|overall|holistic)\b/i,
+      /\b(founder|ceo|coo|cfo|cto|cmo|cpo|chief)\b/i,
+      /\b(priority|prioriti[sz]e|focus|next step|roadmap|vision|mission)\b/i,
+      /\b(challenge|struggle|stuck|overwhelm|burnout|work.?life)\b/i,
+      /\b(decision|decide|choose|trade.?off|pros and cons)\b/i,
+    ],
+    keywords: ['help', 'advice', 'founder', 'priority', 'focus', 'challenge', 'decision', 'overall'],
+  },
 ]
 
 export function detectExpertMode(message: string): RouteResult {
@@ -176,11 +187,13 @@ export function detectExpertMode(message: string): RouteResult {
     marketing: [], sales: [], devops: [], legal: [],
   }
 
+  // Weight: pattern matches count, but cap per-pattern to avoid word-frequency bias
   for (const rule of ROUTING_RULES) {
     for (const pattern of rule.patterns) {
       const matches = message.match(pattern)
       if (matches) {
-        scores[rule.mode] += matches.length
+        // Cap at 2 per pattern to prevent a single word repeated 5x from dominating
+        scores[rule.mode] += Math.min(matches.length, 2)
         detected[rule.mode].push(...matches.slice(0, 2))
       }
     }
@@ -195,7 +208,7 @@ export function detectExpertMode(message: string): RouteResult {
     }
   }
 
-  const confidence = topScore >= 3 ? 'high' : topScore >= 1 ? 'medium' : 'low'
+  const confidence = topScore >= 4 ? 'high' : topScore >= 2 ? 'medium' : 'low'
 
   return {
     mode: topScore === 0 ? 'founder' : topMode,

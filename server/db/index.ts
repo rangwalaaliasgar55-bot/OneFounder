@@ -20,7 +20,9 @@ if (!DATABASE_URL) {
 }
 
 const client = postgres(DATABASE_URL, {
-  ssl: DATABASE_URL.includes('sslmode=disable') ? false : { rejectUnauthorized: false },
+  ssl: DATABASE_URL.includes('sslmode=disable')
+    ? false
+    : { rejectUnauthorized: process.env.NODE_ENV === 'production' },
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,

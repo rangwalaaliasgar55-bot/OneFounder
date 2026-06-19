@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, boolean, integer, jsonb, pgEnum } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, uuid, boolean, integer, jsonb, pgEnum, index } from 'drizzle-orm/pg-core'
 
 export const roleEnum = pgEnum('role', ['admin', 'editor', 'viewer'])
 export const ideaStatusEnum = pgEnum('idea_status', ['draft', 'validated', 'building', 'launched'])
@@ -163,7 +163,9 @@ export const tasks = pgTable('tasks', {
   completedAt: timestamp('completed_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-})
+}, (table) => [
+  index('tasks_user_status_idx').on(table.userId, table.status),
+])
 
 export const contentPieces = pgTable('content_pieces', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -195,7 +197,9 @@ export const leads = pgTable('leads', {
   metadata: jsonb('metadata'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-})
+}, (table) => [
+  index('leads_user_status_idx').on(table.userId, table.status),
+])
 
 export const chatMessages = pgTable('chat_messages', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -205,7 +209,9 @@ export const chatMessages = pgTable('chat_messages', {
   content: text('content').notNull(),
   model: text('model'),
   createdAt: timestamp('created_at').defaultNow(),
-})
+}, (table) => [
+  index('chat_messages_user_session_idx').on(table.userId, table.sessionId),
+])
 
 export const knowledgeBase = pgTable('knowledge_base', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -246,7 +252,9 @@ export const financeEntries = pgTable('finance_entries', {
   date: timestamp('date').notNull().defaultNow(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-})
+}, (table) => [
+  index('finance_entries_user_type_idx').on(table.userId, table.type),
+])
 
 export const seoKeywords = pgTable('seo_keywords', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -369,7 +377,9 @@ export const aiMemories = pgTable('ai_memories', {
   referenceCount: integer('reference_count').default(0),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-})
+}, (table) => [
+  index('ai_memories_user_type_idx').on(table.userId, table.type),
+])
 
 export const userActivityLog = pgTable('user_activity_log', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -383,6 +393,7 @@ export const userActivityLog = pgTable('user_activity_log', {
 
 export const conversations = pgTable('conversations', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),

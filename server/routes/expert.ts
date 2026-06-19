@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { checkTokens, deductToken } from '../middleware/tokens.js'
 import { db } from '../db/index.js'
 import { chatMessages } from '../db/schema.js'
 import { eq, desc, and } from 'drizzle-orm'
@@ -122,7 +123,7 @@ router.get('/modes', (req, res) => {
   res.json(modes)
 })
 
-router.post('/chat', requireAuth, async (req, res) => {
+router.post('/chat', requireAuth, checkTokens, async (req, res) => {
   const user = (req as any).user
   const { message, sessionId, mode } = req.body
 
@@ -142,6 +143,12 @@ router.post('/chat', requireAuth, async (req, res) => {
   })
 
   await logActivity(user.id, 'expert_chat', mode, session, { mode })
+
+  // Deduct token BEFORE the AI call
+  if (!user.isAdmin) {
+    const deducted = await deductToken(user.id)
+    if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
+  }
 
   const history = await db.select().from(chatMessages)
     .where(and(

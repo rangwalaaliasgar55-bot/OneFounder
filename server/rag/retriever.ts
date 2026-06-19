@@ -3,6 +3,9 @@ import { knowledgeBase } from '../db/schema.js'
 import { eq, desc, like, or, and, sql } from 'drizzle-orm'
 import { chunkText, type TextChunk } from './chunker.js'
 
+// Chunk cache: avoids re-chunking the same documents on every query
+const chunkCache = new Map<string, { chunks: Array<{ chunk: TextChunk; docId: string; docTitle: string }>; updatedAt: Date }>()
+
 export interface RetrievedChunk {
   content: string
   source: string
@@ -79,8 +82,18 @@ export async function retrieveRelevantChunks(
   for (const doc of docs) {
     const text = doc.content || ''
     if (!text.trim()) continue
-    const chunks = chunkText(text, doc.id, doc.title)
-    chunks.forEach(chunk => allChunks.push({ chunk, docId: doc.id, docTitle: doc.title }))
+
+    // Use cached chunks if document hasn't been updated
+    const cacheKey = doc.id
+    const cached = chunkCache.get(cacheKey)
+    if (cached && cached.updatedAt.getTime() === (doc.updatedAt ?? doc.createdAt ?? new Date()).getTime()) {
+      allChunks.push(...cached.chunks)
+    } else {
+      const chunks = chunkText(text, doc.id, doc.title)
+      const mapped = chunks.map(chunk => ({ chunk, docId: doc.id, docTitle: doc.title }))
+      chunkCache.set(cacheKey, { chunks: mapped, updatedAt: doc.updatedAt ?? doc.createdAt ?? new Date() })
+      allChunks.push(...mapped)
+    }
   }
 
   if (allChunks.length === 0) return []

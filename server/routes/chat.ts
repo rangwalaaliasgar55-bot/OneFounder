@@ -68,6 +68,12 @@ router.post('/send', requireAuth, checkTokens, async (req, res) => {
 
   logActivity(user.id, 'sent_message', 'chat', sessionId, { agentType }).catch(() => {})
 
+  // Deduct token BEFORE the AI call to prevent free usage
+  if (!user.isAdmin) {
+    const deducted = await deductToken(user.id)
+    if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
+  }
+
   try {
     const result = await brain.process({
       userId: user.id,
@@ -86,10 +92,6 @@ router.post('/send', requireAuth, checkTokens, async (req, res) => {
       orderBy: [desc(chatMessages.createdAt)],
     })
 
-    if (!user.isAdmin) {
-      const deducted = await deductToken(user.id)
-      if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
-    }
     res.json({
       message: saved || { id: uuidv4(), role: 'assistant', content: result.response },
       sessionId: result.sessionId,
@@ -124,6 +126,16 @@ router.post('/stream', requireAuth, checkTokens, async (req, res) => {
     }
   }
 
+  // Deduct token BEFORE streaming starts
+  if (!user.isAdmin) {
+    const deducted = await deductToken(user.id)
+    if (!deducted) {
+      send('error', JSON.stringify({ message: 'Insufficient tokens', code: 'NO_TOKENS' }))
+      res.end()
+      return
+    }
+  }
+
   try {
     const gen = brain.stream({
       userId: user.id,
@@ -134,17 +146,10 @@ router.post('/stream', requireAuth, checkTokens, async (req, res) => {
       model: model || undefined,
     })
 
-    let deducted = false
     for await (const chunk of gen) {
       if (clientDisconnected) break
       send(chunk.type, typeof chunk.data === 'string' ? chunk.data : JSON.stringify(chunk.data))
-      if ((chunk.type === 'done' || chunk.type === 'error') && !deducted) {
-        deducted = true
-        if (!user.isAdmin && chunk.type === 'done') {
-          await deductToken(user.id).catch(() => {})
-        }
-        break
-      }
+      if (chunk.type === 'done' || chunk.type === 'error') break
     }
   } catch (err: any) {
     const isOffline = err instanceof OllamaOfflineError || err.code === 'OLLAMA_OFFLINE'
