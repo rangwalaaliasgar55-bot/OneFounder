@@ -102,7 +102,7 @@ export function FloatingAI() {
       {/* Floating button */}
       <button
         onClick={() => { setOpen(o => !o); playSound('pop') }}
-        className={`fixed bottom-6 left-6 z-[90] w-12 h-12 rounded-2xl shadow-2xl flex items-center justify-center text-xl transition-all duration-200 ${
+        className={`fixed bottom-6 right-6 z-[90] w-12 h-12 rounded-2xl shadow-2xl flex items-center justify-center text-xl transition-all duration-200 ${
           open
             ? 'bg-slate-700 rotate-45 shadow-slate-900/60'
             : 'bg-gradient-to-br from-brand-500 to-violet-600 shadow-brand-900/50 hover:scale-105'
@@ -115,7 +115,7 @@ export function FloatingAI() {
       {/* Chat drawer */}
       {open && (
         <div
-          className="fixed bottom-22 left-6 z-[90] w-80 rounded-2xl border border-white/[0.1] flex flex-col overflow-hidden animate-scale-in"
+          className="fixed bottom-22 right-6 z-[90] w-80 rounded-2xl border border-white/[0.1] flex flex-col overflow-hidden animate-scale-in"
           style={{
             background: 'linear-gradient(145deg, rgba(15,23,42,0.97) 0%, rgba(8,13,26,0.99) 100%)',
             backdropFilter: 'blur(40px) saturate(1.5)',
