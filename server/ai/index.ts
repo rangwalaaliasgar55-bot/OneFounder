@@ -1,67 +1,60 @@
-import { OllamaProvider } from './ollama.js'
-import { OllamaOfflineError } from './provider.js'
-import type { AIProvider, AIProviderType, ProviderStatus } from './provider.js'
+/**
+ * OneFounder AI Provider Index
+ *
+ * Uses the provider registry for unified provider management.
+ * Supports multiple providers with automatic failover.
+ */
 
-let aiProvider: OllamaProvider | null = null
-let lastCheck = 0
-const CACHE_TTL = 30_000
+import { registry } from './registry.js'
+import { OllamaProvider } from './providers/ollama.js'
+import { AIOfflineError } from './types.js'
+import type { AIProvider, ProviderStatus } from './types.js'
 
-export async function getAIProvider(): Promise<AIProvider> {
-  const now = Date.now()
-  if (aiProvider && now - lastCheck < CACHE_TTL) {
-    if (await aiProvider.isAvailable()) return aiProvider
+// Initialize providers
+const ollama = new OllamaProvider()
+registry.register(ollama)
+
+/**
+ * Get the default AI provider
+ * Throws AIOfflineError if no provider is available
+ */
+export async function getAIProvider(preferred?: string): Promise<AIProvider> {
+  const provider = await registry.findAvailable(preferred as any)
+  if (!provider) {
+    throw new AIOfflineError(
+      'No AI provider available. Install Ollama from https://ollama.ai then run: ollama serve',
+      'ollama',
+      'PROVIDER_OFFLINE'
+    )
   }
-
-  lastCheck = now
-  const ollama = new OllamaProvider(
-    process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-    process.env.OLLAMA_MODEL || 'qwen2.5-coder:3b'
-  )
-
-  if (await ollama.isAvailable()) {
-    aiProvider = ollama
-    return aiProvider
-  }
-
-  aiProvider = null
-  throw new OllamaOfflineError()
+  return provider
 }
 
+/**
+ * Get status of all AI providers
+ */
 export async function getAIStatus(): Promise<{
   available: boolean
   provider: string
-  activeProvider: AIProviderType | 'offline'
-  models?: string[]
+  activeProvider: string
+  models: string[]
   note?: string
   providers: ProviderStatus[]
 }> {
-  const ollama = new OllamaProvider(
-    process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-    process.env.OLLAMA_MODEL || 'qwen2.5-coder:3b'
-  )
-  const available = await ollama.isAvailable()
-  const models = available ? await ollama.listModels() : []
+  const statuses = await registry.getStatus()
+  const availableProvider = statuses.find(s => s.available)
 
   return {
-    available,
-    provider: available ? 'Ollama (Local)' : 'Offline',
-    activeProvider: available ? 'ollama' : 'offline',
-    models,
-    note: available
+    available: !!availableProvider,
+    provider: availableProvider?.name || 'Offline',
+    activeProvider: availableProvider?.type || 'offline',
+    models: availableProvider?.models.map(m => m.id) || [],
+    note: availableProvider
       ? undefined
-      : 'Ollama is not running. Run: ollama serve && ollama pull qwen3:8b',
-    providers: [
-      {
-        id: 'ollama',
-        name: 'Ollama (Local)',
-        available,
-        active: available,
-        models,
-        note: 'Free forever. Runs models on your machine. Zero cloud costs.',
-        setupUrl: 'https://ollama.ai',
-      },
-    ],
+      : 'Ollama is not running. Install from https://ollama.ai then run: ollama serve',
+    providers: statuses,
   }
 }
 
-export { type AIProvider }
+export { registry }
+export type { AIProvider, ProviderStatus }
