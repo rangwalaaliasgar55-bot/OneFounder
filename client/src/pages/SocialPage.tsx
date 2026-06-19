@@ -3,7 +3,8 @@ import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
-import { LoadingSpinner, PageLoader } from '../components/ui/LoadingSpinner'
+import { LoadingSpinner } from '../components/ui/LoadingSpinner'
+import { SkeletonListPage } from '../components/ui/PageSkeletons'
 
 const PLATFORMS = [
   { id: 'all', label: 'All', icon: '📱' },
@@ -84,7 +85,7 @@ export function SocialPage() {
     setEditContent(post.content)
   }
 
-  if (loading) return <PageLoader />
+  if (loading) return <SkeletonListPage />
 
   const filtered = activePlatform === 'all' ? posts : posts.filter(p => p.platform === activePlatform)
 

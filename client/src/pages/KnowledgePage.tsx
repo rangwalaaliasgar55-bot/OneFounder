@@ -3,7 +3,7 @@ import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
-import { PageLoader } from '../components/ui/LoadingSpinner'
+import { SkeletonListPage } from '../components/ui/PageSkeletons'
 
 const DOC_TYPES = [
   { value: 'note', label: 'Note', icon: '📝' },
@@ -58,7 +58,7 @@ export function KnowledgePage() {
     item.content?.toLowerCase().includes(search.toLowerCase())
   )
 
-  if (loading) return <PageLoader />
+  if (loading) return <SkeletonListPage />
 
   return (
     <div className="p-6 max-w-7xl mx-auto">

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { playSound } from '../../lib/sounds'
 
 interface ConfettiPiece {
   x: number
@@ -30,6 +31,7 @@ export function Confetti({ active, duration = 3000, particleCount = 80 }: {
   useEffect(() => {
     if (!active) return
     setVisible(true)
+    playSound('celebrate')
 
     const canvas = canvasRef.current
     if (!canvas) return

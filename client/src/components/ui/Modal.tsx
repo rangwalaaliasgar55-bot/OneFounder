@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { playSound } from '../../lib/sounds'
 
 interface ModalProps {
   isOpen: boolean
@@ -10,8 +11,12 @@ interface ModalProps {
 
 export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
   useEffect(() => {
-    if (isOpen) document.body.style.overflow = 'hidden'
-    else document.body.style.overflow = ''
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+      playSound('pop')
+    } else {
+      document.body.style.overflow = ''
+    }
     return () => { document.body.style.overflow = '' }
   }, [isOpen])
 

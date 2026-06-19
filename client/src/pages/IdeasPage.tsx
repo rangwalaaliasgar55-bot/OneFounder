@@ -3,7 +3,8 @@ import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
-import { LoadingSpinner, PageLoader } from '../components/ui/LoadingSpinner'
+import { LoadingSpinner } from '../components/ui/LoadingSpinner'
+import { SkeletonListPage } from '../components/ui/PageSkeletons'
 import { TiltCard } from '../components/ui/TiltCard'
 import { Confetti, useConfetti } from '../components/ui/Confetti'
 import { MeshGradient } from '../components/ui/MeshGradient'
@@ -65,7 +66,7 @@ export function IdeasPage() {
     if (selected?.id === id) setSelected(updated)
   }
 
-  if (loading) return <PageLoader />
+  if (loading) return <SkeletonListPage />
 
   return (
     <div className="p-6 max-w-7xl mx-auto relative">

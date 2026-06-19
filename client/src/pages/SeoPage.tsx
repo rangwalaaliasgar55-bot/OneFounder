@@ -3,7 +3,8 @@ import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
-import { LoadingSpinner, PageLoader } from '../components/ui/LoadingSpinner'
+import { LoadingSpinner } from '../components/ui/LoadingSpinner'
+import { SkeletonTabPage } from '../components/ui/PageSkeletons'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -363,7 +364,7 @@ export function SeoPage() {
     if (selectedAudit?.id === id) setSelectedAudit(null)
   }
 
-  if (loading) return <PageLoader />
+  if (loading) return <SkeletonTabPage />
 
   // ─── Derived ──────────────────────────────────────────────────────────────
   const clusterLabels = ['all', ...Array.from(new Set(keywords.filter(k => k.cluster).map(k => k.cluster!)))]

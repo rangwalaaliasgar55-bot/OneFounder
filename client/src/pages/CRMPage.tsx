@@ -3,7 +3,7 @@ import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
-import { PageLoader } from '../components/ui/LoadingSpinner'
+import { SkeletonKanbanPage } from '../components/ui/PageSkeletons'
 import { TiltCard } from '../components/ui/TiltCard'
 import { MeshGradient } from '../components/ui/MeshGradient'
 import { AnimatedCounter } from '../components/ui/AnimatedCounter'
@@ -49,7 +49,7 @@ export function CRMPage() {
     setSelected(null)
   }
 
-  if (loading) return <PageLoader />
+  if (loading) return <SkeletonKanbanPage />
 
   const grouped = STAGES.reduce((acc, stage) => {
     acc[stage] = leads.filter(l => l.status === stage)

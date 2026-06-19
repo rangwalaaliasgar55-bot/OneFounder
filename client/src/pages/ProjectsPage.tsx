@@ -3,7 +3,7 @@ import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
-import { PageLoader } from '../components/ui/LoadingSpinner'
+import { SkeletonKanbanPage } from '../components/ui/PageSkeletons'
 import { MeshGradient } from '../components/ui/MeshGradient'
 
 const TASK_STATUS = ['todo', 'in_progress', 'done']
@@ -67,7 +67,7 @@ export function ProjectsPage() {
     if (selected?.id === id) { setSelected(null); setTasks([]) }
   }
 
-  if (loading) return <PageLoader />
+  if (loading) return <SkeletonKanbanPage />
 
   const groupedTasks = TASK_STATUS.reduce((acc, status) => {
     acc[status] = tasks.filter(t => t.status === status)

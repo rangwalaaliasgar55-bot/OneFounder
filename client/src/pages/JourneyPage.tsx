@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
-import { PageLoader } from '../components/ui/LoadingSpinner'
+import { SkeletonListPage } from '../components/ui/PageSkeletons'
 
 const STAGE_COLORS: Record<string, string> = {
   'Idea': 'from-yellow-600/30 to-yellow-800/10 border-yellow-500/30',
@@ -66,7 +66,7 @@ export function JourneyPage() {
     setEditingNotes(null)
   }
 
-  if (loading) return <PageLoader />
+  if (loading) return <SkeletonListPage />
 
   const completedXp = milestones.filter(m => m.completed).reduce((s: number, m: any) => s + (m.xp || 0), 0)
   const totalXp = milestones.reduce((s: number, m: any) => s + (m.xp || 0), 0)

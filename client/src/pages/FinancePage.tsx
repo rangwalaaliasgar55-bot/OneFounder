@@ -3,7 +3,7 @@ import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
-import { PageLoader } from '../components/ui/LoadingSpinner'
+import { SkeletonListPage } from '../components/ui/PageSkeletons'
 import { AnimatedCounter } from '../components/ui/AnimatedCounter'
 import { AnimatedBarChart } from '../components/ui/AnimatedBarChart'
 import { MeshGradient } from '../components/ui/MeshGradient'
@@ -50,7 +50,7 @@ export function FinancePage() {
     load()
   }
 
-  if (loading) return <PageLoader />
+  if (loading) return <SkeletonListPage />
 
   const filtered = filterType === 'all' ? entries : entries.filter(e => e.type === filterType)
 

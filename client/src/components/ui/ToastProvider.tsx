@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { ToastContext, type Toast, type ToastType } from '../../hooks/useToast'
+import { playSound } from '../../lib/sounds'
 
 const ICONS: Record<ToastType, string> = {
   success: '✓',
@@ -77,6 +78,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const toast = useCallback((message: string, type: ToastType = 'info', duration = 4000) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
     setToasts(prev => [...prev.slice(-4), { id, message, type, duration }])
+    // Play sound based on toast type
+    if (type === 'success') playSound('success')
+    else if (type === 'error') playSound('error')
+    else playSound('notification')
     const timer = setTimeout(() => dismiss(id), duration)
     timers.current.set(id, timer)
   }, [dismiss])

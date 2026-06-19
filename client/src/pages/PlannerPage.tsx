@@ -3,7 +3,8 @@ import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
-import { LoadingSpinner, PageLoader } from '../components/ui/LoadingSpinner'
+import { LoadingSpinner } from '../components/ui/LoadingSpinner'
+import { SkeletonListPage } from '../components/ui/PageSkeletons'
 
 export function PlannerPage() {
   const [plans, setPlans] = useState<any[]>([])
@@ -37,7 +38,7 @@ export function PlannerPage() {
     if (selected?.id === id) setSelected(null)
   }
 
-  if (loading) return <PageLoader />
+  if (loading) return <SkeletonListPage />
 
   const renderSection = (title: string, content: any, color = 'text-brand-400') => {
     if (!content) return null

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { playSound } from '../lib/sounds'
 
 const COMMANDS = [
   { id: 'dashboard',  label: 'Dashboard',         icon: '⚡', path: '/',          section: 'Navigate' },
@@ -44,6 +45,7 @@ export function CommandPalette({ open, onClose }: Props) {
   }, [open])
 
   const execute = useCallback((cmd: typeof COMMANDS[0]) => {
+    playSound('whoosh')
     navigate(cmd.path)
     onClose()
   }, [navigate, onClose])

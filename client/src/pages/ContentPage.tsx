@@ -3,7 +3,8 @@ import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
-import { LoadingSpinner, PageLoader } from '../components/ui/LoadingSpinner'
+import { LoadingSpinner } from '../components/ui/LoadingSpinner'
+import { SkeletonListPage } from '../components/ui/PageSkeletons'
 
 const CONTENT_TYPES = [
   { value: 'blog', label: 'Blog Post', icon: '📝' },
@@ -105,7 +106,7 @@ export function ContentPage() {
 
   const filtered = filter === 'all' ? content : content.filter(c => c.type === filter)
 
-  if (loading) return <PageLoader />
+  if (loading) return <SkeletonListPage />
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
