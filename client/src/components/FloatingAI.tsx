@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { playSound } from '../lib/sounds'
 
 interface Message {
@@ -113,15 +114,20 @@ export function FloatingAI() {
       </button>
 
       {/* Chat drawer */}
+      <AnimatePresence>
       {open && (
-        <div
-          className="fixed bottom-22 right-6 z-[90] w-80 rounded-2xl border border-white/[0.1] flex flex-col overflow-hidden animate-scale-in"
+        <motion.div
+          className="fixed bottom-22 right-6 z-[90] w-80 rounded-2xl border border-white/[0.1] flex flex-col overflow-hidden"
           style={{
             background: 'linear-gradient(145deg, rgba(15,23,42,0.97) 0%, rgba(8,13,26,0.99) 100%)',
             backdropFilter: 'blur(40px) saturate(1.5)',
             maxHeight: '70vh',
             boxShadow: '0 24px 64px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 40px rgba(99,102,241,0.08)',
           }}
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
         >
           {/* Header */}
           <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.06]">
@@ -212,8 +218,9 @@ export function FloatingAI() {
             </div>
             <p className="text-[9px] text-slate-500 mt-1.5 text-center">Enter to send · Powered by Ollama</p>
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </>
   )
 }

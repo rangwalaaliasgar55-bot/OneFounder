@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ToastContext, type Toast, type ToastType } from '../../hooks/useToast'
 import { playSound } from '../../lib/sounds'
 
@@ -33,7 +34,7 @@ const ICON_BG: Record<ToastType, string> = {
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
   return (
     <div
-      className="flex items-start gap-3 px-4 py-3.5 rounded-xl animate-slide-up max-w-sm w-full relative overflow-hidden"
+      className="flex items-start gap-3 px-4 py-3.5 rounded-xl max-w-sm w-full relative overflow-hidden"
       style={{
         background: 'linear-gradient(145deg, rgba(15,23,42,0.95) 0%, rgba(8,13,26,0.98) 100%)',
         backdropFilter: 'blur(24px) saturate(1.5)',
@@ -90,17 +91,21 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ toasts, toast, dismiss }}>
       {children}
       <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-3 items-end pointer-events-none">
-        {toasts.map((t, i) => (
-          <div
-            key={t.id}
-            className="pointer-events-auto"
-            style={{
-              animation: `slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) ${i * 0.05}s both`,
-            }}
-          >
-            <ToastItem toast={t} onDismiss={dismiss} />
-          </div>
-        ))}
+        <AnimatePresence mode="popLayout">
+          {toasts.map((t) => (
+            <motion.div
+              key={t.id}
+              className="pointer-events-auto"
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 80, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              layout
+            >
+              <ToastItem toast={t} onDismiss={dismiss} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   )
