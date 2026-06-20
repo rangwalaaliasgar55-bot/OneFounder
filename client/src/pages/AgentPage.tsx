@@ -4,18 +4,22 @@ import { v4 as uuidv4 } from 'uuid'
 import { MeshGradient } from '../components/ui/MeshGradient'
 
 const SPECIALIST_AGENTS = [
-  { id: 'research', icon: '🔬', name: 'Research Agent', desc: 'Market intelligence & competitive analysis', color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
-  { id: 'engineering', icon: '💻', name: 'Engineering Agent', desc: 'Architecture, code review & implementation', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
-  { id: 'marketing', icon: '📣', name: 'Marketing Agent', desc: 'Growth strategy & campaign execution', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' },
-  { id: 'seo', icon: '🔍', name: 'SEO Command Center', desc: 'Search visibility & content strategy', color: 'text-green-400 bg-green-500/10 border-green-500/20' },
-  { id: 'finance', icon: '💰', name: 'Finance Agent', desc: 'Unit economics, fundraising & financial modeling', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-  { id: 'sales', icon: '💼', name: 'Sales Agent', desc: 'Pipeline, outbound & deal closing', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
-  { id: 'security', icon: '🔒', name: 'Security Agent', desc: 'Threat modeling & vulnerability analysis', color: 'text-red-400 bg-red-500/10 border-red-500/20' },
-  { id: 'devops', icon: '☁️', name: 'DevOps Agent', desc: 'Infrastructure, CI/CD & reliability', color: 'text-slate-400 bg-slate-500/10 border-slate-500/20' },
-  { id: 'product', icon: '🧩', name: 'Product Agent', desc: 'Roadmap, prioritization & PMF', color: 'text-pink-400 bg-pink-500/10 border-pink-500/20' },
-  { id: 'data', icon: '📊', name: 'Data Agent', desc: 'Analytics, KPIs & business intelligence', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
-  { id: 'legal', icon: '⚖️', name: 'Legal Ops Agent', desc: 'Contracts, compliance & IP protection', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
-  { id: 'startup', icon: '🚀', name: 'Founder Agent', desc: 'Strategy, PMF & fundraising guidance', color: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
+  { id: 'research',  icon: '🔬', name: 'Research Agent',      desc: 'Market intelligence & competitive analysis',          color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
+  { id: 'code',      icon: '💻', name: 'Engineering Agent',    desc: 'Architecture, code review & production implementation', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+  { id: 'marketing', icon: '📣', name: 'Marketing Agent',      desc: 'Growth strategy, channels & campaign execution',      color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' },
+  { id: 'seo',       icon: '🔍', name: 'SEO Command Center',   desc: 'Search visibility, keywords & content strategy',      color: 'text-green-400 bg-green-500/10 border-green-500/20' },
+  { id: 'finance',   icon: '💰', name: 'Finance Agent',        desc: 'Unit economics, fundraising & financial modeling',    color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+  { id: 'sales',     icon: '💼', name: 'Sales Agent',          desc: 'Pipeline, outbound sequences & deal closing',        color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+  { id: 'security',  icon: '🔒', name: 'Security Agent',       desc: 'Threat modeling, OWASP & vulnerability analysis',     color: 'text-red-400 bg-red-500/10 border-red-500/20' },
+  { id: 'devops',    icon: '☁️', name: 'DevOps Agent',        desc: 'Infrastructure, CI/CD, IaC & reliability engineering', color: 'text-slate-400 bg-slate-500/10 border-slate-500/20' },
+  { id: 'product',   icon: '🧩', name: 'Product Agent',        desc: 'Roadmap, prioritization & product-market fit',        color: 'text-pink-400 bg-pink-500/10 border-pink-500/20' },
+  { id: 'data',      icon: '📊', name: 'Data Agent',           desc: 'Analytics, KPIs, SQL & business intelligence',        color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+  { id: 'legal',     icon: '⚖️', name: 'Legal Ops Agent',     desc: 'Contracts, compliance, IP & risk assessment',         color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+  { id: 'startup',   icon: '🚀', name: 'Founder Agent',        desc: 'Strategy, PMF, fundraising & startup frameworks',     color: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
+  { id: 'social',    icon: '📱', name: 'Social Media Agent',   desc: 'Platform-native content, hooks & algorithm tactics',  color: 'text-violet-400 bg-violet-500/10 border-violet-500/20' },
+  { id: 'content',   icon: '✍️', name: 'Content Agent',        desc: 'Blog posts, copy, scripts & publish-ready drafts',    color: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
+  { id: 'hiring',    icon: '🎯', name: 'Talent Agent',         desc: 'JDs, interview scorecards, comp benchmarks & onboarding', color: 'text-lime-400 bg-lime-500/10 border-lime-500/20' },
+  { id: 'design',    icon: '🎨', name: 'Design Agent',         desc: 'UI/UX, design systems, hex codes & conversion-first design', color: 'text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/20' },
 ]
 
 interface AgentResult {
@@ -71,10 +75,12 @@ export function AgentPage() {
 
   const EXAMPLE_QUERIES = [
     'Analyze the market opportunity for an AI-powered project management tool targeting startups',
-    'Help me build a go-to-market strategy for my SaaS — I have 0 users and $5k budget',
-    'What are the biggest security risks in my Express + PostgreSQL app and how do I fix them?',
-    'Create a 30-day sprint plan to get my first 100 paying customers',
-    'Compare my pricing model to competitors and recommend optimizations',
+    'Build a full go-to-market strategy for my SaaS — 0 users, $5k budget, B2B focus',
+    'Write a complete landing page with copy, design spec, and SEO metadata for my product',
+    'What are the biggest security vulnerabilities in my Express + PostgreSQL app? Give me exact fixes',
+    'Create a 30-day sprint to get my first 100 paying customers — include content, social, and outreach',
+    'Model my unit economics and tell me what I need to raise a Series A',
+    'Design an end-to-end hiring process for a senior full-stack engineer at an early-stage startup',
   ]
 
   function toggleAgent(id: string) {
