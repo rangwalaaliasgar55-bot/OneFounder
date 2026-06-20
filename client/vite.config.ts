@@ -19,8 +19,9 @@ export default defineConfig({
         manualChunks: {
           'vendor-react':  ['react', 'react-dom', 'react-router-dom'],
           'vendor-ui':     ['react/jsx-runtime'],
-          'vendor-three':  ['three', '@react-three/fiber', '@react-three/drei'],
           'vendor-motion': ['framer-motion', 'gsap', '@gsap/react'],
+          // Three.js is NOT in manualChunks — it's lazy-loaded via dynamic imports
+          // and will be automatically split into its own chunk by Vite
         },
       },
     },
