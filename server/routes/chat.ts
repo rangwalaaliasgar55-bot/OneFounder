@@ -3,7 +3,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { checkTokens, deductToken } from '../middleware/tokens.js'
 import { db } from '../db/index.js'
 import { chatMessages } from '../db/schema.js'
-import { eq, desc, and } from 'drizzle-orm'
+import { eq, desc, and, sql } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
 import { brain } from '../ai/brain.js'
 import { detectExpertMode } from '../ai/router.js'
@@ -20,44 +20,34 @@ function handleAIError(err: any, res: any) {
 const router = Router()
 
 router.get('/sessions', requireAuth, async (req, res) => {
-  try {
-    const user = (req as any).user
-    const messages = await db.select().from(chatMessages)
-      .where(eq(chatMessages.userId, user.id))
-      .orderBy(desc(chatMessages.createdAt))
-      .limit(500)
-
-    const sessions = new Map<string, any>()
-    messages.forEach(m => {
-      if (!sessions.has(m.sessionId)) {
-        sessions.set(m.sessionId, {
-          id: m.sessionId,
-          lastMessage: m.content.substring(0, 80),
-          createdAt: m.createdAt,
-          role: m.role,
-        })
-      }
+  const user = (req as any).user
+  // One row per session — use DB-level aggregation, not JS dedup of all rows
+  const sessions = await db
+    .select({
+      id: chatMessages.sessionId,
+      lastMessage: sql<string>`substring(max(case when ${chatMessages.role} = 'user' then ${chatMessages.content} end), 1, 80)`,
+      createdAt: sql<Date>`min(${chatMessages.createdAt})`,
+      updatedAt: sql<Date>`max(${chatMessages.createdAt})`,
+      messageCount: sql<number>`count(*)`,
     })
+    .from(chatMessages)
+    .where(eq(chatMessages.userId, user.id))
+    .groupBy(chatMessages.sessionId)
+    .orderBy(sql`max(${chatMessages.createdAt}) desc`)
+    .limit(50)  // cap at 50 sessions in sidebar
 
-    res.json(Array.from(sessions.values()))
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to load sessions' })
-  }
+  res.json(sessions)
 })
 
 router.get('/:sessionId', requireAuth, async (req, res) => {
-  try {
-    const user = (req as any).user
-    const messages = await db.select().from(chatMessages)
-      .where(and(
-        eq(chatMessages.userId, user.id),
-        eq(chatMessages.sessionId, req.params.sessionId as string)
-      ))
-      .orderBy(chatMessages.createdAt)
-    res.json(messages)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to load messages' })
-  }
+  const user = (req as any).user
+  const messages = await db.select().from(chatMessages)
+    .where(and(
+      eq(chatMessages.userId, user.id),
+      eq(chatMessages.sessionId, req.params.sessionId as string)
+    ))
+    .orderBy(chatMessages.createdAt)
+  res.json(messages)
 })
 
 router.post('/send', requireAuth, checkTokens, async (req, res) => {
@@ -66,13 +56,7 @@ router.post('/send', requireAuth, checkTokens, async (req, res) => {
   if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message required' })
   if (message.length > 4000) return res.status(400).json({ error: 'Message too long (max 4000 chars)' })
 
-  logActivity(user.id, 'sent_message', 'chat', sessionId, { agentType }).catch(() => {})
-
-  // Deduct token BEFORE the AI call to prevent free usage
-  if (!user.isAdmin) {
-    const deducted = await deductToken(user.id)
-    if (!deducted) return res.status(429).json({ error: 'Insufficient tokens', code: 'NO_TOKENS' })
-  }
+  await logActivity(user.id, 'sent_message', 'chat', sessionId, { agentType }).catch(() => {})
 
   try {
     const result = await brain.process({
@@ -92,13 +76,16 @@ router.post('/send', requireAuth, checkTokens, async (req, res) => {
       orderBy: [desc(chatMessages.createdAt)],
     })
 
+    if (!user.isAdmin) await deductToken(user.id)
     res.json({
       message: saved || { id: uuidv4(), role: 'assistant', content: result.response },
       sessionId: result.sessionId,
       mode: result.mode,
       modeLabel: result.modeLabel,
       confidence: result.confidence,
+      secondaryModes: result.secondaryModes,
       webSearchUsed: result.webSearchUsed,
+      contextSources: result.contextSources,
     })
   } catch (err: any) {
     handleAIError(err, res)
@@ -117,23 +104,8 @@ router.post('/stream', requireAuth, checkTokens, async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no')
   res.flushHeaders()
 
-  let clientDisconnected = false
-  req.on('close', () => { clientDisconnected = true })
-
   const send = (event: string, data: string) => {
-    if (!clientDisconnected) {
-      res.write(`event: ${event}\ndata: ${data}\n\n`)
-    }
-  }
-
-  // Deduct token BEFORE streaming starts
-  if (!user.isAdmin) {
-    const deducted = await deductToken(user.id)
-    if (!deducted) {
-      send('error', JSON.stringify({ message: 'Insufficient tokens', code: 'NO_TOKENS' }))
-      res.end()
-      return
-    }
+    res.write(`event: ${event}\ndata: ${data}\n\n`)
   }
 
   try {
@@ -146,10 +118,14 @@ router.post('/stream', requireAuth, checkTokens, async (req, res) => {
       model: model || undefined,
     })
 
+    let deducted = false
     for await (const chunk of gen) {
-      if (clientDisconnected) break
       send(chunk.type, typeof chunk.data === 'string' ? chunk.data : JSON.stringify(chunk.data))
-      if (chunk.type === 'done' || chunk.type === 'error') break
+      if ((chunk.type === 'done' || chunk.type === 'error') && !deducted) {
+        deducted = true
+        if (!user.isAdmin && chunk.type === 'done') await deductToken(user.id).catch(() => {})
+        break
+      }
     }
   } catch (err: any) {
     const isOffline = err instanceof OllamaOfflineError || err.code === 'OLLAMA_OFFLINE'
@@ -162,15 +138,11 @@ router.post('/stream', requireAuth, checkTokens, async (req, res) => {
   }
 })
 
-router.get('/route/analyze', requireAuth, async (req, res) => {
-  try {
-    const { message } = req.query
-    if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message required' })
-    const result = detectExpertMode(message)
-    res.json(result)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to analyze route' })
-  }
+router.get('/route/analyze', async (req, res) => {
+  const { message } = req.query
+  if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Message required' })
+  const result = detectExpertMode(message)
+  res.json(result)
 })
 
 export default router
