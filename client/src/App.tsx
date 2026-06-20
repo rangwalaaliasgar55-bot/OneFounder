@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useState, useRef } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
+import { AnimatedPage } from './components/layout/AnimatedPage'
 import { useAuth } from './hooks/useAuth'
 import { useOllamaStatus } from './hooks/useOllamaStatus'
 import { ParticleField } from './components/ui/ParticleField'
@@ -95,6 +97,38 @@ const GO_TO_ROUTES: Record<string, string> = {
   n: '/content', j: '/journey', v: '/investor',
 }
 
+function AnimatedRoutes() {
+  const location = useLocation()
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/"          element={<AnimatedPage><DashboardPage /></AnimatedPage>} />
+        <Route path="/dashboard" element={<AnimatedPage><DashboardPage /></AnimatedPage>} />
+        <Route path="/ideas"     element={<AnimatedPage><IdeasPage /></AnimatedPage>} />
+        <Route path="/research"  element={<AnimatedPage><ResearchPage /></AnimatedPage>} />
+        <Route path="/planner"   element={<AnimatedPage><PlannerPage /></AnimatedPage>} />
+        <Route path="/projects"  element={<AnimatedPage><ProjectsPage /></AnimatedPage>} />
+        <Route path="/content"   element={<AnimatedPage><ContentPage /></AnimatedPage>} />
+        <Route path="/crm"       element={<AnimatedPage><CRMPage /></AnimatedPage>} />
+        <Route path="/chat"      element={<AnimatedPage><ChatPage /></AnimatedPage>} />
+        <Route path="/knowledge" element={<AnimatedPage><KnowledgePage /></AnimatedPage>} />
+        <Route path="/settings"  element={<AnimatedPage><SettingsPage /></AnimatedPage>} />
+        <Route path="/social"    element={<AnimatedPage><SocialPage /></AnimatedPage>} />
+        <Route path="/finance"   element={<AnimatedPage><FinancePage /></AnimatedPage>} />
+        <Route path="/seo"       element={<AnimatedPage><SeoPage /></AnimatedPage>} />
+        <Route path="/journey"   element={<AnimatedPage><JourneyPage /></AnimatedPage>} />
+        <Route path="/wordpress" element={<AnimatedPage><WordPressPage /></AnimatedPage>} />
+        <Route path="/investor"  element={<AnimatedPage><InvestorPage /></AnimatedPage>} />
+        <Route path="/memory"    element={<AnimatedPage><MemoryPage /></AnimatedPage>} />
+        <Route path="/tasks"     element={<AnimatedPage><TasksPage /></AnimatedPage>} />
+        <Route path="/agents"    element={<AnimatedPage><AgentPage /></AnimatedPage>} />
+        <Route path="/admin"     element={<AnimatedPage><AdminPage /></AnimatedPage>} />
+        <Route path="*"          element={<Navigate to="/" replace />} />
+      </Routes>
+    </AnimatePresence>
+  )
+}
+
 function AuthenticatedApp() {
   const navigate = useNavigate()
   const [cmdOpen, setCmdOpen]             = useState(false)
@@ -163,30 +197,7 @@ function AuthenticatedApp() {
           </div>
         )}
         <Suspense fallback={<PageFallback />}>
-          <Routes>
-            <Route path="/"          element={<DashboardPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/ideas"     element={<IdeasPage />} />
-            <Route path="/research"  element={<ResearchPage />} />
-            <Route path="/planner"   element={<PlannerPage />} />
-            <Route path="/projects"  element={<ProjectsPage />} />
-            <Route path="/content"   element={<ContentPage />} />
-            <Route path="/crm"       element={<CRMPage />} />
-            <Route path="/chat"      element={<ChatPage />} />
-            <Route path="/knowledge" element={<KnowledgePage />} />
-            <Route path="/settings"  element={<SettingsPage />} />
-            <Route path="/social"    element={<SocialPage />} />
-            <Route path="/finance"   element={<FinancePage />} />
-            <Route path="/seo"       element={<SeoPage />} />
-            <Route path="/journey"   element={<JourneyPage />} />
-            <Route path="/wordpress" element={<WordPressPage />} />
-            <Route path="/investor"  element={<InvestorPage />} />
-            <Route path="/memory"    element={<MemoryPage />} />
-            <Route path="/tasks"     element={<TasksPage />} />
-            <Route path="/agents"    element={<AgentPage />} />
-            <Route path="/admin"     element={<AdminPage />} />
-            <Route path="*"          element={<Navigate to="/" replace />} />
-          </Routes>
+          <AnimatedRoutes />
         </Suspense>
       </AppShell>
     </>
