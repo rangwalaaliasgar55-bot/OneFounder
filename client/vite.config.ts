@@ -13,7 +13,7 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, '../dist/client'),
     emptyOutDir: true,
-    chunkSizeWarningLimit: 400,
+    chunkSizeWarningLimit: 1200,
     rollupOptions: {
       output: {
         manualChunks: {
