@@ -481,3 +481,101 @@ export const xpEvents = pgTable('xp_events', {
 }, (table) => [
   index('xp_events_user_idx').on(table.userId),
 ])
+
+// ── Teams & Organizations ───────────────────────────────────────────────────
+
+export const organizations = pgTable('organizations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  description: text('description'),
+  logo: text('logo'),
+  plan: text('plan').default('free'), // free, team, enterprise
+  ownerId: text('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  settings: jsonb('settings').default({}),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => [
+  index('org_owner_idx').on(table.ownerId),
+  index('org_slug_idx').on(table.slug),
+])
+
+export const orgMembers = pgTable('org_members', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  orgId: uuid('org_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role: text('role').default('member'), // owner, admin, member, viewer
+  permissions: jsonb('permissions').default([]),
+  joinedAt: timestamp('joined_at').defaultNow(),
+}, (table) => [
+  index('org_member_org_idx').on(table.orgId),
+  index('org_member_user_idx').on(table.userId),
+  // Unique: one membership per user per org
+])
+
+export const orgInvites = pgTable('org_invites', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  orgId: uuid('org_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  role: text('role').default('member'),
+  invitedBy: text('invited_by').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  acceptedAt: timestamp('accepted_at'),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('invite_org_idx').on(table.orgId),
+  index('invite_token_idx').on(table.token),
+])
+
+export const orgSharedResources = pgTable('org_shared_resources', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  orgId: uuid('org_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  resourceType: text('resource_type').notNull(), // 'knowledge', 'project', 'lead', 'idea'
+  resourceId: text('resource_id').notNull(),
+  sharedBy: text('shared_by').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('shared_resource_org_idx').on(table.orgId),
+])
+
+// ── Billing & Subscriptions ─────────────────────────────────────────────────
+
+export const subscriptions = pgTable('subscriptions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  stripeCustomerId: text('stripe_customer_id'),
+  stripeSubscriptionId: text('stripe_subscription_id'),
+  stripePriceId: text('stripe_price_id'),
+  plan: text('plan').default('free'), // free, starter, pro, elite, enterprise
+  status: text('status').default('active'), // active, canceled, past_due, trialing
+  currentPeriodStart: timestamp('current_period_start'),
+  currentPeriodEnd: timestamp('current_period_end'),
+  cancelAt: timestamp('cancel_at'),
+  canceledAt: timestamp('canceled_at'),
+  tokenAllowance: integer('token_allowance').default(100),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => [
+  index('sub_user_idx').on(table.userId),
+  index('sub_stripe_customer_idx').on(table.stripeCustomerId),
+  index('sub_stripe_sub_idx').on(table.stripeSubscriptionId),
+])
+
+export const purchases = pgTable('purchases', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  stripePaymentIntentId: text('stripe_payment_intent_id'),
+  type: text('type').notNull(), // 'token_pack', 'subscription', 'one_time'
+  description: text('description'),
+  amount: integer('amount').notNull(), // cents
+  currency: text('currency').default('usd'),
+  tokensGranted: integer('tokens_granted'),
+  status: text('status').default('pending'), // pending, completed, failed, refunded
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('purchase_user_idx').on(table.userId),
+  index('purchase_stripe_idx').on(table.stripePaymentIntentId),
+])

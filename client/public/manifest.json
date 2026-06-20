@@ -1,0 +1,48 @@
+{
+  "name": "OneFounder Supreme",
+  "short_name": "OneFounder",
+  "description": "The AI Operating System for Founders — think, plan, execute, and grow.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060b18",
+  "theme_color": "#6366f1",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["business", "productivity", "finance"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "AI Chat",
+      "short_name": "Chat",
+      "url": "/chat",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ideas",
+      "short_name": "Ideas",
+      "url": "/ideas",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

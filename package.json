@@ -34,6 +34,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.4",
+    "stripe": "^22.2.2",
+    "swagger-ui-express": "^5.0.1",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.22.4",
     "typescript": "^5.9.3",
@@ -48,6 +50,7 @@
     "@types/node": "^22.19.21",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
+    "@types/swagger-ui-express": "^4.1.8",
     "@types/uuid": "^10.0.0",
     "concurrently": "^10.0.3",
     "drizzle-kit": "^0.31.10"

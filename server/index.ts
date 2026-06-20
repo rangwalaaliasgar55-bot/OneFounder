@@ -44,6 +44,11 @@ import adminRoutes from './routes/admin.js'
 import ollamaRoutes from './routes/ollama.js'
 import apiKeysRoutes from './routes/apiKeys.js'
 import growthRoutes from './routes/growth.js'
+import organizationsRoutes from './routes/organizations.js'
+import billingRoutes from './routes/billing.js'
+import swaggerUi from 'swagger-ui-express'
+import { openApiSpec } from './api/openapi.js'
+import { apiKeyAuth } from './middleware/apiKey.js'
 import setupRoutes, { meHandler } from './routes/setup.js'
 import debugRoutes from './routes/debug.js'
 import testDbRoutes from './routes/test-db.js'
@@ -123,6 +128,9 @@ app.use(cors({
 app.use(compression())
 app.use(metricsMiddleware)
 app.use(limiter)
+
+// Stripe webhook needs raw body for signature verification
+app.use('/api/billing/webhook', express.raw({ type: 'application/json' }))
 app.all('/auth/*', toNodeHandler(auth))
 app.use(express.json({ limit: '1mb' }))
 app.use(express.urlencoded({ extended: true, limit: '1mb' }))
@@ -161,6 +169,23 @@ app.use('/api/admin', adminRoutes)
 app.use('/api/ollama', ollamaRoutes)
 app.use('/api/api-keys', apiKeysRoutes)
 app.use('/api/growth', growthRoutes)
+app.use('/api/orgs', organizationsRoutes)
+app.use('/api/billing', billingRoutes)
+
+// API Documentation — Swagger UI
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openApiSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'OneFounder API Docs',
+}))
+
+// API key auth routes — for programmatic access
+app.use('/api/v1', apiKeyAuth)
+app.use('/api/v1/chat', aiLimiter, chatRoutes)
+app.use('/api/v1/ideas', ideasRoutes)
+app.use('/api/v1/leads', leadsRoutes)
+app.use('/api/v1/finance', financeRoutes)
+app.use('/api/v1/memory', memoryRoutes)
+app.use('/api/v1/growth', growthRoutes)
 app.use('/api/setup', setupRoutes)
 app.get('/api/me', requireAuth, meHandler) // Extended user profile (onboarding state, token balance, etc.)
 

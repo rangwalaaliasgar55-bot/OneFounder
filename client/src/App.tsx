@@ -11,6 +11,7 @@ import { ShortcutsModal } from './components/ShortcutsModal'
 import { ToastProvider } from './components/ui/ToastProvider'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { SetupPage } from './pages/SetupPage'
+import { PWAInstall } from './components/PWAInstall'
 
 const DashboardPage  = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const MemoryPage     = lazy(() => import('./pages/MemoryPage').then(m => ({ default: m.MemoryPage })))
@@ -140,6 +141,7 @@ function AuthenticatedApp() {
       <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
       <FloatingAI />
+      <PWAInstall />
 
       <AppShell onCmdK={() => setCmdOpen(true)} onShortcuts={() => setShortcutsOpen(true)}>
         <AppPrefetch />
