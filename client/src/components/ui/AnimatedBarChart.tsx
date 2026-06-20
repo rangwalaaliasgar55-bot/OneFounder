@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { motion, useInView } from 'framer-motion'
+import { useRef } from 'react'
+import { useReducedMotion } from '../../motion/scroll'
 
 interface BarData {
   label: string
@@ -15,8 +17,7 @@ interface AnimatedBarChartProps {
 }
 
 /**
- * Animated bar chart — bars grow from 0 with stagger.
- * Pure CSS/SVG, no dependencies.
+ * Animated bar chart — bars grow from 0 with stagger using Framer Motion.
  */
 export function AnimatedBarChart({
   data,
@@ -25,19 +26,9 @@ export function AnimatedBarChart({
   showValues = true,
   maxValue,
 }: AnimatedBarChartProps) {
-  const [visible, setVisible] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect() } },
-      { threshold: 0.2 }
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
+  const isInView = useInView(ref, { once: true, margin: '-40px' })
+  const reducedMotion = useReducedMotion()
 
   const max = maxValue || Math.max(...data.map(d => d.value), 1)
   const defaultColors = ['#6366f1', '#8b5cf6', '#a78bfa', '#c084fc', '#e879f9', '#f472b6', '#fb7185']
@@ -50,26 +41,24 @@ export function AnimatedBarChart({
         return (
           <div key={item.label} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
             {showValues && (
-              <span
-                className="text-xs font-semibold text-white transition-all duration-500"
-                style={{
-                  opacity: visible ? 1 : 0,
-                  transform: visible ? 'translateY(0)' : 'translateY(8px)',
-                  transitionDelay: `${i * 80 + 400}ms`,
-                }}
+              <motion.span
+                className="text-xs font-semibold text-white"
+                initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+                animate={isInView ? (reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }) : {}}
+                transition={{ delay: i * 0.08 + 0.4, duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
               >
                 {item.value}
-              </span>
+              </motion.span>
             )}
-            <div
-              className="w-full rounded-t-lg transition-all duration-700 ease-out relative overflow-hidden"
+            <motion.div
+              className="w-full rounded-t-lg relative overflow-hidden"
               style={{
-                height: visible ? `${percent}%` : '0%',
                 background: `linear-gradient(to top, ${color}, ${color}88)`,
-                transitionDelay: `${i * 80}ms`,
                 boxShadow: `0 0 12px ${color}40`,
-                minHeight: visible && item.value > 0 ? '4px' : '0',
               }}
+              initial={{ height: 0 }}
+              animate={isInView ? { height: `${percent}%`, minHeight: item.value > 0 ? 4 : 0 } : {}}
+              transition={{ delay: i * 0.08, duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
             >
               {/* Shine */}
               <div
@@ -79,7 +68,7 @@ export function AnimatedBarChart({
                   transform: 'skewX(-15deg)',
                 }}
               />
-            </div>
+            </motion.div>
             <span className="text-[10px] text-slate-500 mt-1 truncate w-full text-center">{item.label}</span>
           </div>
         )

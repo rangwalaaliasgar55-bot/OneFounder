@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
+import { motion, useInView } from 'framer-motion'
+import { useReducedMotion } from '../../motion/scroll'
 
 interface PieData {
   label: string
@@ -14,8 +16,7 @@ interface AnimatedPieChartProps {
 }
 
 /**
- * Animated donut chart — segments grow from 0 with stagger.
- * Pure SVG, no dependencies.
+ * Animated donut chart — segments grow from 0 with Framer Motion stagger.
  */
 export function AnimatedPieChart({
   data,
@@ -23,19 +24,9 @@ export function AnimatedPieChart({
   className = '',
   innerRadius = 0.6,
 }: AnimatedPieChartProps) {
-  const [visible, setVisible] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect() } },
-      { threshold: 0.2 }
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
+  const isInView = useInView(ref, { once: true, margin: '-40px' })
+  const reducedMotion = useReducedMotion()
 
   const total = data.reduce((s, d) => s + d.value, 0) || 1
   const cx = size / 2
@@ -67,21 +58,20 @@ export function AnimatedPieChart({
           const iy2 = cy + ir * Math.sin(startRad)
 
           const largeArc = angle > 180 ? 1 : 0
-
           const path = `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} L ${ix1} ${iy1} A ${ir} ${ir} 0 ${largeArc} 0 ${ix2} ${iy2} Z`
 
           return (
-            <path
+            <motion.path
               key={item.label}
               d={path}
               fill={item.color}
-              opacity={visible ? 1 : 0}
               style={{
-                transition: `opacity 0.5s ease ${i * 0.15}s, transform 0.5s ease ${i * 0.15}s`,
-                transformOrigin: `${cx}px ${cy}px`,
-                transform: visible ? 'scale(1)' : 'scale(0.8)',
                 filter: `drop-shadow(0 0 6px ${item.color}40)`,
+                transformOrigin: `${cx}px ${cy}px`,
               }}
+              initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.8 }}
+              animate={isInView ? { opacity: 1, scale: 1 } : {}}
+              transition={{ delay: i * 0.15, duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
             />
           )
         })}

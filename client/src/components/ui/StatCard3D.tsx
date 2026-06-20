@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { AnimatedCounter } from './AnimatedCounter'
+import { useReducedMotion } from '../../motion/scroll'
 
 interface StatCard3DProps {
   label: string
@@ -14,7 +16,7 @@ interface StatCard3DProps {
 }
 
 /**
- * 3D stat card with animated counter, glow effect, and hover interactions.
+ * 3D stat card with animated counter, glow effect, and Framer Motion interactions.
  */
 export function StatCard3D({
   label,
@@ -28,6 +30,7 @@ export function StatCard3D({
   delay = 0,
 }: StatCard3DProps) {
   const navigate = useNavigate()
+  const reducedMotion = useReducedMotion()
 
   const colorMap: Record<string, { gradient: string; glow: string; text: string }> = {
     brand:    { gradient: 'from-brand-600/20 to-brand-800/10', glow: 'group-hover:shadow-brand-500/20', text: 'text-brand-400' },
@@ -42,10 +45,15 @@ export function StatCard3D({
   const c = colorMap[color] || colorMap.brand
 
   return (
-    <button
+    <motion.button
       onClick={() => navigate(page)}
-      className={`stat-card-3d group bg-gradient-to-br ${c.gradient} ${c.glow} animate-slide-up`}
-      style={{ animationDelay: `${delay}ms`, animationFillMode: 'both' }}
+      className={`stat-card-3d group bg-gradient-to-br ${c.gradient} ${c.glow}`}
+      initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.98 }}
+      whileInView={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true, margin: '-20px' }}
+      transition={{ delay: delay / 1000, duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+      whileHover={reducedMotion ? {} : { y: -4, scale: 1.02 }}
+      whileTap={reducedMotion ? {} : { scale: 0.98 }}
     >
       <div className="flex items-center justify-between mb-3">
         <span className="text-2xl">{icon}</span>
@@ -59,6 +67,6 @@ export function StatCard3D({
         <AnimatedCounter value={value} prefix={prefix} suffix={suffix} duration={800} />
       </div>
       <div className="text-xs text-slate-400 font-medium">{label}</div>
-    </button>
+    </motion.button>
   )
 }

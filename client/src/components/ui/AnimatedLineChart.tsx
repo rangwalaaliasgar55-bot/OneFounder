@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
+import { motion, useInView } from 'framer-motion'
+import { useReducedMotion } from '../../motion/scroll'
 
 interface LineData {
   label: string
@@ -15,8 +17,7 @@ interface AnimatedLineChartProps {
 }
 
 /**
- * Animated line chart — line draws from left to right.
- * Pure SVG, no dependencies.
+ * Animated line chart — line draws from left to right using Framer Motion pathLength.
  */
 export function AnimatedLineChart({
   data,
@@ -26,19 +27,9 @@ export function AnimatedLineChart({
   showDots = true,
   showArea = true,
 }: AnimatedLineChartProps) {
-  const [visible, setVisible] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect() } },
-      { threshold: 0.2 }
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
+  const isInView = useInView(ref, { once: true, margin: '-40px' })
+  const reducedMotion = useReducedMotion()
 
   if (data.length < 2) return null
 
@@ -60,13 +51,6 @@ export function AnimatedLineChart({
 
   const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
   const areaPath = `${linePath} L ${points[points.length - 1].x} ${padding.top + chartH} L ${points[0].x} ${padding.top + chartH} Z`
-
-  const lineLength = points.reduce((acc, p, i) => {
-    if (i === 0) return 0
-    const dx = p.x - points[i - 1].x
-    const dy = p.y - points[i - 1].y
-    return acc + Math.sqrt(dx * dx + dy * dy)
-  }, 0)
 
   return (
     <div ref={ref} className={className}>
@@ -90,33 +74,32 @@ export function AnimatedLineChart({
 
         {/* Area fill */}
         {showArea && (
-          <path
+          <motion.path
             d={areaPath}
             fill={`url(#areaGrad-${color.replace('#', '')})`}
-            opacity={visible ? 0.3 : 0}
-            style={{ transition: 'opacity 1s ease 0.5s' }}
+            initial={{ opacity: 0 }}
+            animate={isInView ? { opacity: 0.3 } : {}}
+            transition={{ delay: 0.5, duration: 1, ease: [0.4, 0, 0.2, 1] }}
           />
         )}
 
-        {/* Line */}
-        <path
+        {/* Line — uses pathLength for the draw effect */}
+        <motion.path
           d={linePath}
           fill="none"
           stroke={color}
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeDasharray={lineLength}
-          strokeDashoffset={visible ? 0 : lineLength}
-          style={{
-            transition: `stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1) 0.2s`,
-            filter: `drop-shadow(0 0 6px ${color}60)`,
-          }}
+          style={{ filter: `drop-shadow(0 0 6px ${color}60)` }}
+          initial={{ pathLength: 0 }}
+          animate={isInView ? { pathLength: 1 } : {}}
+          transition={reducedMotion ? { duration: 0.1 } : { delay: 0.2, duration: 1.5, ease: [0.4, 0, 0.2, 1] }}
         />
 
         {/* Dots */}
         {showDots && points.map((p, i) => (
-          <circle
+          <motion.circle
             key={i}
             cx={p.x}
             cy={p.y}
@@ -124,11 +107,10 @@ export function AnimatedLineChart({
             fill="#0f172a"
             stroke={color}
             strokeWidth="2"
-            opacity={visible ? 1 : 0}
-            style={{
-              transition: `opacity 0.3s ease ${0.5 + i * 0.1}s`,
-              filter: `drop-shadow(0 0 4px ${color}40)`,
-            }}
+            style={{ filter: `drop-shadow(0 0 4px ${color}40)` }}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={isInView ? { opacity: 1, scale: 1 } : {}}
+            transition={{ delay: 0.5 + i * 0.1, duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           />
         ))}
 
