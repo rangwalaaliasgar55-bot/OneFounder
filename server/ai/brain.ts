@@ -28,6 +28,8 @@ export interface BrainResponse {
   modeLabel: string
   confidence: 'high' | 'medium' | 'low'
   detectedKeywords: string[]
+  secondaryModes: ExpertMode[]
+  contextSources: string[]
   webSearchUsed: boolean
 }
 
@@ -60,7 +62,7 @@ export class OneFounderBrain {
     })
 
     const route = req.forcedMode
-      ? { mode: req.forcedMode, confidence: 'high' as const, detectedKeywords: [] }
+      ? { mode: req.forcedMode, confidence: 'high' as const, detectedKeywords: [], secondaryModes: [] as ExpertMode[] }
       : detectExpertMode(req.message)
 
     // Build context in parallel: founder context, memory retrieval, RAG
@@ -136,6 +138,13 @@ export class OneFounderBrain {
     extractAndStoreMemories(req.userId, req.message, response, `brain:${route.mode}`).catch(() => {})
     extractEntitiesFromConversation(req.userId, req.message, response).catch(() => {})
 
+    // Determine context sources used
+    const contextSources: string[] = []
+    if (founderContext) contextSources.push('founder_context')
+    if (memoryContext) contextSources.push('memory')
+    if (ragContext) contextSources.push('rag')
+    if (webSearchUsed) contextSources.push('web_search')
+
     return {
       response,
       sessionId: session,
@@ -143,6 +152,8 @@ export class OneFounderBrain {
       modeLabel: MODE_LABELS[route.mode],
       confidence: route.confidence,
       detectedKeywords: route.detectedKeywords,
+      secondaryModes: route.secondaryModes || [],
+      contextSources,
       webSearchUsed,
     }
   }
@@ -159,7 +170,7 @@ export class OneFounderBrain {
     }).catch(() => {})
 
     const route = req.forcedMode
-      ? { mode: req.forcedMode, confidence: 'high' as const, detectedKeywords: [] }
+      ? { mode: req.forcedMode, confidence: 'high' as const, detectedKeywords: [], secondaryModes: [] as ExpertMode[] }
       : detectExpertMode(req.message)
 
     yield { type: 'mode', data: JSON.stringify({ mode: route.mode, modeLabel: MODE_LABELS[route.mode], sessionId: session }) }
@@ -265,6 +276,12 @@ export class OneFounderBrain {
       extractAndStoreMemories(req.userId, req.message, fullResponse, `brain:${route.mode}`).catch(() => {})
       extractEntitiesFromConversation(req.userId, req.message, fullResponse).catch(() => {})
 
+      const contextSources: string[] = []
+      if (founderContext) contextSources.push('founder_context')
+      if (memoryContext) contextSources.push('memory')
+      if (ragContext) contextSources.push('rag')
+      if (webSearchUsed) contextSources.push('web_search')
+
       yield {
         type: 'done',
         data: JSON.stringify({
@@ -272,6 +289,8 @@ export class OneFounderBrain {
           mode: route.mode,
           modeLabel: MODE_LABELS[route.mode],
           confidence: route.confidence,
+          secondaryModes: route.secondaryModes || [],
+          contextSources,
           webSearchUsed,
         }),
       }

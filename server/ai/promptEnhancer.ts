@@ -114,6 +114,42 @@ Respond in this structure:
 
 Note: This is legal operations guidance — for binding legal matters, engage qualified counsel in your jurisdiction.`,
 
+  social: (msg) => `${msg}
+
+Respond in this structure:
+→ ANSWER: Platform-specific social media strategy with exact post copy
+→ CONTEXT: Algorithm mechanics, best posting times, audience behavior
+→ STEPS: Content calendar, hashtag strategy, engagement tactics
+→ RISKS: Platform algorithm changes, content fatigue, brand risk
+→ NOW: Post to publish today, accounts to engage with`,
+
+  content: (msg) => `${msg}
+
+Respond in this structure:
+→ ANSWER: Full publish-ready content piece — not an outline
+→ CONTEXT: Content strategy positioning, SEO angle, distribution plan
+→ STEPS: Framework applied (AIDA/PAS/StoryBrand), internal linking, CTAs
+→ RISKS: Cannibalization, keyword competition, content decay
+→ NOW: Where to publish, how to distribute, first promotion step`,
+
+  hiring: (msg) => `${msg}
+
+Respond in this structure:
+→ ANSWER: Complete job description with outcomes-based requirements
+→ CONTEXT: Comp benchmarks, market talent availability, equity considerations
+→ STEPS: Interview scorecard, structured STAR questions, work sample design
+→ RISKS: Hiring bias, comp misalignment, retention risks
+→ NOW: JD to post today, sourcing channels, first outreach messages`,
+
+  design: (msg) => `${msg}
+
+Respond in this structure:
+→ ANSWER: Design recommendation with exact specs (hex codes, fonts, spacing)
+→ CONTEXT: Design system consistency, accessibility (WCAG 2.1 AA), user psychology
+→ STEPS: Component specifications, responsive breakpoints, interaction states
+→ RISKS: Accessibility violations, inconsistency, performance impact
+→ NOW: First design change to implement, tools to use`,
+
   founder: (msg) => msg,
 }
 
@@ -132,7 +168,7 @@ export function enhancePrompt(userMessage: string, mode: ExpertMode, founderCont
 }
 
 export const EXPERT_SYSTEM_PROMPTS: Record<ExpertMode, string> = Object.fromEntries(
-  (['code', 'seo', 'security', 'data', 'research', 'finance', 'product', 'startup', 'founder', 'marketing', 'sales', 'devops', 'legal'] as ExpertMode[]).map(
+  (['code', 'seo', 'security', 'data', 'research', 'finance', 'product', 'startup', 'founder', 'marketing', 'sales', 'devops', 'legal', 'social', 'content', 'hiring', 'design'] as ExpertMode[]).map(
     mode => [mode, buildMasterPrompt(mode)]
   )
 ) as Record<ExpertMode, string>
