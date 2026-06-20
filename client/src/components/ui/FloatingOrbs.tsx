@@ -1,6 +1,7 @@
 /**
  * Background ambient orbs — creates depth and atmosphere for the app.
  * Uses CSS animations for smooth, GPU-accelerated movement.
+ * Colors are theme-aware via CSS variables.
  */
 export function FloatingOrbs() {
   return (
@@ -15,7 +16,7 @@ export function FloatingOrbs() {
             width: 400,
             height: 400,
             borderRadius: '50%',
-            background: 'rgba(99,102,241,0.08)',
+            background: 'var(--orb-1)',
             filter: 'blur(100px)',
           }}
         />
@@ -30,7 +31,7 @@ export function FloatingOrbs() {
             width: 350,
             height: 350,
             borderRadius: '50%',
-            background: 'rgba(139,92,246,0.06)',
+            background: 'var(--orb-2)',
             filter: 'blur(90px)',
           }}
         />
@@ -45,7 +46,7 @@ export function FloatingOrbs() {
             width: 250,
             height: 250,
             borderRadius: '50%',
-            background: 'rgba(16,185,129,0.04)',
+            background: 'var(--orb-3)',
             filter: 'blur(70px)',
           }}
         />
