@@ -5,6 +5,11 @@ import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
 import { SkeletonListPage } from '../components/ui/PageSkeletons'
 import { MeshGradient } from '../components/ui/MeshGradient'
+import { createLazy3D, isWebGLAvailable, isMobile } from '../components/3d/Lazy3D'
+
+const LazyKnowledgeGraph = createLazy3D(
+  () => import('../components/3d/KnowledgeGraph3D')
+)
 
 const DOC_TYPES = [
   { value: 'note', label: 'Note', icon: '📝' },
@@ -24,6 +29,7 @@ export function KnowledgePage() {
   const [editing, setEditing] = useState<any | null>(null)
   const [search, setSearch] = useState('')
   const [form, setForm] = useState({ title: '', content: '', type: 'note', tags: '' })
+  const [view3D, setView3D] = useState(false)
 
   useEffect(() => {
     api.get<any[]>('/knowledge').then(setItems).finally(() => setLoading(false))
@@ -64,12 +70,36 @@ export function KnowledgePage() {
   return (
     <div className="p-6 max-w-7xl mx-auto relative">
       <MeshGradient />
-      <PageHeader
-        icon="📚"
-        title="Knowledge Base"
-        description="Store and organize documents, plans, research, and strategies"
-        action={<button onClick={() => { setEditing(null); setForm({ title: '', content: '', type: 'note', tags: '' }); setShowModal(true) }} className="btn-primary">+ New Document</button>}
-      />
+      <div className="flex items-start justify-between mb-6">
+        <PageHeader
+          icon="📚"
+          title="Knowledge Base"
+          description="Store and organize documents, plans, research, and strategies"
+          action={<button onClick={() => { setEditing(null); setForm({ title: '', content: '', type: 'note', tags: '' }); setShowModal(true) }} className="btn-primary">+ New Document</button>}
+        />
+        {isWebGLAvailable() && !isMobile() && (
+          <button
+            onClick={() => setView3D(v => !v)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              view3D
+                ? 'bg-brand-600/20 border border-brand-500/30 text-brand-300'
+                : 'border border-white/10 text-slate-400 hover:text-white hover:border-white/20'
+            }`}
+          >
+            <span>{view3D ? '🌐' : '📋'}</span>
+            {view3D ? '3D Graph' : 'Graph View'}
+          </button>
+        )}
+      </div>
+
+      {/* 3D Knowledge Graph */}
+      {view3D && (
+        <div className="mb-6 rounded-2xl overflow-hidden border border-white/[0.06]" style={{ height: 500 }}>
+          <LazyKnowledgeGraph
+            knowledge={items.map(i => ({ id: i.id, title: i.title, type: i.type || 'note' }))}
+          />
+        </div>
+      )}
 
       <div className="mb-6">
         <input
