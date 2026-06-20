@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { validate } from '../middleware/validate.js'
+import { FinanceEntrySchema } from '../middleware/schemas.js'
 import { db } from '../db/index.js'
 import { financeEntries } from '../db/schema.js'
 import { eq, desc, and } from 'drizzle-orm'
@@ -18,13 +20,11 @@ router.get('/', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, validate(FinanceEntrySchema), async (req, res) => {
   try {
     const user = (req as any).user
     const { type, amount, description, category, recurring, recurringInterval, date, currency } = req.body
-    if (!type || amount === undefined) return res.status(400).json({ error: 'Type and amount are required' })
-    const parsedAmount = parseFloat(amount)
-    if (isNaN(parsedAmount)) return res.status(400).json({ error: 'Invalid amount' })
+    const parsedAmount = amount
     const [entry] = await db.insert(financeEntries).values({
       userId: user.id,
       type,

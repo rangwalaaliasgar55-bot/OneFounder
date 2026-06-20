@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { validate } from '../middleware/validate.js'
+import { LeadCreateSchema, LeadUpdateSchema } from '../middleware/schemas.js'
 import { db } from '../db/index.js'
 import { leads } from '../db/schema.js'
 import { eq, desc, and } from 'drizzle-orm'
@@ -18,11 +20,10 @@ router.get('/', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, validate(LeadCreateSchema), async (req, res) => {
   try {
     const user = (req as any).user
     const { name, email, company, phone, status, source, notes, value, metadata } = req.body
-    if (!name) return res.status(400).json({ error: 'Name is required' })
     const [lead] = await db.insert(leads).values({
       userId: user.id,
       name,

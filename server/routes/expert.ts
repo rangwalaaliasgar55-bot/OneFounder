@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { checkTokens, deductToken } from '../middleware/tokens.js'
+import { validate } from '../middleware/validate.js'
+import { ExpertChatSchema, ExpertCodeReviewSchema } from '../middleware/schemas.js'
 import { db } from '../db/index.js'
 import { chatMessages } from '../db/schema.js'
 import { eq, desc, and } from 'drizzle-orm'
@@ -123,12 +125,9 @@ router.get('/modes', (req, res) => {
   res.json(modes)
 })
 
-router.post('/chat', requireAuth, checkTokens, async (req, res) => {
+router.post('/chat', requireAuth, checkTokens, validate(ExpertChatSchema), async (req, res) => {
   const user = (req as any).user
   const { message, sessionId, mode } = req.body
-
-  if (!message?.trim()) return res.status(400).json({ error: 'Message required' })
-  if (typeof message !== 'string' || message.length > 4000) return res.status(400).json({ error: 'Message too long (max 4000 chars)' })
   if (!mode || !EXPERT_MODES[mode]) return res.status(400).json({ error: 'Invalid expert mode' })
 
   const session = sessionId || uuidv4()

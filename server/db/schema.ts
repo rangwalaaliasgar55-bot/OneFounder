@@ -389,7 +389,9 @@ export const userActivityLog = pgTable('user_activity_log', {
   entityId: text('entity_id'),
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at').defaultNow(),
-})
+}, (table) => [
+  index('user_activity_log_user_created_idx').on(table.userId, table.createdAt),
+])
 
 export const conversations = pgTable('conversations', {
   id: integer('id').generatedAlwaysAsIdentity().primaryKey(),
@@ -421,3 +423,20 @@ export const aiInsights = pgTable('ai_insights', {
   expiresAt: timestamp('expires_at'),
   createdAt: timestamp('created_at').defaultNow(),
 })
+
+export const auditLogs = pgTable('audit_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  actorId: text('actor_id').references(() => users.id, { onDelete: 'set null' }),
+  actorEmail: text('actor_email'),
+  action: text('action').notNull(),
+  target: text('target'),
+  targetId: text('target_id'),
+  details: jsonb('details'),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('audit_logs_actor_idx').on(table.actorId),
+  index('audit_logs_action_idx').on(table.action),
+  index('audit_logs_created_idx').on(table.createdAt),
+])

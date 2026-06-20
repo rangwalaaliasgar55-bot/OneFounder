@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { validate } from '../middleware/validate.js'
+import { KnowledgeCreateSchema, KnowledgeUpdateSchema } from '../middleware/schemas.js'
 import { db } from '../db/index.js'
 import { knowledgeBase } from '../db/schema.js'
 import { eq, desc, and } from 'drizzle-orm'
@@ -18,11 +20,10 @@ router.get('/', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, validate(KnowledgeCreateSchema), async (req, res) => {
   try {
     const user = (req as any).user
     const { title, content, type, tags } = req.body
-    if (!title || !content) return res.status(400).json({ error: 'Title and content are required' })
     const [item] = await db.insert(knowledgeBase).values({
       userId: user.id,
       title,

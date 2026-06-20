@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { checkTokens, deductToken } from '../middleware/tokens.js'
+import { validate } from '../middleware/validate.js'
+import { IntelligenceCreateSchema, IntelligenceTrackSchema } from '../middleware/schemas.js'
 import { db } from '../db/index.js'
 import {
   aiMemories, aiInsights, userActivityLog,
@@ -26,10 +28,9 @@ router.get('/memories', requireAuth, async (req, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }) }
 })
 
-router.post('/memories', requireAuth, async (req, res) => {
+router.post('/memories', requireAuth, validate(IntelligenceCreateSchema), async (req, res) => {
   const user = (req as any).user
   const { type, content, source, importance, tags } = req.body
-  if (!content || !type) return res.status(400).json({ error: 'type and content required' })
   try {
     const [mem] = await db.insert(aiMemories).values({
       userId: user.id,
@@ -213,10 +214,9 @@ router.get('/behavior', requireAuth, async (req, res) => {
 })
 
 // ─── Log Activity ─────────────────────────────────────────────────────────────
-router.post('/log', requireAuth, async (req, res) => {
+router.post('/log', requireAuth, validate(IntelligenceTrackSchema), async (req, res) => {
   const user = (req as any).user
   const { action, module, entityId, metadata } = req.body
-  if (!action || !module) return res.status(400).json({ error: 'action and module required' })
   try {
     await logActivity(user.id, action, module, entityId, metadata)
     res.json({ success: true })

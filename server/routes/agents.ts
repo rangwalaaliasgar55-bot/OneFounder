@@ -1,22 +1,17 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { checkTokens, deductToken } from '../middleware/tokens.js'
+import { validate } from '../middleware/validate.js'
+import { AgentRunSchema, AgentSingleSchema } from '../middleware/schemas.js'
 import { executeMultiAgent, type SpecialistType } from '../agents/supervisorAgent.js'
 import { storeMemory } from '../memory/memoryManager.js'
 import { extractAndStoreMemories } from '../ai/memory.js'
 
 const router = Router()
 
-router.post('/execute', requireAuth, checkTokens, async (req, res) => {
+router.post('/execute', requireAuth, checkTokens, validate(AgentRunSchema), async (req, res) => {
   const user = (req as any).user
   const { query, agents, stream } = req.body
-
-  if (!query || typeof query !== 'string') {
-    return res.status(400).json({ error: 'Query is required' })
-  }
-  if (query.length > 8000) {
-    return res.status(400).json({ error: 'Query too long (max 8000 chars)' })
-  }
 
   // Deduct token BEFORE the AI call
   if (!user.isAdmin) {

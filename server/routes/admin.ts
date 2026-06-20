@@ -1,5 +1,8 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { validate } from '../middleware/validate.js'
+import { AdminTokenGrantSchema, AdminTokenSetSchema } from '../middleware/schemas.js'
+import { logAdminAction } from '../middleware/audit.js'
 import { db } from '../db/index.js'
 import { users, tokenTransactions } from '../db/schema.js'
 import { eq, desc, sql } from 'drizzle-orm'
@@ -34,17 +37,15 @@ router.get('/users', requireAuth, requireAdmin, async (_req, res) => {
 })
 
 // POST /api/admin/users/:id/grant
-router.post('/users/:id/grant', requireAuth, requireAdmin, async (req, res) => {
+router.post('/users/:id/grant', requireAuth, requireAdmin, validate(AdminTokenGrantSchema), async (req, res) => {
   const userId = req.params.id as string
   const { amount, note } = req.body
-  if (!amount || typeof amount !== 'number' || amount <= 0) {
-    return res.status(400).json({ error: 'amount must be a positive number' })
-  }
   try {
     await grantTokens(userId, amount, note || 'Admin grant')
     const [updated] = await db
       .select({ tokenBalance: users.tokenBalance, tokenUsed: users.tokenUsed })
       .from(users).where(eq(users.id, userId)).limit(1)
+    await logAdminAction(req, 'token_grant', userId, { amount, note })
     res.json({ success: true, ...updated })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
@@ -52,15 +53,13 @@ router.post('/users/:id/grant', requireAuth, requireAdmin, async (req, res) => {
 })
 
 // POST /api/admin/users/:id/set-tokens
-router.post('/users/:id/set-tokens', requireAuth, requireAdmin, async (req, res) => {
+router.post('/users/:id/set-tokens', requireAuth, requireAdmin, validate(AdminTokenSetSchema), async (req, res) => {
   const userId = req.params.id as string
   const { balance } = req.body
-  if (balance === undefined || typeof balance !== 'number' || balance < 0) {
-    return res.status(400).json({ error: 'balance must be a non-negative number' })
-  }
   try {
     await db.update(users).set({ tokenBalance: balance, updatedAt: new Date() }).where(eq(users.id, userId))
     await db.insert(tokenTransactions).values({ userId, amount: balance, type: 'reset', note: 'Admin set balance' })
+    await logAdminAction(req, 'token_set', userId, { balance })
     res.json({ success: true, tokenBalance: balance })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
@@ -76,6 +75,7 @@ router.post('/users/:id/toggle-admin', requireAuth, requireAdmin, async (req, re
     const [target] = await db.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, userId)).limit(1)
     if (!target) return res.status(404).json({ error: 'User not found' })
     await db.update(users).set({ isAdmin: !target.isAdmin, updatedAt: new Date() }).where(eq(users.id, userId))
+    await logAdminAction(req, 'toggle_admin', userId, { newIsAdmin: !target.isAdmin })
     res.json({ success: true, isAdmin: !target.isAdmin })
   } catch (err: any) {
     res.status(500).json({ error: err.message })

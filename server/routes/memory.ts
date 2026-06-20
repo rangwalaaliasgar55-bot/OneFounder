@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { validate } from '../middleware/validate.js'
+import { MemoryCreateSchema } from '../middleware/schemas.js'
 import { getAllMemories, getMemoriesByType, storeMemory, deleteMemory, buildMemoryContext } from '../memory/memoryManager.js'
 import { retrieveRelevantMemories } from '../memory/memoryRetrieval.js'
 
@@ -44,12 +46,9 @@ router.get('/search', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, validate(MemoryCreateSchema), async (req, res) => {
   const user = (req as any).user
   const { type, content, importance, tags } = req.body
-
-  if (!type || !content) return res.status(400).json({ error: 'type and content required' })
-  if (content.length > 2000) return res.status(400).json({ error: 'Content too long (max 2000 chars)' })
 
   try {
     await storeMemory(user.id, type, content, 'manual', importance || 7, tags || [])

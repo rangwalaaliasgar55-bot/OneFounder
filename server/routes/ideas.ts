@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { validate } from '../middleware/validate.js'
+import { IdeaGenerateSchema, IdeaUpdateSchema } from '../middleware/schemas.js'
 import { db } from '../db/index.js'
 import { businessIdeas } from '../db/schema.js'
 import { eq, desc, and } from 'drizzle-orm'
@@ -20,7 +22,7 @@ router.get('/', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/generate', requireAuth, async (req, res) => {
+router.post('/generate', requireAuth, validate(IdeaGenerateSchema), async (req, res) => {
   const user = (req as any).user
   const { skills, interests, budget, availableTime, location, experience } = req.body
 

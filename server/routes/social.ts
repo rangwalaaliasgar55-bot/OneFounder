@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
+import { validate } from '../middleware/validate.js'
+import { SocialPostSchema, SocialGenerateSchema } from '../middleware/schemas.js'
 import { db } from '../db/index.js'
 import { socialPosts } from '../db/schema.js'
 import { eq, desc, and } from 'drizzle-orm'
@@ -19,11 +21,10 @@ router.get('/', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, validate(SocialPostSchema), async (req, res) => {
   try {
     const user = (req as any).user
     const { platform, content, hashtags, scheduledAt } = req.body
-    if (!platform || !content) return res.status(400).json({ error: 'Platform and content are required' })
     const [post] = await db.insert(socialPosts).values({
       userId: user.id,
       platform,
@@ -37,10 +38,9 @@ router.post('/', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/generate', requireAuth, async (req, res) => {
+router.post('/generate', requireAuth, validate(SocialGenerateSchema), async (req, res) => {
   const user = (req as any).user
   const { platform, topic, tone, businessContext } = req.body
-  if (!platform || !topic) return res.status(400).json({ error: 'Platform and topic are required' })
 
   const platformGuides: Record<string, string> = {
     linkedin: 'Professional tone, 1300 chars max, storytelling hook, industry insights, 3-5 hashtags',

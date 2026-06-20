@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import { requireAuth } from '../middleware/auth.js'
 import { checkTokens, deductToken } from '../middleware/tokens.js'
+import { validate } from '../middleware/validate.js'
+import { AIChatSchema, AIGenerateSchema, AIResearchSchema } from '../middleware/schemas.js'
 import { getAIProvider, getAIStatus } from '../ai/index.js'
 import { OllamaOfflineError } from '../ai/provider.js'
 import { getWebContextString } from '../ai/webSearch.js'
@@ -47,11 +49,9 @@ router.get('/tokens', requireAuth, async (req, res) => {
   })
 })
 
-router.post('/chat', requireAuth, checkTokens, async (req, res) => {
+router.post('/chat', requireAuth, checkTokens, validate(AIChatSchema), async (req, res) => {
   const user = (req as any).user
   const { messages } = req.body
-  if (!messages || !Array.isArray(messages)) return res.status(400).json({ error: 'Messages array required' })
-  if (messages.length > 50) return res.status(400).json({ error: 'Too many messages (max 50)' })
 
   // Deduct token BEFORE the AI call
   if (!user.isAdmin) {
@@ -74,11 +74,9 @@ router.post('/chat', requireAuth, checkTokens, async (req, res) => {
   }
 })
 
-router.post('/generate', requireAuth, checkTokens, async (req, res) => {
+router.post('/generate', requireAuth, checkTokens, validate(AIGenerateSchema), async (req, res) => {
   const user = (req as any).user
   const { prompt, systemPrompt } = req.body
-  if (!prompt || typeof prompt !== 'string') return res.status(400).json({ error: 'Prompt required' })
-  if (prompt.length > 8000) return res.status(400).json({ error: 'Prompt too long (max 8000 chars)' })
 
   // Deduct token BEFORE the AI call
   if (!user.isAdmin) {
@@ -96,11 +94,9 @@ router.post('/generate', requireAuth, checkTokens, async (req, res) => {
   }
 })
 
-router.post('/research', requireAuth, checkTokens, async (req, res) => {
+router.post('/research', requireAuth, checkTokens, validate(AIResearchSchema), async (req, res) => {
   const user = (req as any).user
   const { topic } = req.body
-  if (!topic || typeof topic !== 'string') return res.status(400).json({ error: 'Topic required' })
-  if (topic.length > 300) return res.status(400).json({ error: 'Topic too long (max 300 chars)' })
 
   // Deduct token BEFORE the AI call
   if (!user.isAdmin) {
