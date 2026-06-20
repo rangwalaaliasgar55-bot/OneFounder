@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { FloatingOrbs } from '../ui/FloatingOrbs'
 import { CursorGlow } from '../ui/CursorGlow'
+import { ThemeToggle } from '../../design-system/ThemeToggle'
 
 const NAV_SECTIONS = [
   {
@@ -75,7 +76,7 @@ export function AppShell({ children, onCmdK, onShortcuts }: AppShellProps) {
     : user?.email?.slice(0, 2).toUpperCase() ?? '??'
 
   return (
-    <div className="flex h-screen overflow-hidden relative" style={{ backgroundColor: '#060b18' }}>
+    <div className="flex h-screen overflow-hidden relative" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
       <FloatingOrbs />
       <CursorGlow />
       {mobileOpen && (
@@ -92,7 +93,7 @@ export function AppShell({ children, onCmdK, onShortcuts }: AppShellProps) {
         ${collapsed ? 'w-[52px]' : 'w-[210px]'}
         ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `} style={{
-        background: 'linear-gradient(180deg, rgba(8,13,26,0.97) 0%, rgba(6,11,24,0.99) 100%)',
+        background: 'linear-gradient(180deg, var(--color-bg-secondary) 0%, var(--color-bg-primary) 100%)',
         backdropFilter: 'blur(32px) saturate(1.3)',
         boxShadow: '1px 0 24px rgba(0,0,0,0.3)',
       }}>
@@ -192,6 +193,11 @@ export function AppShell({ children, onCmdK, onShortcuts }: AppShellProps) {
             </Link>
           </div>
         )}
+
+        {/* Theme toggle */}
+        <div className="px-1.5">
+          <ThemeToggle compact={collapsed} />
+        </div>
 
         {/* User row */}
         <div className="p-1.5 border-t border-white/[0.06] space-y-px">
