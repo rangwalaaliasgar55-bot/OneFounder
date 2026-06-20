@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { api } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
 import { PageLoader, LoadingSpinner } from '../components/ui/LoadingSpinner'
+import { useReducedMotion } from '../motion/scroll'
 import { StatCard3D } from '../components/ui/StatCard3D'
 import { ProgressRing3D } from '../components/ui/ProgressRing3D'
 import { AnimatedCounter } from '../components/ui/AnimatedCounter'
@@ -195,6 +197,7 @@ export function DashboardPage() {
   const [brief, setBrief] = useState<any | null>(null)
   const [briefLoading, setBriefLoading] = useState(false)
   const [showBrief, setShowBrief] = useState(false)
+  const reducedMotion = useReducedMotion()
 
   const [morningInsights, setMorningInsights] = useState<MorningInsight | null>(null)
   const [morningLoading, setMorningLoading] = useState(false)
@@ -289,7 +292,12 @@ export function DashboardPage() {
       <Confetti active={confettiActive} />
 
       {/* Morning Briefing Card — 3D glass */}
-      <div className="mb-6 card-3d border-brand-500/20 bg-gradient-to-br from-brand-600/10 to-violet-600/5">
+      <motion.div
+        className="mb-6 card-3d border-brand-500/20 bg-gradient-to-br from-brand-600/10 to-violet-600/5"
+        initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+      >
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">
@@ -340,7 +348,7 @@ export function DashboardPage() {
             ✨ Generate morning insights →
           </button>
         )}
-      </div>
+      </motion.div>
 
       {!aiStatus?.available && (
         <div className="mb-6 glass border border-yellow-500/20 rounded-xl p-4 flex items-start gap-3">
@@ -546,16 +554,20 @@ export function DashboardPage() {
             <h2 className="text-base font-semibold text-white mb-4">Quick Actions</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {quickActions.map((action, i) => (
-                <button
+                <motion.button
                   key={action.label}
                   onClick={() => navigate(action.page)}
-                  className={`card-hover text-left animate-slide-up stagger-${i + 1}`}
-                  style={{ animationFillMode: 'both' }}
+                  className="card-hover text-left"
+                  initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
+                  whileInView={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.06, duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                  whileHover={reducedMotion ? {} : { y: -2 }}
                 >
                   <div className="text-2xl mb-2">{action.icon}</div>
                   <div className="text-sm font-semibold text-white">{action.label}</div>
                   <div className="text-xs text-slate-500 mt-0.5">{action.desc}</div>
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
