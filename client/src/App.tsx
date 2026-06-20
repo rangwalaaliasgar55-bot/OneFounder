@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useState, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
 import { AnimatedPage } from './components/layout/AnimatedPage'
 import { useAuth } from './hooks/useAuth'
 import { useOllamaStatus } from './hooks/useOllamaStatus'
@@ -100,32 +99,30 @@ const GO_TO_ROUTES: Record<string, string> = {
 function AnimatedRoutes() {
   const location = useLocation()
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route path="/"          element={<AnimatedPage><DashboardPage /></AnimatedPage>} />
-        <Route path="/dashboard" element={<AnimatedPage><DashboardPage /></AnimatedPage>} />
-        <Route path="/ideas"     element={<AnimatedPage><IdeasPage /></AnimatedPage>} />
-        <Route path="/research"  element={<AnimatedPage><ResearchPage /></AnimatedPage>} />
-        <Route path="/planner"   element={<AnimatedPage><PlannerPage /></AnimatedPage>} />
-        <Route path="/projects"  element={<AnimatedPage><ProjectsPage /></AnimatedPage>} />
-        <Route path="/content"   element={<AnimatedPage><ContentPage /></AnimatedPage>} />
-        <Route path="/crm"       element={<AnimatedPage><CRMPage /></AnimatedPage>} />
-        <Route path="/chat"      element={<AnimatedPage><ChatPage /></AnimatedPage>} />
-        <Route path="/knowledge" element={<AnimatedPage><KnowledgePage /></AnimatedPage>} />
-        <Route path="/settings"  element={<AnimatedPage><SettingsPage /></AnimatedPage>} />
-        <Route path="/social"    element={<AnimatedPage><SocialPage /></AnimatedPage>} />
-        <Route path="/finance"   element={<AnimatedPage><FinancePage /></AnimatedPage>} />
-        <Route path="/seo"       element={<AnimatedPage><SeoPage /></AnimatedPage>} />
-        <Route path="/journey"   element={<AnimatedPage><JourneyPage /></AnimatedPage>} />
-        <Route path="/wordpress" element={<AnimatedPage><WordPressPage /></AnimatedPage>} />
-        <Route path="/investor"  element={<AnimatedPage><InvestorPage /></AnimatedPage>} />
-        <Route path="/memory"    element={<AnimatedPage><MemoryPage /></AnimatedPage>} />
-        <Route path="/tasks"     element={<AnimatedPage><TasksPage /></AnimatedPage>} />
-        <Route path="/agents"    element={<AnimatedPage><AgentPage /></AnimatedPage>} />
-        <Route path="/admin"     element={<AnimatedPage><AdminPage /></AnimatedPage>} />
-        <Route path="*"          element={<Navigate to="/" replace />} />
-      </Routes>
-    </AnimatePresence>
+    <Routes location={location} key={location.pathname}>
+      <Route path="/"          element={<AnimatedPage><DashboardPage /></AnimatedPage>} />
+      <Route path="/dashboard" element={<AnimatedPage><DashboardPage /></AnimatedPage>} />
+      <Route path="/ideas"     element={<AnimatedPage><IdeasPage /></AnimatedPage>} />
+      <Route path="/research"  element={<AnimatedPage><ResearchPage /></AnimatedPage>} />
+      <Route path="/planner"   element={<AnimatedPage><PlannerPage /></AnimatedPage>} />
+      <Route path="/projects"  element={<AnimatedPage><ProjectsPage /></AnimatedPage>} />
+      <Route path="/content"   element={<AnimatedPage><ContentPage /></AnimatedPage>} />
+      <Route path="/crm"       element={<AnimatedPage><CRMPage /></AnimatedPage>} />
+      <Route path="/chat"      element={<AnimatedPage><ChatPage /></AnimatedPage>} />
+      <Route path="/knowledge" element={<AnimatedPage><KnowledgePage /></AnimatedPage>} />
+      <Route path="/settings"  element={<AnimatedPage><SettingsPage /></AnimatedPage>} />
+      <Route path="/social"    element={<AnimatedPage><SocialPage /></AnimatedPage>} />
+      <Route path="/finance"   element={<AnimatedPage><FinancePage /></AnimatedPage>} />
+      <Route path="/seo"       element={<AnimatedPage><SeoPage /></AnimatedPage>} />
+      <Route path="/journey"   element={<AnimatedPage><JourneyPage /></AnimatedPage>} />
+      <Route path="/wordpress" element={<AnimatedPage><WordPressPage /></AnimatedPage>} />
+      <Route path="/investor"  element={<AnimatedPage><InvestorPage /></AnimatedPage>} />
+      <Route path="/memory"    element={<AnimatedPage><MemoryPage /></AnimatedPage>} />
+      <Route path="/tasks"     element={<AnimatedPage><TasksPage /></AnimatedPage>} />
+      <Route path="/agents"    element={<AnimatedPage><AgentPage /></AnimatedPage>} />
+      <Route path="/admin"     element={<AnimatedPage><AdminPage /></AnimatedPage>} />
+      <Route path="*"          element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }
 
