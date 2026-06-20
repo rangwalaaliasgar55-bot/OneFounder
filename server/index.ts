@@ -10,6 +10,13 @@ import { rateLimit } from 'express-rate-limit'
 import dotenv from 'dotenv'
 dotenv.config()
 
+// Initialize Sentry before everything else
+import { initSentry, Sentry } from './observability/sentry.js'
+initSentry()
+
+// Metrics
+import { metrics, metricsMiddleware } from './observability/metrics.js'
+
 import aiRoutes from './routes/ai.js'
 import ideasRoutes from './routes/ideas.js'
 import researchRoutes from './routes/research.js'
@@ -35,6 +42,8 @@ import memoryRoutes from './routes/memory.js'
 import tasksRoutes from './routes/tasks.js'
 import adminRoutes from './routes/admin.js'
 import ollamaRoutes from './routes/ollama.js'
+import apiKeysRoutes from './routes/apiKeys.js'
+import growthRoutes from './routes/growth.js'
 import setupRoutes, { meHandler } from './routes/setup.js'
 import debugRoutes from './routes/debug.js'
 import testDbRoutes from './routes/test-db.js'
@@ -42,6 +51,8 @@ import { requireAuth } from './middleware/auth.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
+
+// Sentry setup — will be called after all routes are registered
 
 // Rate limiting
 const limiter = rateLimit({
@@ -110,6 +121,7 @@ app.use(cors({
 }))
 
 app.use(compression())
+app.use(metricsMiddleware)
 app.use(limiter)
 app.all('/auth/*', toNodeHandler(auth))
 app.use(express.json({ limit: '1mb' }))
@@ -147,6 +159,8 @@ app.use('/api/memory', memoryRoutes)
 app.use('/api/tasks', tasksRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/ollama', ollamaRoutes)
+app.use('/api/api-keys', apiKeysRoutes)
+app.use('/api/growth', growthRoutes)
 app.use('/api/setup', setupRoutes)
 app.get('/api/me', requireAuth, meHandler) // Extended user profile (onboarding state, token balance, etc.)
 
@@ -158,6 +172,18 @@ app.get('/api/health', (_, res) => {
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   })
+})
+
+app.get('/api/metrics', requireAuth, async (req, res) => {
+  const user = (req as any).user
+  if (!user?.isAdmin) return res.status(403).json({ error: 'Admin only' })
+  try {
+    const userMetrics = await metrics.getUserMetrics()
+    const snapshot = metrics.snapshot()
+    res.json({ ...snapshot, userMetrics })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 app.get('/api/ready', async (_, res) => {
@@ -194,6 +220,11 @@ app.get('/api/ready', async (_, res) => {
     totalLatencyMs: Date.now() - start,
   })
 })
+
+// Sentry error handler — after all routes
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app)
+}
 
 // Global error handler — sanitize messages in production
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {

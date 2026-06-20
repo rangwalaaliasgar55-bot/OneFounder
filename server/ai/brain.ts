@@ -1,8 +1,10 @@
 import { detectExpertMode, type ExpertMode, type RouteResult, MODE_LABELS } from './router.js'
+import { classifyIntent, type ClassificationResult } from './classifier.js'
 import { enhancePrompt } from './promptEnhancer.js'
 import { getAIProvider } from './index.js'
 import { assembleFounderContext, type FounderContext } from './context.js'
 import { extractAndStoreMemories } from './memory.js'
+import { extractAndStoreMemoriesV2 } from '../memory/memoryV2.js'
 import { extractEntitiesFromConversation } from '../knowledge/entityExtractor.js'
 import { getMemoryContextForQuery } from '../memory/memoryRetrieval.js'
 import { assembleRAGContext } from '../rag/contextAssembler.js'
@@ -61,9 +63,23 @@ export class OneFounderBrain {
       model: 'brain',
     })
 
-    const route = req.forcedMode
-      ? { mode: req.forcedMode, confidence: 'high' as const, detectedKeywords: [], secondaryModes: [] as ExpertMode[] }
-      : detectExpertMode(req.message)
+    // Hybrid routing: AI classifier for ambiguous queries, fast regex for clear ones
+    let route: { mode: ExpertMode; confidence: 'high' | 'medium' | 'low'; detectedKeywords: string[]; secondaryModes: ExpertMode[] }
+    if (req.forcedMode) {
+      route = { mode: req.forcedMode, confidence: 'high', detectedKeywords: [], secondaryModes: [] }
+    } else {
+      const classification = await classifyIntent(req.message).catch(() => null)
+      if (classification) {
+        route = {
+          mode: classification.primary,
+          confidence: classification.confidence,
+          detectedKeywords: Object.keys(classification.scores).filter(k => classification.scores[k as ExpertMode] > 0.5),
+          secondaryModes: classification.secondary,
+        }
+      } else {
+        route = detectExpertMode(req.message)
+      }
+    }
 
     // Build context in parallel: founder context, memory retrieval, RAG
     let founderContext: string | undefined
@@ -135,6 +151,7 @@ export class OneFounderBrain {
     })
 
     // Fire-and-forget memory + entity extraction
+    extractAndStoreMemoriesV2(req.userId, req.message, response, `brain:${route.mode}`).catch(() => {})
     extractAndStoreMemories(req.userId, req.message, response, `brain:${route.mode}`).catch(() => {})
     extractEntitiesFromConversation(req.userId, req.message, response).catch(() => {})
 
@@ -169,9 +186,23 @@ export class OneFounderBrain {
       model: 'brain',
     }).catch(() => {})
 
-    const route = req.forcedMode
-      ? { mode: req.forcedMode, confidence: 'high' as const, detectedKeywords: [], secondaryModes: [] as ExpertMode[] }
-      : detectExpertMode(req.message)
+    // Hybrid routing: AI classifier for ambiguous queries, fast regex for clear ones
+    let route: { mode: ExpertMode; confidence: 'high' | 'medium' | 'low'; detectedKeywords: string[]; secondaryModes: ExpertMode[] }
+    if (req.forcedMode) {
+      route = { mode: req.forcedMode, confidence: 'high', detectedKeywords: [], secondaryModes: [] }
+    } else {
+      const classification = await classifyIntent(req.message).catch(() => null)
+      if (classification) {
+        route = {
+          mode: classification.primary,
+          confidence: classification.confidence,
+          detectedKeywords: Object.keys(classification.scores).filter(k => classification.scores[k as ExpertMode] > 0.5),
+          secondaryModes: classification.secondary,
+        }
+      } else {
+        route = detectExpertMode(req.message)
+      }
+    }
 
     yield { type: 'mode', data: JSON.stringify({ mode: route.mode, modeLabel: MODE_LABELS[route.mode], sessionId: session }) }
 
@@ -273,6 +304,7 @@ export class OneFounderBrain {
       }).catch(() => {})
 
       // Fire-and-forget enrichment
+      extractAndStoreMemoriesV2(req.userId, req.message, fullResponse, `brain:${route.mode}`).catch(() => {})
       extractAndStoreMemories(req.userId, req.message, fullResponse, `brain:${route.mode}`).catch(() => {})
       extractEntitiesFromConversation(req.userId, req.message, fullResponse).catch(() => {})
 

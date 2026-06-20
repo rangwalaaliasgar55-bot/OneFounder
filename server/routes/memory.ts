@@ -4,6 +4,7 @@ import { validate } from '../middleware/validate.js'
 import { MemoryCreateSchema } from '../middleware/schemas.js'
 import { getAllMemories, getMemoriesByType, storeMemory, deleteMemory, buildMemoryContext } from '../memory/memoryManager.js'
 import { retrieveRelevantMemories } from '../memory/memoryRetrieval.js'
+import { getMemoryStats, applyMemoryDecay } from '../memory/memoryV2.js'
 
 const router = Router()
 
@@ -63,6 +64,28 @@ router.delete('/:id', requireAuth, async (req, res) => {
   try {
     await deleteMemory(user.id, req.params.id as string)
     res.json({ success: true })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── Memory V2 endpoints ─────────────────────────────────────────────────────
+
+router.get('/stats', requireAuth, async (req, res) => {
+  const user = (req as any).user
+  try {
+    const stats = await getMemoryStats(user.id)
+    res.json(stats)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+router.post('/decay', requireAuth, async (req, res) => {
+  const user = (req as any).user
+  try {
+    const decayed = await applyMemoryDecay(user.id)
+    res.json({ decayed })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }

@@ -440,3 +440,44 @@ export const auditLogs = pgTable('audit_logs', {
   index('audit_logs_action_idx').on(table.action),
   index('audit_logs_created_idx').on(table.createdAt),
 ])
+
+export const apiKeys = pgTable('api_keys', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  keyHash: text('key_hash').notNull().unique(),
+  keyPrefix: text('key_prefix').notNull(), // first 8 chars for display: "of_live_abc..."
+  permissions: jsonb('permissions').default(['chat', 'generate']),
+  rateLimit: integer('rate_limit').default(100), // requests per hour
+  lastUsedAt: timestamp('last_used_at'),
+  expiresAt: timestamp('expires_at'),
+  revokedAt: timestamp('revoked_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('api_keys_user_idx').on(table.userId),
+  index('api_keys_hash_idx').on(table.keyHash),
+])
+
+export const founderProgress = pgTable('founder_progress', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
+  xp: integer('xp').default(0).notNull(),
+  level: integer('level').default(1).notNull(),
+  streak: integer('streak').default(0).notNull(),
+  lastActiveDate: timestamp('last_active_date'),
+  achievements: jsonb('achievements').default([]),
+  stats: jsonb('stats').default({}),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+export const xpEvents = pgTable('xp_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  action: text('action').notNull(),
+  xp: integer('xp').notNull(),
+  source: text('source'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [
+  index('xp_events_user_idx').on(table.userId),
+])

@@ -3,6 +3,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { checkTokens, deductToken } from '../middleware/tokens.js'
 import { validate } from '../middleware/validate.js'
 import { ChatMessageSchema } from '../middleware/schemas.js'
+import { awardXP, updateStreak, incrementStat } from '../growth/engine.js'
 import { db } from '../db/index.js'
 import { chatMessages } from '../db/schema.js'
 import { eq, desc, and, sql } from 'drizzle-orm'
@@ -57,6 +58,11 @@ router.post('/send', requireAuth, checkTokens, validate(ChatMessageSchema), asyn
   const { message, sessionId, agentType, model } = req.body
 
   await logActivity(user.id, 'sent_message', 'chat', sessionId, { agentType }).catch(() => {})
+
+  // Growth: award XP and update streak
+  awardXP(user.id, 'send_message', 'chat').catch(() => {})
+  updateStreak(user.id).catch(() => {})
+  incrementStat(user.id, 'totalMessages').catch(() => {})
 
   try {
     const result = await brain.process({
