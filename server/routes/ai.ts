@@ -23,6 +23,21 @@ router.get('/status', async (_req, res) => {
   }
 })
 
+router.post('/test-connection', async (_req, res) => {
+  try {
+    const { registry } = await import('../ai/index.js')
+    registry.clearCache()
+    const status = await getAIStatus()
+    if (status.available) {
+      res.json({ ok: true, provider: status.activeProvider, models: status.models })
+    } else {
+      res.json({ ok: false, error: status.note || 'No AI provider available', providers: status.providers })
+    }
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
 router.get('/tokens', requireAuth, async (req, res) => {
   const user = (req as any).user
   res.json({

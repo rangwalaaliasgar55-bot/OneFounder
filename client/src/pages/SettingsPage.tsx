@@ -121,6 +121,8 @@ export function SettingsPage() {
   const [activeOgModule, setActiveOgModule] = useState(OG_MODULES[0])
 
   const [tokenInfo, setTokenInfo] = useState<{ tokenBalance: number; tokenUsed: number; isAdmin: boolean } | null>(null)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
 
   useEffect(() => {
     api.get<any>('/ai/status').then(setAiStatus).catch(() => {})
@@ -129,6 +131,25 @@ export function SettingsPage() {
       if (p) setProfile(p)
     }).catch(() => {})
   }, [])
+
+  const testConnection = async () => {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const res = await api.post<any>('/ai/test-connection')
+      if (res.ok) {
+        setTestResult({ ok: true, message: `Connected to ${res.provider} — ${res.models.length} model(s) available` })
+        // Refresh status
+        api.get<any>('/ai/status').then(setAiStatus).catch(() => {})
+      } else {
+        setTestResult({ ok: false, message: res.error || 'Connection failed' })
+      }
+    } catch (err: any) {
+      setTestResult({ ok: false, message: err.message || 'Connection test failed' })
+    } finally {
+      setTesting(false)
+    }
+  }
 
   const saveProfile = async () => {
     setProfileSaving(true)
@@ -182,7 +203,9 @@ export function SettingsPage() {
   const isOnline = !!aiStatus?.available
 
   /* ── MASTER PROMPT PREVIEW (trimmed) ────────────────────────────── */
-  const promptPreview = `You are ONEFOUNDER AI — a powerful, multi-domain AI built for founders.
+  const promptPreview = `You are ONEFOUNDER SUPREME — an Autonomous AI Operating System for founders.
+
+17 elite specialists: CEO · CFO · CTO · CPO · CMO · COO · Staff Engineer · SEO Director · Growth Marketer · Sales Director · Content Strategist · Social Media Strategist · Talent Lead · Product Designer · Data Scientist · Security Architect · Legal Ops
 
 ACTIVE DOMAINS: ${aiConfig.activeDomains.map(d => AI_DOMAINS.find(x => x.key === d)?.label).filter(Boolean).join(' · ')}
 
@@ -194,15 +217,21 @@ Industry: ${profile.industry || '(not set)'}
 Stage: ${profile.stage} | Goal: ${profile.primaryGoal}
 ${profile.bio ? `Bio: ${profile.bio}` : ''}
 
-CORE RULES:
-1. Be direct — no filler phrases or padding
-2. Be specific — names, numbers, real examples, working code
-3. Be opinionated — pick the best option and defend it
-4. Prioritise — tell the founder what to do FIRST
-5. Challenge bad ideas with clear reasoning
-6. Think like an owner, not a consultant
+THINKING PROTOCOL:
+1. DECODE — What does the founder ACTUALLY need?
+2. ACTIVATE — Which specialists are relevant?
+3. STRATEGIZE — Highest-leverage path?
+4. EXECUTE — Produce with precision
+5. CUT — Remove zero-value sentences
 
-...and 300+ lines of deep expertise across all active domains.`
+RESPONSE STRUCTURE:
+→ ANSWER — core recommendation upfront
+→ CONTEXT — why this matters
+→ STEPS — numbered, specific execution
+→ RISKS — top failure modes
+→ NOW — next 24-hour action
+
+...and 400+ lines of deep expertise across all active domains.`
 
   const riskOptions = [
     { value: 'conservative', label: 'Conservative', desc: 'Low risk, steady growth' },
@@ -386,6 +415,26 @@ CORE RULES:
             <p className="text-xs text-slate-600 mt-3">
               No API keys needed. All inference runs locally on your machine.
             </p>
+
+            {/* Test Connection */}
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                onClick={testConnection}
+                disabled={testing}
+                className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-brand-600/15 border border-brand-500/20 text-brand-400 hover:bg-brand-600/25 transition-all disabled:opacity-50"
+              >
+                {testing ? (
+                  <><LoadingSpinner size="sm" /> Testing...</>
+                ) : (
+                  <><span>🔄</span> Test Connection</>
+                )}
+              </button>
+              {testResult && (
+                <span className={`text-xs ${testResult.ok ? 'text-green-400' : 'text-red-400'}`}>
+                  {testResult.ok ? '✓' : '✗'} {testResult.message}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Business Identity */}
@@ -551,11 +600,20 @@ CORE RULES:
               <p className="text-sm font-semibold text-white">⚡ Enable AI — Install Ollama</p>
               <div className="p-3 rounded-lg bg-white/3 border border-white/5 text-xs">
                 <p className="font-semibold text-white mb-1.5">Ollama — local inference, zero cost</p>
-                <div className="space-y-1 text-slate-400">
-                  <p>1. Install from <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">ollama.ai</a></p>
-                  <p>2. <code className="bg-white/10 px-1.5 py-0.5 rounded font-mono">ollama serve</code></p>
-                  <p>3. <code className="bg-white/10 px-1.5 py-0.5 rounded font-mono">ollama pull qwen3:8b</code></p>
-                  <p className="text-slate-500 mt-1">Other supported models: <code className="bg-white/5 px-1 rounded">deepseek-r1:7b</code> · <code className="bg-white/5 px-1 rounded">mistral:7b</code> · <code className="bg-white/5 px-1 rounded">llama3.1:8b</code> · <code className="bg-white/5 px-1 rounded">qwen3:14b</code></p>
+                <div className="space-y-1.5 text-slate-400">
+                  <p><span className="text-slate-300 font-medium">Step 1:</span> Install from <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">ollama.ai</a></p>
+                  <p><span className="text-slate-300 font-medium">Step 2:</span> Open a terminal and run:</p>
+                  <div className="bg-black/40 rounded-lg p-2.5 font-mono text-xs space-y-1">
+                    <p className="text-green-400"># Start the Ollama server</p>
+                    <p className="text-white">ollama serve</p>
+                    <p className="text-green-400 mt-2"># Pull a recommended model</p>
+                    <p className="text-white">ollama pull qwen3:8b</p>
+                    <p className="text-green-400 mt-2"># Verify it's running</p>
+                    <p className="text-white">ollama list</p>
+                  </div>
+                  <p><span className="text-slate-300 font-medium">Step 3:</span> Click "Test Connection" above</p>
+                  <p className="text-slate-500 mt-2">Other models: <code className="bg-white/5 px-1 rounded">deepseek-r1:7b</code> · <code className="bg-white/5 px-1 rounded">mistral:7b</code> · <code className="bg-white/5 px-1 rounded">llama3.1:8b</code> · <code className="bg-white/5 px-1 rounded">qwen3:14b</code></p>
+                  <p className="text-slate-500">Default endpoint: <code className="bg-white/5 px-1 rounded">http://localhost:11434</code></p>
                 </div>
               </div>
               <p className="text-xs text-slate-600">No API keys. No cloud. No costs. AI runs on your hardware.</p>
@@ -750,7 +808,7 @@ CORE RULES:
             </button>
           </div>
           <div className="text-center text-xs text-slate-700 py-2">
-            OneFounder v2.0 · The OS for Founders · Powered by Ollama AI · Neon PostgreSQL · Better Auth
+            OneFounder Supreme v4.0 · The OS for Founders · Powered by Ollama AI · Neon PostgreSQL · Better Auth
           </div>
         </div>
       )}
