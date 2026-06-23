@@ -1,0 +1,13 @@
+{
+  "name": "onefounder-mobile-ai",
+  "version": "1.0.0",
+  "description": "Ollama-compatible AI proxy server for Termux (Android)",
+  "main": "ollama-proxy.js",
+  "scripts": {
+    "start": "node ollama-proxy.js",
+    "test": "node -e \"fetch('http://localhost:11434/api/tags').then(r=>r.json()).then(console.log)\""
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

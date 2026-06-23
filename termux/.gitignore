@@ -1,0 +1,6 @@
+# Build artifacts
+llama.cpp/
+node_modules/
+models/*.gguf
+logs/
+pids/
