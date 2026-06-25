@@ -8,6 +8,13 @@ export const contentTypeEnum = pgEnum('content_type', ['blog', 'landing_page', '
 export const socialPostStatusEnum = pgEnum('social_post_status', ['draft', 'scheduled', 'published', 'failed'])
 export const socialPlatformEnum = pgEnum('social_platform', ['linkedin', 'twitter', 'instagram', 'tiktok', 'facebook'])
 export const financeEntryTypeEnum = pgEnum('finance_entry_type', ['revenue', 'expense', 'subscription'])
+export const connectionTypeEnum = pgEnum('connection_type', [
+  'wordpress', 'shopify', 'wix', 'squarespace', 'webflow', 'custom_website',
+  'twitter', 'instagram', 'linkedin', 'facebook', 'tiktok', 'youtube',
+  'pinterest', 'reddit', 'threads', 'bluesky',
+  'google_analytics', 'mailchimp', 'stripe', 'zapier', 'github',
+])
+export const connectionStatusEnum = pgEnum('connection_status', ['connected', 'disconnected', 'error', 'pending'])
 
 // Auth tables — id and userId use TEXT so Better Auth's string IDs work correctly
 export const users = pgTable('users', {
@@ -578,4 +585,21 @@ export const purchases = pgTable('purchases', {
 }, (table) => [
   index('purchase_user_idx').on(table.userId),
   index('purchase_stripe_idx').on(table.stripePaymentIntentId),
+])
+
+// ── Connections & Integrations ──────────────────────────────────────────────
+
+export const connections = pgTable('connections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: connectionTypeEnum('type').notNull(),
+  name: text('name').notNull(),
+  credentials: jsonb('credentials'), // { apiKey, token, url, username, password, etc. }
+  status: connectionStatusEnum('status').default('pending').notNull(),
+  metadata: jsonb('metadata'),
+  lastSyncAt: timestamp('last_sync_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  index('connections_user_type_idx').on(table.userId, table.type),
 ])

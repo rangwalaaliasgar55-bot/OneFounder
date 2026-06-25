@@ -391,8 +391,17 @@ export function TasksPage() {
 
       {/* Task List */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="text-slate-500 text-sm">Loading tasks...</div>
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="card animate-pulse flex items-center gap-4">
+              <div className="w-5 h-5 rounded bg-white/5" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 bg-white/5 rounded w-1/3" />
+                <div className="h-2 bg-white/5 rounded w-1/2" />
+              </div>
+              <div className="w-16 h-5 bg-white/5 rounded-full" />
+            </div>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">

@@ -4,9 +4,8 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
 import { SkeletonKanbanPage } from '../components/ui/PageSkeletons'
-import { TiltCard } from '../components/ui/TiltCard'
 import { MeshGradient } from '../components/ui/MeshGradient'
-import { AnimatedCounter } from '../components/ui/AnimatedCounter'
+import { downloadCsv, downloadJson } from '../lib/export'
 
 const STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost']
 const STAGE_COLORS: Record<string, string> = {
@@ -24,6 +23,7 @@ export function CRMPage() {
   const [showModal, setShowModal] = useState(false)
   const [selected, setSelected] = useState<any | null>(null)
   const [view, setView] = useState<'pipeline' | 'list'>('pipeline')
+  const [searchQuery, setSearchQuery] = useState('')
   const [form, setForm] = useState({ name: '', email: '', company: '', phone: '', source: '', notes: '', value: '', status: 'lead' })
 
   useEffect(() => {
@@ -51,8 +51,15 @@ export function CRMPage() {
 
   if (loading) return <SkeletonKanbanPage />
 
+  const searchFiltered = leads.filter(l =>
+    !searchQuery ||
+    l.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    l.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    l.company?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   const grouped = STAGES.reduce((acc, stage) => {
-    acc[stage] = leads.filter(l => l.status === stage)
+    acc[stage] = searchFiltered.filter(l => l.status === stage)
     return acc
   }, {} as Record<string, any[]>)
 
@@ -60,7 +67,8 @@ export function CRMPage() {
   const pipelineValue = leads.reduce((sum, l) => sum + (l.value || 0), 0)
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto relative">
+      <MeshGradient />
       <PageHeader
         icon="👥"
         title="CRM"
@@ -83,13 +91,27 @@ export function CRMPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex items-center gap-3 mb-4">
         <button onClick={() => setView('pipeline')} className={`btn-${view === 'pipeline' ? 'primary' : 'secondary'} text-sm py-1.5`}>
           🗂️ Pipeline
         </button>
         <button onClick={() => setView('list')} className={`btn-${view === 'list' ? 'primary' : 'secondary'} text-sm py-1.5`}>
           📋 List
         </button>
+        <div className="relative flex-1 max-w-xs ml-auto">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">🔍</span>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search leads..."
+            className="input w-full pl-9 text-sm"
+          />
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => downloadCsv(leads, 'leads')} className="btn-ghost text-xs">📊 CSV</button>
+          <button onClick={() => downloadJson(leads, 'leads')} className="btn-ghost text-xs">📄 JSON</button>
+        </div>
       </div>
 
       {leads.length === 0 ? (
@@ -144,7 +166,7 @@ export function CRMPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {leads.map(lead => (
+              {searchFiltered.map(lead => (
                 <tr key={lead.id} onClick={() => setSelected(lead)} className="hover:bg-white/5 cursor-pointer transition-colors">
                   <td className="py-3 text-sm text-white font-medium">{lead.name}</td>
                   <td className="py-3 text-sm text-slate-400">{lead.company || '—'}</td>

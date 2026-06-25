@@ -93,11 +93,11 @@ export function isMobile(): boolean {
  *   const LazyBrain = createLazy3D(() => import('./BrainVisualization'))
  *   <LazyBrain fallback={<Brain2DView />} props={...} />
  */
-export function createLazy3D<P extends object>(
+export function createLazy3D<P extends Record<string, unknown>>(
   importFn: () => Promise<{ default: ComponentType<P> }>,
   fallback2D?: ReactNode
 ) {
-  const LazyComponent = lazy(importFn)
+  const LazyComponent = lazy(importFn) as ComponentType<any>
 
   return function WrappedLazy3D(props: P) {
     // On mobile or without WebGL, show 2D fallback

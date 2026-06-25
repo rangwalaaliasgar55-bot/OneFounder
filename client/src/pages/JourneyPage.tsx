@@ -253,6 +253,13 @@ export function JourneyPage() {
         />
 
         <div className="space-y-4 pl-16">
+          {milestones.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="text-5xl mb-4">🗺️</div>
+              <h3 className="text-lg font-semibold text-white mb-2">No milestones yet</h3>
+              <p className="text-slate-500 text-sm max-w-xs">Your founder journey milestones will appear here as you progress.</p>
+            </div>
+          )}
           <AnimatePresence>
             {milestones.map((milestone, idx) => (
               <TimelineMilestone

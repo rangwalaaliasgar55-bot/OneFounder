@@ -4,13 +4,12 @@
  * Wrapper around @use-gesture/react providing pre-configured gesture hooks.
  */
 
-import { useSwipe, useDrag, usePinch } from '@use-gesture/react'
+import { useDrag, usePinch } from '@use-gesture/react'
 
 /**
- * Swipe gesture hook pre-configured for the app.
- * Returns bind function and swipe state.
+ * Gesture hooks pre-configured for the app.
  */
-export { useSwipe, useDrag, usePinch }
+export { useDrag, usePinch }
 
 /**
  * Detect swipe direction on mobile for sidebar toggle.

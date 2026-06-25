@@ -12,6 +12,7 @@ class ProviderRegistry {
   private providers: Map<string, AIProvider> = new Map()
   private statusCache: Map<string, { status: ProviderStatus; timestamp: number }> = new Map()
   private readonly CACHE_TTL = 30_000 // 30 seconds
+  private priorityOrder: ProviderType[] = ['termux', 'ollama', 'openai', 'anthropic', 'gemini']
 
   /**
    * Register a new AI provider
@@ -29,12 +30,18 @@ class ProviderRegistry {
   }
 
   /**
-   * Get the default provider (first available, or specified default)
+   * Get the default provider (first available by priority, or specified default)
    */
   getDefault(preferred?: ProviderType): AIProvider | undefined {
     // Try preferred provider first
     if (preferred) {
       const provider = this.providers.get(preferred)
+      if (provider) return provider
+    }
+
+    // Try providers in priority order
+    for (const type of this.priorityOrder) {
+      const provider = this.providers.get(type)
       if (provider) return provider
     }
 
@@ -92,7 +99,22 @@ class ProviderRegistry {
   }
 
   /**
-   * Find the first available provider
+   * Set the priority order for provider fallback
+   */
+  setPriorityOrder(types: ProviderType[]): void {
+    this.priorityOrder = types
+    console.log(`[AI Registry] Priority order set: ${types.join(' → ')}`)
+  }
+
+  /**
+   * Get the current priority order
+   */
+  getPriorityOrder(): ProviderType[] {
+    return [...this.priorityOrder]
+  }
+
+  /**
+   * Find the first available provider, using priority-based fallback
    */
   async findAvailable(preferred?: ProviderType): Promise<AIProvider | null> {
     // Try preferred first
@@ -106,11 +128,22 @@ class ProviderRegistry {
       }
     }
 
-    // Try all providers
-    for (const provider of this.providers) {
+    // Try providers in priority order first
+    for (const type of this.priorityOrder) {
+      const provider = this.providers.get(type)
+      if (!provider) continue
       try {
-        const available = await provider[1].isAvailable()
-        if (available) return provider[1]
+        const available = await provider.isAvailable()
+        if (available) return provider
+      } catch {}
+    }
+
+    // Try any remaining providers not in the priority list
+    for (const [type, provider] of this.providers) {
+      if (this.priorityOrder.includes(type as ProviderType)) continue
+      try {
+        const available = await provider.isAvailable()
+        if (available) return provider
       } catch {}
     }
 

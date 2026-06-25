@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { PageHeader } from '../components/ui/PageHeader'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { MeshGradient } from '../components/ui/MeshGradient'
+import { useProviders, ProviderInfo } from '../hooks/useProviders'
 
 /* ─── OG modules ─────────────────────────────────────────────────── */
 const OG_MODULES = [
@@ -76,9 +77,84 @@ interface AIConfig {
   promptPreviewOpen: boolean
 }
 
-const FREE_PROVIDERS_DEFAULT = [
-  { id: 'ollama', name: 'Ollama (Local)', available: false, active: false, note: 'Free forever. Runs models on your machine. Zero cloud costs. No API key needed.', setupUrl: 'https://ollama.ai' },
+/* ─── Provider metadata ──────────────────────────────────────────── */
+interface ProviderMeta {
+  type: string
+  label: string
+  icon: string
+  color: string
+  needsEndpoint: boolean
+  needsApiKey: boolean
+  defaultEndpoint: string
+  placeholder: string
+  description: string
+  setupUrl: string
+}
+
+const PROVIDER_META: ProviderMeta[] = [
+  {
+    type: 'termux-ai',
+    label: 'Termux AI',
+    icon: '📱',
+    color: 'from-emerald-600/20 to-teal-600/10',
+    needsEndpoint: true,
+    needsApiKey: false,
+    defaultEndpoint: 'http://localhost:11434',
+    placeholder: 'http://localhost:11434',
+    description: 'Run AI models on your Android device via Termux. Zero cost, full privacy.',
+    setupUrl: 'https://github.com/nicehash/termux-ollama',
+  },
+  {
+    type: 'ollama',
+    label: 'Ollama',
+    icon: '🦙',
+    color: 'from-brand-600/20 to-violet-600/10',
+    needsEndpoint: true,
+    needsApiKey: false,
+    defaultEndpoint: 'http://localhost:11434',
+    placeholder: 'http://localhost:11434',
+    description: 'Local inference on your machine. Zero cloud costs, no API key needed.',
+    setupUrl: 'https://ollama.ai',
+  },
+  {
+    type: 'openai',
+    label: 'OpenAI',
+    icon: '🟢',
+    color: 'from-green-600/20 to-emerald-600/10',
+    needsEndpoint: false,
+    needsApiKey: true,
+    defaultEndpoint: 'https://api.openai.com/v1',
+    placeholder: 'sk-...',
+    description: 'GPT-4o, GPT-4 Turbo, o3-mini and more. Industry-leading performance.',
+    setupUrl: 'https://platform.openai.com/api-keys',
+  },
+  {
+    type: 'anthropic',
+    label: 'Anthropic',
+    icon: '🟠',
+    color: 'from-orange-600/20 to-amber-600/10',
+    needsEndpoint: false,
+    needsApiKey: true,
+    defaultEndpoint: 'https://api.anthropic.com',
+    placeholder: 'sk-ant-...',
+    description: 'Claude 4 Opus, Sonnet, Haiku. Best-in-class reasoning and coding.',
+    setupUrl: 'https://console.anthropic.com/settings/keys',
+  },
+  {
+    type: 'gemini',
+    label: 'Gemini',
+    icon: '🔵',
+    color: 'from-blue-600/20 to-cyan-600/10',
+    needsEndpoint: false,
+    needsApiKey: true,
+    defaultEndpoint: 'https://generativelanguage.googleapis.com',
+    placeholder: 'AIza...',
+    description: 'Gemini 2.5 Pro, Flash. Google\'s multimodal powerhouse.',
+    setupUrl: 'https://aistudio.google.com/apikey',
+  },
 ]
+
+const DEFAULT_FALLBACK_ORDER = ['termux-ai', 'ollama', 'openai', 'anthropic', 'gemini']
 
 const LS_KEY = 'onefoundr_ai_config'
 
@@ -103,6 +179,8 @@ function defaultAIConfig(): AIConfig {
 /* ─── Main Component ──────────────────────────────────────────────── */
 export function SettingsPage() {
   const { user, signOut } = useAuth()
+  const { providers, fallbackOrder: serverFallback, autoFailover: serverAutoFailover, anyOnline, loading: providersLoading, refresh: refreshProviders } = useProviders()
+
   const [tab, setTab] = useState<Tab>('my-ai')
   const [aiStatus, setAiStatus] = useState<any>(null)
   const [profile, setProfile] = useState<FounderProfile>({
@@ -124,6 +202,48 @@ export function SettingsPage() {
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
 
+  /* ── Provider config state ─────────────────────────────────────── */
+  const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set())
+  const [providerEndpoints, setProviderEndpoints] = useState<Record<string, string>>({})
+  const [providerApiKeys, setProviderApiKeys] = useState<Record<string, string>>({})
+  const [showApiKeys, setShowApiKeys] = useState<Record<string, boolean>>({})
+  const [providerEnabled, setProviderEnabled] = useState<Record<string, boolean>>({})
+  const [providerTesting, setProviderTesting] = useState<Record<string, boolean>>({})
+  const [providerTestResults, setProviderTestResults] = useState<Record<string, { ok: boolean; message: string } | null>>({})
+  const [providerSaving, setProviderSaving] = useState<Record<string, boolean>>({})
+  const [providerSaved, setProviderSaved] = useState<Record<string, boolean>>({})
+  const [selectedModels, setSelectedModels] = useState<Record<string, string>>({})
+  const [defaultProvider, setDefaultProvider] = useState<string>('')
+  const [fallbackOrder, setFallbackOrder] = useState<string[]>(DEFAULT_FALLBACK_ORDER)
+  const [autoFailover, setAutoFailover] = useState(true)
+  const [globalDefaultModel, setGlobalDefaultModel] = useState('')
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+
+  /* ── Sync server state into local state ────────────────────────── */
+  useEffect(() => {
+    providers.forEach(p => {
+      setProviderEndpoints(prev => ({ ...prev, [p.type]: p.endpoint || p.baseUrl || '' }))
+      setProviderEnabled(prev => ({ ...prev, [p.type]: p.enabled }))
+      setSelectedModels(prev => ({ ...prev, [p.type]: p.defaultModel || (p.models[0]?.id ?? '') }))
+      if (p.available && p.enabled && !defaultProvider) {
+        setDefaultProvider(p.type)
+      }
+    })
+  }, [providers])
+
+  useEffect(() => {
+    if (serverFallback.length > 0) setFallbackOrder(serverFallback)
+    setAutoFailover(serverAutoFailover)
+  }, [serverFallback, serverAutoFailover])
+
+  useEffect(() => {
+    if (!defaultProvider && providers.length > 0) {
+      const active = providers.find(p => p.available && p.enabled)
+      if (active) setDefaultProvider(active.type)
+    }
+  }, [providers, defaultProvider])
+
+  /* ── Initial data fetch ────────────────────────────────────────── */
   useEffect(() => {
     api.get<any>('/ai/status').then(setAiStatus).catch(() => {})
     api.get<any>('/ai/tokens').then(setTokenInfo).catch(() => {})
@@ -136,10 +256,9 @@ export function SettingsPage() {
     setTesting(true)
     setTestResult(null)
     try {
-      const res = await api.post<any>('/ai/test-connection')
+      const res = await api.post<any>('/ai/test-connection', {})
       if (res.ok) {
         setTestResult({ ok: true, message: `Connected to ${res.provider} — ${res.models.length} model(s) available` })
-        // Refresh status
         api.get<any>('/ai/status').then(setAiStatus).catch(() => {})
       } else {
         setTestResult({ ok: false, message: res.error || 'Connection failed' })
@@ -163,7 +282,6 @@ export function SettingsPage() {
   const saveAIConfig = () => {
     const cfg = { ...aiConfig, promptPreviewOpen: false }
     localStorage.setItem(LS_KEY, JSON.stringify(cfg))
-    // Also persist companyName/industry into founder profile
     if (aiConfig.companyName || profile.industry) {
       api.put('/founder-profile', {
         ...profile,
@@ -191,6 +309,86 @@ export function SettingsPage() {
     setTimeout(() => setCopiedOgKey(null), 2000)
   }
 
+  /* ── Provider actions ──────────────────────────────────────────── */
+  const toggleProviderExpanded = (type: string) => {
+    setExpandedProviders(prev => {
+      const next = new Set(prev)
+      if (next.has(type)) next.delete(type)
+      else next.add(type)
+      return next
+    })
+  }
+
+  const testProvider = async (type: string) => {
+    setProviderTesting(prev => ({ ...prev, [type]: true }))
+    setProviderTestResults(prev => ({ ...prev, [type]: null }))
+    try {
+      const meta = PROVIDER_META.find(m => m.type === type)
+      const body: any = { type }
+      if (meta?.needsEndpoint) body.endpoint = providerEndpoints[type] || meta.defaultEndpoint
+      if (meta?.needsApiKey) body.apiKey = providerApiKeys[type]
+      const res = await api.post<any>('/providers/test', body)
+      if (res.ok) {
+        setProviderTestResults(prev => ({ ...prev, [type]: { ok: true, message: `Connected — ${res.models?.length ?? 0} model(s)` } }))
+        refreshProviders()
+      } else {
+        setProviderTestResults(prev => ({ ...prev, [type]: { ok: false, message: res.error || 'Connection failed' } }))
+      }
+    } catch (err: any) {
+      setProviderTestResults(prev => ({ ...prev, [type]: { ok: false, message: err.message || 'Test failed' } }))
+    } finally {
+      setProviderTesting(prev => ({ ...prev, [type]: false }))
+    }
+  }
+
+  const saveProvider = async (type: string) => {
+    setProviderSaving(prev => ({ ...prev, [type]: true }))
+    try {
+      const meta = PROVIDER_META.find(m => m.type === type)
+      const body: any = {
+        type,
+        enabled: providerEnabled[type] ?? false,
+        defaultModel: selectedModels[type] || null,
+      }
+      if (meta?.needsEndpoint) body.endpoint = providerEndpoints[type] || meta.defaultEndpoint
+      if (meta?.needsApiKey && providerApiKeys[type]) body.apiKey = providerApiKeys[type]
+      await api.put('/providers/config', body)
+      setProviderSaved(prev => ({ ...prev, [type]: true }))
+      setTimeout(() => setProviderSaved(prev => ({ ...prev, [type]: false })), 2000)
+      refreshProviders()
+    } catch { /* silent */ } finally {
+      setProviderSaving(prev => ({ ...prev, [type]: false }))
+    }
+  }
+
+  const setAsDefault = (type: string) => {
+    setDefaultProvider(type)
+    const model = selectedModels[type]
+    if (model) setGlobalDefaultModel(model)
+  }
+
+  const saveFallbackOrder = async () => {
+    try {
+      await api.put('/providers/fallback-order', { order: fallbackOrder, autoFailover })
+    } catch { /* silent */ }
+  }
+
+  /* ── Drag handlers for fallback chain ──────────────────────────── */
+  const handleDragStart = (index: number) => setDragIndex(index)
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    if (dragIndex === null || dragIndex === index) return
+    const next = [...fallbackOrder]
+    const [moved] = next.splice(dragIndex, 1)
+    next.splice(index, 0, moved)
+    setFallbackOrder(next)
+    setDragIndex(index)
+  }
+  const handleDragEnd = () => {
+    setDragIndex(null)
+    saveFallbackOrder()
+  }
+
   const TABS: { id: Tab; label: string; icon: string }[] = [
     { id: 'my-ai',   label: 'My AI',    icon: '🧠' },
     { id: 'profile', label: 'Profile',  icon: '🧬' },
@@ -200,7 +398,52 @@ export function SettingsPage() {
   ]
 
   const models = aiStatus?.models || []
-  const isOnline = !!aiStatus?.available
+  const isOnline = !!aiStatus?.available || anyOnline
+
+  /* ── Helpers for provider state ─────────────────────────────────── */
+  const getProviderStatus = (p: ProviderInfo): 'active' | 'ready' | 'error' | 'not_configured' => {
+    if (p.error) return 'error'
+    if (p.available && p.enabled) return 'active'
+    if (p.available) return 'ready'
+    if (p.enabled) return 'ready'
+    return 'not_configured'
+  }
+
+  const getProviderStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-400'
+      case 'ready': return 'bg-yellow-400'
+      case 'error': return 'bg-red-400'
+      default: return 'bg-slate-600'
+    }
+  }
+
+  const getProviderStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active': return { text: 'Active', cls: 'bg-brand-500/20 text-brand-400 border-brand-500/20' }
+      case 'ready': return { text: 'Ready', cls: 'bg-green-500/15 text-green-400 border-green-500/20' }
+      case 'error': return { text: 'Error', cls: 'bg-red-500/15 text-red-400 border-red-500/20' }
+      default: return { text: 'Not configured', cls: 'bg-white/5 text-slate-500 border-white/10' }
+    }
+  }
+
+  const getProviderFromServer = (type: string): ProviderInfo | undefined =>
+    providers.find(p => p.type === type)
+
+  const getProviderModels = (type: string): ProviderInfo['models'] => {
+    const p = getProviderFromServer(type)
+    return p?.models ?? []
+  }
+
+  const getProviderLatency = (type: string): number | null => {
+    const p = getProviderFromServer(type)
+    return p?.latencyMs ?? null
+  }
+
+  const isProviderAvailable = (type: string): boolean => {
+    const p = getProviderFromServer(type)
+    return p?.available ?? false
+  }
 
   /* ── MASTER PROMPT PREVIEW (trimmed) ────────────────────────────── */
   const promptPreview = `You are ONEFOUNDER SUPREME — an Autonomous AI Operating System for founders.
@@ -307,8 +550,8 @@ RESPONSE STRUCTURE:
                 </div>
                 <p className="text-xs text-slate-400">
                   {isOnline
-                    ? `Active: ${aiStatus?.provider || 'AI'} · ${models.length > 0 ? `${models.length} model${models.length !== 1 ? 's' : ''} loaded` : 'Ready'}`
-                    : 'Add a free API key below or install Ollama to enable AI'}
+                    ? `Active: ${aiStatus?.provider || providers.find(p => p.available && p.enabled)?.name || 'AI'} · ${providers.filter(p => p.available).length} provider(s) online`
+                    : 'Configure a provider below to enable AI'}
                 </p>
                 {isOnline && (
                   <div className="flex flex-wrap gap-2 mt-2">
@@ -363,78 +606,391 @@ RESPONSE STRUCTURE:
             </div>
           )}
 
-          {/* AI Engine — Ollama */}
+          {/* ═══════════════════════════════════════════════════════════
+              AI PROVIDERS — replaces old "AI Engine — Ollama" card
+              ═══════════════════════════════════════════════════════════ */}
           <div className="card">
-            <div className="mb-4">
-              <h3 className="text-sm font-semibold text-white">🤖 AI Engine</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Powered exclusively by Ollama — local inference, zero cloud costs, ₹0/month AI spend.</p>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-white">🔌 AI Providers</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Configure your AI engines. Enable providers, add API keys, and set fallback order.</p>
+              </div>
+              {providersLoading && <LoadingSpinner size="sm" />}
             </div>
-            <div className="space-y-2">
-              {(aiStatus?.providers || FREE_PROVIDERS_DEFAULT).map((p: any) => {
-                const isActive = p.active && p.available
-                const isAvail = p.available
-                return (
-                  <div key={p.id} className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${
-                    isActive ? 'border-brand-500/30 bg-brand-600/8' : isAvail ? 'border-green-500/20 bg-green-500/5' : 'border-white/5 bg-white/2'
-                  }`}>
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0 mt-0.5 ${
-                      isActive ? 'bg-brand-500/20' : isAvail ? 'bg-green-500/15' : 'bg-white/5'
-                    }`}>
-                      {isActive ? '⚡' : isAvail ? '✓' : '💻'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-semibold text-white">{p.name}</span>
-                        {isActive && <span className="text-xs bg-brand-500/20 text-brand-400 border border-brand-500/20 px-1.5 py-0.5 rounded-full">Active</span>}
-                        {!isActive && isAvail && <span className="text-xs bg-green-500/15 text-green-400 px-1.5 py-0.5 rounded-full">Ready</span>}
-                        {!isAvail && <span className="text-xs bg-white/5 text-slate-500 px-1.5 py-0.5 rounded-full">Not running</span>}
+
+            {providersLoading && providers.length === 0 ? (
+              <div className="flex items-center justify-center py-10">
+                <LoadingSpinner size="md" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {PROVIDER_META.map(meta => {
+                  const serverP = getProviderFromServer(meta.type)
+                  const status = serverP ? getProviderStatus(serverP) : 'not_configured'
+                  const badge = getProviderStatusBadge(status)
+                  const isExpanded = expandedProviders.has(meta.type)
+                  const avail = isProviderAvailable(meta.type)
+                  const latency = getProviderLatency(meta.type)
+                  const modelsList = getProviderModels(meta.type)
+                  const enabled = providerEnabled[meta.type] ?? false
+                  const isDefault = defaultProvider === meta.type
+                  const currentModel = selectedModels[meta.type] || ''
+
+                  return (
+                    <div
+                      key={meta.type}
+                      className={`rounded-xl border transition-all ${
+                        status === 'active'
+                          ? 'border-brand-500/30 bg-brand-600/5'
+                          : status === 'error'
+                            ? 'border-red-500/20 bg-red-500/5'
+                            : status === 'ready'
+                              ? 'border-green-500/15 bg-green-500/5'
+                              : 'border-white/5 bg-white/[0.02]'
+                      }`}
+                    >
+                      {/* Header row */}
+                      <div className="flex items-center gap-3 p-3">
+                        {/* Icon */}
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0 bg-gradient-to-br ${meta.color}`}>
+                          {meta.icon}
+                        </div>
+
+                        {/* Name + status */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-semibold text-white">{meta.label}</span>
+                            <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium border ${badge.cls}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${getProviderStatusColor(status)}`} />
+                              {badge.text}
+                            </span>
+                            {isDefault && (
+                              <span className="text-xs bg-amber-500/15 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded-full">Default</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-0.5 truncate">
+                            {latency !== null ? `${latency}ms · ` : ''}{modelsList.length} model(s) loaded
+                          </p>
+                        </div>
+
+                        {/* Enable toggle */}
+                        <button
+                          onClick={() => {
+                            const next = !enabled
+                            setProviderEnabled(prev => ({ ...prev, [meta.type]: next }))
+                          }}
+                          className={`relative w-10 h-5 rounded-full transition-all flex-shrink-0 ${
+                            enabled ? 'bg-brand-500' : 'bg-white/10'
+                          }`}
+                          title={enabled ? 'Disable provider' : 'Enable provider'}
+                        >
+                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
+                            enabled ? 'left-[22px]' : 'left-0.5'
+                          }`} />
+                        </button>
+
+                        {/* Expand chevron */}
+                        <button
+                          onClick={() => toggleProviderExpanded(meta.type)}
+                          className="p-1 rounded-lg hover:bg-white/5 transition-all flex-shrink-0"
+                        >
+                          <svg
+                            className={`w-4 h-4 text-slate-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{p.note}</p>
-                      {p.models && p.models.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {p.models.slice(0, 6).map((m: string) => (
-                            <code key={m} className="text-xs bg-white/5 text-slate-400 px-1.5 py-0.5 rounded">{m}</code>
-                          ))}
+
+                      {/* Expanded config panel */}
+                      {isExpanded && (
+                        <div className="px-3 pb-3 pt-1 border-t border-white/5 animate-slide-up">
+                          <p className="text-xs text-slate-500 mb-3">{meta.description}</p>
+
+                          <div className="space-y-3">
+                            {/* Endpoint URL (for local providers) */}
+                            {meta.needsEndpoint && (
+                              <div>
+                                <label className="text-xs font-medium text-slate-400 mb-1 block">Endpoint URL</label>
+                                <input
+                                  className="input"
+                                  placeholder={meta.placeholder}
+                                  value={providerEndpoints[meta.type] || ''}
+                                  onChange={e => setProviderEndpoints(prev => ({ ...prev, [meta.type]: e.target.value }))}
+                                />
+                              </div>
+                            )}
+
+                            {/* API Key (for cloud providers) */}
+                            {meta.needsApiKey && (
+                              <div>
+                                <label className="text-xs font-medium text-slate-400 mb-1 block">API Key</label>
+                                <div className="relative">
+                                  <input
+                                    className="input pr-20"
+                                    type={showApiKeys[meta.type] ? 'text' : 'password'}
+                                    placeholder={meta.placeholder}
+                                    value={providerApiKeys[meta.type] || ''}
+                                    onChange={e => setProviderApiKeys(prev => ({ ...prev, [meta.type]: e.target.value }))}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowApiKeys(prev => ({ ...prev, [meta.type]: !prev[meta.type] }))}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs px-2 py-1 rounded-md bg-white/5 text-slate-400 hover:text-slate-300 transition-all"
+                                  >
+                                    {showApiKeys[meta.type] ? 'Hide' : 'Show'}
+                                  </button>
+                                </div>
+                                <p className="text-xs text-slate-600 mt-1">
+                                  Get your key at{' '}
+                                  <a href={meta.setupUrl} target="_blank" rel="noreferrer" className="text-brand-400 hover:underline">
+                                    {meta.setupUrl.replace('https://', '').split('/')[0]}
+                                  </a>
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Model selector */}
+                            {modelsList.length > 0 && (
+                              <div>
+                                <label className="text-xs font-medium text-slate-400 mb-1 block">Default Model</label>
+                                <div className="grid sm:grid-cols-2 gap-1.5">
+                                  {modelsList.map(m => (
+                                    <button
+                                      key={m.id}
+                                      onClick={() => {
+                                        setSelectedModels(prev => ({ ...prev, [meta.type]: m.id }))
+                                        if (isDefault) setGlobalDefaultModel(m.id)
+                                      }}
+                                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-left transition-all ${
+                                        currentModel === m.id
+                                          ? 'border-brand-500/40 bg-brand-600/15 text-white'
+                                          : 'border-white/5 text-slate-400 hover:border-white/10 hover:text-slate-300'
+                                      }`}
+                                    >
+                                      <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${currentModel === m.id ? 'bg-brand-400' : 'bg-white/20'}`} />
+                                      <span className="text-xs font-mono truncate">{m.name || m.id}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Action buttons */}
+                            <div className="flex items-center gap-2 flex-wrap pt-1">
+                              <button
+                                onClick={() => testProvider(meta.type)}
+                                disabled={providerTesting[meta.type]}
+                                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-brand-600/15 border border-brand-500/20 text-brand-400 hover:bg-brand-600/25 transition-all disabled:opacity-50"
+                              >
+                                {providerTesting[meta.type] ? (
+                                  <><LoadingSpinner size="sm" /> Testing...</>
+                                ) : (
+                                  <><span>🔄</span> Test Connection</>
+                                )}
+                              </button>
+
+                              <button
+                                onClick={() => saveProvider(meta.type)}
+                                disabled={providerSaving[meta.type]}
+                                className="btn-primary text-xs px-3 py-1.5"
+                              >
+                                {providerSaving[meta.type] ? (
+                                  <LoadingSpinner size="sm" />
+                                ) : providerSaved[meta.type] ? (
+                                  '✓ Saved'
+                                ) : (
+                                  'Save Config'
+                                )}
+                              </button>
+
+                              {!isDefault && avail && (
+                                <button
+                                  onClick={() => setAsDefault(meta.type)}
+                                  className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20 transition-all"
+                                >
+                                  Set as Default
+                                </button>
+                              )}
+
+                              {!meta.needsApiKey && !avail && (
+                                <a
+                                  href={meta.setupUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                                >
+                                  Setup Guide →
+                                </a>
+                              )}
+                            </div>
+
+                            {/* Test result */}
+                            {providerTestResults[meta.type] && (
+                              <div className={`text-xs flex items-center gap-1.5 ${
+                                providerTestResults[meta.type]!.ok ? 'text-green-400' : 'text-red-400'
+                              }`}>
+                                {providerTestResults[meta.type]!.ok ? '✓' : '✗'} {providerTestResults[meta.type]!.message}
+                              </div>
+                            )}
+
+                            {/* Error from server */}
+                            {serverP?.error && (
+                              <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/15 rounded-lg px-3 py-2">
+                                {serverP.error}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
-                    {!isAvail && (
-                      <a
-                        href={p.setupUrl || 'https://ollama.ai'}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex-shrink-0 text-xs px-2.5 py-1.5 rounded-lg bg-brand-600/15 border border-brand-500/20 text-brand-400 hover:bg-brand-600/25 transition-all"
-                      >
-                        Install →
-                      </a>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════════
+              FALLBACK ORDER
+              ═══════════════════════════════════════════════════════════ */}
+          <div className="card">
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold text-white">🔗 Fallback Order</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Drag to reorder. If the primary provider is unavailable, automatically try the next one.</p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap mb-4">
+              {fallbackOrder.map((type, i) => {
+                const meta = PROVIDER_META.find(m => m.type === type)
+                if (!meta) return null
+                const avail = isProviderAvailable(type)
+                return (
+                  <div key={type} className="flex items-center gap-1.5">
+                    {i > 0 && (
+                      <svg className="w-4 h-4 text-slate-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
                     )}
+                    <div
+                      draggable
+                      onDragStart={() => handleDragStart(i)}
+                      onDragOver={(e) => handleDragOver(e, i)}
+                      onDragEnd={handleDragEnd}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium cursor-grab active:cursor-grabbing transition-all ${
+                        dragIndex === i
+                          ? 'border-brand-500/40 bg-brand-600/20 text-white scale-105'
+                          : avail
+                            ? 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20'
+                            : 'border-white/5 bg-white/[0.02] text-slate-600'
+                      }`}
+                    >
+                      <span>{meta.icon}</span>
+                      <span>{meta.label}</span>
+                      <span className={`w-1.5 h-1.5 rounded-full ${avail ? 'bg-green-400' : 'bg-slate-600'}`} />
+                    </div>
                   </div>
                 )
               })}
             </div>
-            <p className="text-xs text-slate-600 mt-3">
-              No API keys needed. All inference runs locally on your machine.
-            </p>
 
-            {/* Test Connection */}
-            <div className="mt-3 flex items-center gap-3">
+            {/* Auto-failover toggle */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5">
+              <div>
+                <p className="text-xs font-medium text-white">Auto-failover</p>
+                <p className="text-xs text-slate-500 mt-0.5">Automatically try the next provider if the primary is unavailable</p>
+              </div>
               <button
-                onClick={testConnection}
-                disabled={testing}
-                className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-brand-600/15 border border-brand-500/20 text-brand-400 hover:bg-brand-600/25 transition-all disabled:opacity-50"
+                onClick={() => {
+                  const next = !autoFailover
+                  setAutoFailover(next)
+                  api.put('/providers/fallback-order', { order: fallbackOrder, autoFailover: next }).catch(() => {})
+                }}
+                className={`relative w-10 h-5 rounded-full transition-all flex-shrink-0 ${
+                  autoFailover ? 'bg-brand-500' : 'bg-white/10'
+                }`}
               >
-                {testing ? (
-                  <><LoadingSpinner size="sm" /> Testing...</>
-                ) : (
-                  <><span>🔄</span> Test Connection</>
-                )}
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
+                  autoFailover ? 'left-[22px]' : 'left-0.5'
+                }`} />
               </button>
-              {testResult && (
-                <span className={`text-xs ${testResult.ok ? 'text-green-400' : 'text-red-400'}`}>
-                  {testResult.ok ? '✓' : '✗'} {testResult.message}
-                </span>
-              )}
             </div>
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════════
+              SERVER STATUS PANEL
+              ═══════════════════════════════════════════════════════════ */}
+          <div className="glass rounded-2xl p-5 border border-white/5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-white">📊 Server Status</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Live status of all configured AI providers.</p>
+              </div>
+              <button
+                onClick={refreshProviders}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh All
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    <th className="text-left text-slate-500 font-medium pb-2 pr-4">Provider</th>
+                    <th className="text-left text-slate-500 font-medium pb-2 pr-4">Status</th>
+                    <th className="text-left text-slate-500 font-medium pb-2 pr-4">Latency</th>
+                    <th className="text-left text-slate-500 font-medium pb-2 pr-4">Models</th>
+                    <th className="text-left text-slate-500 font-medium pb-2">Default</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PROVIDER_META.map(meta => {
+                    const serverP = getProviderFromServer(meta.type)
+                    const avail = serverP?.available ?? false
+                    const latency = serverP?.latencyMs ?? null
+                    const modelsCount = serverP?.models?.length ?? 0
+                    const defaultM = serverP?.defaultModel || selectedModels[meta.type] || '—'
+                    return (
+                      <tr key={meta.type} className="border-b border-white/[0.03]">
+                        <td className="py-2.5 pr-4">
+                          <div className="flex items-center gap-2">
+                            <span>{meta.icon}</span>
+                            <span className="font-medium text-white">{meta.label}</span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 pr-4">
+                          <span className={`inline-flex items-center gap-1 ${
+                            avail ? 'text-green-400' : 'text-slate-600'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${avail ? 'bg-green-400' : 'bg-slate-600'}`} />
+                            {avail ? 'Online' : 'Offline'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 pr-4 text-slate-400">
+                          {latency !== null ? `${latency}ms` : '—'}
+                        </td>
+                        <td className="py-2.5 pr-4 text-slate-400">
+                          {modelsCount > 0 ? `${modelsCount} model(s)` : '—'}
+                        </td>
+                        <td className="py-2.5 text-slate-400 font-mono truncate max-w-[160px]">
+                          {defaultM}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {providers.length === 0 && !providersLoading && (
+              <p className="text-xs text-slate-600 text-center py-4">No providers configured yet. Enable one above to get started.</p>
+            )}
           </div>
 
           {/* Business Identity */}
@@ -531,35 +1087,6 @@ RESPONSE STRUCTURE:
             </div>
           </div>
 
-          {/* Default Model */}
-          {isOnline && models.length > 0 && (
-            <div className="card">
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-white">⚙️ Default Model</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Which Ollama model powers your AI by default. You can also switch per-conversation in the chat.</p>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-2">
-                {models.map((m: string) => (
-                  <button
-                    key={m}
-                    onClick={() => setAIConfig(c => ({ ...c, defaultModel: m }))}
-                    className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
-                      aiConfig.defaultModel === m
-                        ? 'border-brand-500/40 bg-brand-600/15 text-white'
-                        : 'border-white/5 text-slate-400 hover:border-white/10 hover:text-slate-300'
-                    }`}
-                  >
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${aiConfig.defaultModel === m ? 'bg-brand-400' : 'bg-white/20'}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-mono font-medium truncate">{m}</div>
-                    </div>
-                    {aiConfig.defaultModel === m && <span className="text-xs text-brand-400 flex-shrink-0">Active</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* System Prompt Preview */}
           <div className="card">
             <button
@@ -594,31 +1121,6 @@ RESPONSE STRUCTURE:
             </button>
             <p className="text-xs text-slate-600">Changes take effect on the next conversation.</p>
           </div>
-
-          {!isOnline && (
-            <div className="glass rounded-xl p-5 border border-yellow-500/15 space-y-4">
-              <p className="text-sm font-semibold text-white">⚡ Enable AI — Install Ollama</p>
-              <div className="p-3 rounded-lg bg-white/3 border border-white/5 text-xs">
-                <p className="font-semibold text-white mb-1.5">Ollama — local inference, zero cost</p>
-                <div className="space-y-1.5 text-slate-400">
-                  <p><span className="text-slate-300 font-medium">Step 1:</span> Install from <a href="https://ollama.ai" target="_blank" rel="noreferrer" className="text-brand-400 underline">ollama.ai</a></p>
-                  <p><span className="text-slate-300 font-medium">Step 2:</span> Open a terminal and run:</p>
-                  <div className="bg-black/40 rounded-lg p-2.5 font-mono text-xs space-y-1">
-                    <p className="text-green-400"># Start the Ollama server</p>
-                    <p className="text-white">ollama serve</p>
-                    <p className="text-green-400 mt-2"># Pull a recommended model</p>
-                    <p className="text-white">ollama pull qwen3:8b</p>
-                    <p className="text-green-400 mt-2"># Verify it's running</p>
-                    <p className="text-white">ollama list</p>
-                  </div>
-                  <p><span className="text-slate-300 font-medium">Step 3:</span> Click "Test Connection" above</p>
-                  <p className="text-slate-500 mt-2">Other models: <code className="bg-white/5 px-1 rounded">deepseek-r1:7b</code> · <code className="bg-white/5 px-1 rounded">mistral:7b</code> · <code className="bg-white/5 px-1 rounded">llama3.1:8b</code> · <code className="bg-white/5 px-1 rounded">qwen3:14b</code></p>
-                  <p className="text-slate-500">Default endpoint: <code className="bg-white/5 px-1 rounded">http://localhost:11434</code></p>
-                </div>
-              </div>
-              <p className="text-xs text-slate-600">No API keys. No cloud. No costs. AI runs on your hardware.</p>
-            </div>
-          )}
         </div>
       )}
 

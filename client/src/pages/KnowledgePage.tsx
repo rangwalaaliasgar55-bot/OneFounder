@@ -5,6 +5,7 @@ import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
 import { SkeletonListPage } from '../components/ui/PageSkeletons'
 import { MeshGradient } from '../components/ui/MeshGradient'
+import { downloadCsv, downloadJson } from '../lib/export'
 import { createLazy3D, isWebGLAvailable, isMobile } from '../components/3d/Lazy3D'
 
 const LazyKnowledgeGraph = createLazy3D(
@@ -101,13 +102,17 @@ export function KnowledgePage() {
         </div>
       )}
 
-      <div className="mb-6">
+      <div className="mb-6 flex items-center gap-3">
         <input
           className="input max-w-md"
           placeholder="🔍 Search knowledge base..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
+        <div className="flex gap-2 ml-auto">
+          <button onClick={() => downloadCsv(items, 'knowledge-base')} className="btn-ghost text-xs">📊 CSV</button>
+          <button onClick={() => downloadJson(items, 'knowledge-base')} className="btn-ghost text-xs">📄 JSON</button>
+        </div>
       </div>
 
       {filtered.length === 0 ? (

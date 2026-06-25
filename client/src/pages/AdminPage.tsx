@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
+import { MeshGradient } from '../components/ui/MeshGradient'
 
 interface UserRow {
   id: string
@@ -85,7 +86,8 @@ export function AdminPage() {
   )
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6 relative">
+      <MeshGradient />
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-brand-600/20 flex items-center justify-center text-xl">🛡️</div>
         <div>

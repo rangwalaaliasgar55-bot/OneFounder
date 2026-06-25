@@ -34,6 +34,7 @@ const JourneyPage    = lazy(() => import('./pages/JourneyPage').then(m => ({ def
 const WordPressPage  = lazy(() => import('./pages/WordPressPage').then(m => ({ default: m.WordPressPage })))
 const InvestorPage   = lazy(() => import('./pages/InvestorPage').then(m => ({ default: m.InvestorPage })))
 const AdminPage      = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })))
+const ConnectionsPage = lazy(() => import('./pages/ConnectionsPage').then(m => ({ default: m.ConnectionsPage })))
 
 function prefetchAfterIdle(importFns: Array<() => Promise<unknown>>, delay = 200) {
   const run = () => { importFns.forEach(fn => { try { fn() } catch (_) {} }) }
@@ -71,6 +72,7 @@ function AppPrefetch() {
       () => import('./pages/MemoryPage'),
       () => import('./pages/TasksPage'),
       () => import('./pages/AgentPage'),
+      () => import('./pages/ConnectionsPage'),
     ])
   }, [])
   return null
@@ -93,7 +95,7 @@ function PageFallback() {
 const GO_TO_ROUTES: Record<string, string> = {
   d: '/', a: '/chat', i: '/ideas', f: '/finance',
   c: '/crm', p: '/projects', r: '/research', s: '/seo',
-  n: '/content', j: '/journey', v: '/investor',
+  n: '/content', j: '/journey', v: '/investor', x: '/connections',
 }
 
 function AnimatedRoutes() {
@@ -121,6 +123,7 @@ function AnimatedRoutes() {
       <Route path="/tasks"     element={<AnimatedPage><TasksPage /></AnimatedPage>} />
       <Route path="/agents"    element={<AnimatedPage><AgentPage /></AnimatedPage>} />
       <Route path="/admin"     element={<AnimatedPage><AdminPage /></AnimatedPage>} />
+      <Route path="/connections" element={<AnimatedPage><ConnectionsPage /></AnimatedPage>} />
       <Route path="*"          element={<Navigate to="/" replace />} />
     </Routes>
   )

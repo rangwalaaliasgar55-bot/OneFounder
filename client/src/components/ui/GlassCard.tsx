@@ -40,7 +40,7 @@ export function GlassCard({
 
   const spotlightBg = useTransform(
     [spotlightX, spotlightY],
-    ([x, y]) => `radial-gradient(circle at ${x * 100}% ${y * 100}%, ${glow || 'rgba(99,102,241,0.06)'} 0%, transparent 50%)`
+    ([x, y]: number[]) => `radial-gradient(circle at ${(x as number) * 100}% ${(y as number) * 100}%, ${glow || 'rgba(99,102,241,0.06)'} 0%, transparent 50%)`
   )
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {

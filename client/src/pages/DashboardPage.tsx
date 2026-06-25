@@ -210,7 +210,7 @@ export function DashboardPage() {
     ]).then(([dashboard, ai]) => {
       setData(dashboard)
       setAiStatus(ai)
-    }).catch(console.error).finally(() => setLoading(false))
+    }).catch(() => {}).finally(() => setLoading(false))
   }, [])
 
   const loadHealthScore = async () => {

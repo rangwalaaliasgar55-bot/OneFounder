@@ -6,6 +6,7 @@ import { Modal } from '../components/ui/Modal'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { SkeletonListPage } from '../components/ui/PageSkeletons'
 import { MeshGradient } from '../components/ui/MeshGradient'
+import { downloadCsv, downloadJson } from '../lib/export'
 
 const PLATFORMS = [
   { id: 'all', label: 'All', icon: '📱' },
@@ -30,6 +31,7 @@ export function SocialPage() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [activePlatform, setActivePlatform] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [showComposer, setShowComposer] = useState(false)
   const [showGenerator, setShowGenerator] = useState(false)
   const [selected, setSelected] = useState<any | null>(null)
@@ -88,7 +90,8 @@ export function SocialPage() {
 
   if (loading) return <SkeletonListPage />
 
-  const filtered = activePlatform === 'all' ? posts : posts.filter(p => p.platform === activePlatform)
+  const filtered = (activePlatform === 'all' ? posts : posts.filter(p => p.platform === activePlatform))
+    .filter(p => !searchQuery || p.content?.toLowerCase().includes(searchQuery.toLowerCase()))
 
   const getPlatform = (id: string) => PLATFORMS.find(p => p.id === id)
 
@@ -141,6 +144,23 @@ export function SocialPage() {
           </div>
         </div>
       )}
+
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1 max-w-xs">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">🔍</span>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search posts..."
+            className="input w-full pl-9 text-sm"
+          />
+        </div>
+        <div className="flex gap-2 ml-auto">
+          <button onClick={() => downloadCsv(posts, 'social-posts')} className="btn-ghost text-xs">📊 CSV</button>
+          <button onClick={() => downloadJson(posts, 'social-posts')} className="btn-ghost text-xs">📄 JSON</button>
+        </div>
+      </div>
 
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
         {PLATFORMS.map(p => (

@@ -34,6 +34,7 @@ const NAV_SECTIONS = [
       { path: '/seo', icon: '🔎', label: 'SEO OS' },
       { path: '/crm', icon: '👥', label: 'CRM' },
       { path: '/wordpress', icon: '🌐', label: 'Website Manager' },
+      { path: '/connections', icon: '🔗', label: 'Connections' },
     ],
   },
   {

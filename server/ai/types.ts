@@ -29,7 +29,7 @@ export interface AIModel {
 
 // ─── Provider Types ───────────────────────────────────────────────────────────
 
-export type ProviderType = 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'lmstudio' | 'openrouter'
+export type ProviderType = 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'lmstudio' | 'openrouter' | 'termux'
 
 export interface ProviderStatus {
   name: string

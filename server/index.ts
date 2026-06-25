@@ -42,10 +42,12 @@ import memoryRoutes from './routes/memory.js'
 import tasksRoutes from './routes/tasks.js'
 import adminRoutes from './routes/admin.js'
 import ollamaRoutes from './routes/ollama.js'
+import providersRoutes from './routes/providers.js'
 import apiKeysRoutes from './routes/apiKeys.js'
 import growthRoutes from './routes/growth.js'
 import organizationsRoutes from './routes/organizations.js'
 import billingRoutes from './routes/billing.js'
+import connectionsRoutes from './routes/connections.js'
 import swaggerUi from 'swagger-ui-express'
 import { openApiSpec } from './api/openapi.js'
 import { apiKeyAuth } from './middleware/apiKey.js'
@@ -167,10 +169,12 @@ app.use('/api/memory', memoryRoutes)
 app.use('/api/tasks', tasksRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/ollama', ollamaRoutes)
+app.use('/api/providers', providersRoutes)
 app.use('/api/api-keys', apiKeysRoutes)
 app.use('/api/growth', growthRoutes)
 app.use('/api/orgs', organizationsRoutes)
 app.use('/api/billing', billingRoutes)
+app.use('/api/connections', connectionsRoutes)
 
 // API Documentation — Swagger UI
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openApiSpec, {

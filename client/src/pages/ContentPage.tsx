@@ -6,6 +6,7 @@ import { Modal } from '../components/ui/Modal'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { SkeletonListPage } from '../components/ui/PageSkeletons'
 import { MeshGradient } from '../components/ui/MeshGradient'
+import { downloadCsv, downloadJson } from '../lib/export'
 
 const CONTENT_TYPES = [
   { value: 'blog', label: 'Blog Post', icon: '📝' },
@@ -42,6 +43,7 @@ export function ContentPage() {
   const [showModal, setShowModal] = useState(false)
   const [selected, setSelected] = useState<any | null>(null)
   const [filter, setFilter] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [form, setForm] = useState({ type: 'blog', topic: '', tone: 'professional', audience: '', keywords: '' })
 
   // Repurpose tab state
@@ -105,7 +107,8 @@ export function ContentPage() {
     }
   }
 
-  const filtered = filter === 'all' ? content : content.filter(c => c.type === filter)
+  const filtered = (filter === 'all' ? content : content.filter(c => c.type === filter))
+    .filter(c => !searchQuery || c.title?.toLowerCase().includes(searchQuery.toLowerCase()) || c.content?.toLowerCase().includes(searchQuery.toLowerCase()))
 
   if (loading) return <SkeletonListPage />
 
@@ -149,6 +152,23 @@ export function ContentPage() {
               </div>
             </div>
           )}
+
+          <div className="flex items-center gap-3 mb-6">
+            <div className="relative flex-1 max-w-xs">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">🔍</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search content..."
+                className="input w-full pl-9 text-sm"
+              />
+            </div>
+            <div className="flex gap-2 ml-auto">
+              <button onClick={() => downloadCsv(content, 'content')} className="btn-ghost text-xs">📊 CSV</button>
+              <button onClick={() => downloadJson(content, 'content')} className="btn-ghost text-xs">📄 JSON</button>
+            </div>
+          </div>
 
           <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
             <button

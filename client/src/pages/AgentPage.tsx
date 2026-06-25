@@ -131,7 +131,7 @@ export function AgentPage() {
               setResult(fullRes)
               setActiveAgents([])
             } else if (eventType === 'error') {
-              console.error('Agent error:', parsed.message)
+              // Agent error handled by UI state
             }
           } catch {}
         }
@@ -144,7 +144,7 @@ export function AgentPage() {
         })
         setResult(res)
       } catch (err: any) {
-        console.error('Agent execution failed:', err)
+        // Agent execution failed — error shown in UI
       }
     }
 

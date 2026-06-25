@@ -75,7 +75,8 @@ export function ProjectsPage() {
   }, {} as Record<string, any[]>)
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto relative">
+      <MeshGradient />
       <PageHeader
         icon="🎯"
         title="Projects"

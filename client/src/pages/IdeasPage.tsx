@@ -8,6 +8,8 @@ import { SkeletonListPage } from '../components/ui/PageSkeletons'
 import { TiltCard } from '../components/ui/TiltCard'
 import { Confetti, useConfetti } from '../components/ui/Confetti'
 import { MeshGradient } from '../components/ui/MeshGradient'
+import { SearchFilter } from '../components/ui/SearchFilter'
+import { downloadCsv, downloadJson } from '../lib/export'
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-slate-500/20 text-slate-400',
@@ -27,6 +29,7 @@ const TYPE_EMOJIS: Record<string, string> = {
 
 export function IdeasPage() {
   const [ideas, setIdeas] = useState<any[]>([])
+  const [filteredIdeas, setFilteredIdeas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -83,6 +86,31 @@ export function IdeasPage() {
         }
       />
 
+      {ideas.length > 0 && (
+        <div className="mb-4 flex items-end gap-3">
+          <div className="flex-1">
+            <SearchFilter
+              items={ideas}
+              searchFields={['title', 'description', 'type', 'status']}
+              placeholder="Search ideas..."
+              filters={[
+                { key: 'status', label: 'Status' },
+                { key: 'type', label: 'Type' },
+              ]}
+              sortOptions={[
+                { key: 'newest', label: 'Newest first', fn: (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() },
+                { key: 'oldest', label: 'Oldest first', fn: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() },
+              ]}
+              onFiltered={setFilteredIdeas}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => downloadCsv(ideas, 'ideas')} className="btn-ghost text-xs">📊 CSV</button>
+            <button onClick={() => downloadJson(ideas, 'ideas')} className="btn-ghost text-xs">📄 JSON</button>
+          </div>
+        </div>
+      )}
+
       {generating && (
         <div className="card border border-brand-500/20 mb-6 flex items-center gap-4">
           <LoadingSpinner />
@@ -102,7 +130,7 @@ export function IdeasPage() {
         />
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {ideas.map((idea, i) => (
+          {filteredIdeas.map((idea, i) => (
             <TiltCard
               key={idea.id}
               className={`card-hover group animate-slide-up stagger-${Math.min(i + 1, 7)}`}

@@ -16,6 +16,7 @@ const COMMANDS = [
   { id: 'seo',       label: 'SEO OS',              icon: '🔎', path: '/seo',       section: 'Navigate' },
   { id: 'crm',       label: 'CRM',                 icon: '👥', path: '/crm',       section: 'Navigate' },
   { id: 'wordpress', label: 'Website Manager',     icon: '🌐', path: '/wordpress', section: 'Navigate' },
+  { id: 'connections', label: 'Connections',      icon: '🔗', path: '/connections', section: 'Navigate' },
   { id: 'finance',   label: 'Finance Tracker',     icon: '💰', path: '/finance',   section: 'Navigate' },
   { id: 'knowledge', label: 'Knowledge Base',      icon: '📚', path: '/knowledge', section: 'Navigate' },
   { id: 'settings',  label: 'Settings',            icon: '⚙️', path: '/settings',  section: 'Navigate' },

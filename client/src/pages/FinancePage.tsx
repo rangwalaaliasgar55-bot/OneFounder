@@ -5,7 +5,7 @@ import { EmptyStateAnimated } from '../components/ui/EmptyStateAnimated'
 import { Modal } from '../components/ui/Modal'
 import { SkeletonListPage } from '../components/ui/PageSkeletons'
 import { AnimatedCounter } from '../components/ui/AnimatedCounter'
-import { AnimatedBarChart } from '../components/ui/AnimatedBarChart'
+import { downloadCsv, downloadJson } from '../lib/export'
 import { MeshGradient } from '../components/ui/MeshGradient'
 
 const CATEGORIES = {
@@ -26,6 +26,7 @@ export function FinancePage() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [filterType, setFilterType] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [form, setForm] = useState({
     type: 'revenue', amount: '', description: '', category: 'Sales', recurring: false, recurringInterval: 'monthly', date: new Date().toISOString().split('T')[0]
   })
@@ -52,7 +53,8 @@ export function FinancePage() {
 
   if (loading) return <SkeletonListPage />
 
-  const filtered = filterType === 'all' ? entries : entries.filter(e => e.type === filterType)
+  const filtered = (filterType === 'all' ? entries : entries.filter(e => e.type === filterType))
+    .filter(e => !searchQuery || e.description?.toLowerCase().includes(searchQuery.toLowerCase()) || e.category?.toLowerCase().includes(searchQuery.toLowerCase()))
 
   const groupByMonth = (entries: any[]) => {
     const groups: Record<string, any[]> = {}
@@ -104,20 +106,36 @@ export function FinancePage() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-6">
-        {['all', 'revenue', 'expense', 'subscription'].map(t => (
-          <button
-            key={t}
-            onClick={() => setFilterType(t)}
-            className={`text-sm px-3 py-1.5 rounded-lg transition-all font-medium ${
-              filterType === t
-                ? 'bg-brand-600 text-white'
-                : 'glass text-slate-400 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            {t === 'all' ? '📋 All' : t === 'revenue' ? '💰 Revenue' : t === 'expense' ? '💸 Expenses' : '🔄 Subscriptions'}
-          </button>
-        ))}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="flex gap-2">
+          {['all', 'revenue', 'expense', 'subscription'].map(t => (
+            <button
+              key={t}
+              onClick={() => setFilterType(t)}
+              className={`text-sm px-3 py-1.5 rounded-lg transition-all font-medium ${
+                filterType === t
+                  ? 'bg-brand-600 text-white'
+                  : 'glass text-slate-400 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              {t === 'all' ? '📋 All' : t === 'revenue' ? '💰 Revenue' : t === 'expense' ? '💸 Expenses' : '🔄 Subscriptions'}
+            </button>
+          ))}
+        </div>
+        <div className="relative flex-1 max-w-xs">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">🔍</span>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search entries..."
+            className="input w-full pl-9 text-sm"
+          />
+        </div>
+        <div className="flex gap-2 ml-auto">
+          <button onClick={() => downloadCsv(entries, 'finance')} className="btn-ghost text-xs">📊 CSV</button>
+          <button onClick={() => downloadJson(entries, 'finance')} className="btn-ghost text-xs">📄 JSON</button>
+        </div>
       </div>
 
       {filtered.length === 0 ? (

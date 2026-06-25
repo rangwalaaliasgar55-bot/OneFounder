@@ -448,7 +448,7 @@ export function LoginPage({ onSuccess }: LoginPageProps) {
             ))}
           </div>
           <div className="border-t border-white/[0.04] pt-6 text-center text-white/15 text-xs">
-            © 2025 OneFounder — All rights reserved. Powered by Local AI.
+            © 2025-2026 OneFounder — All rights reserved. Powered by Local AI.
           </div>
         </div>
       </footer>
