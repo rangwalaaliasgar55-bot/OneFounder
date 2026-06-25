@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import tailwindcss from 'tailwindcss'
+import tailwindcss from '@tailwindcss/postcss'
 import autoprefixer from 'autoprefixer'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -16,12 +16,18 @@ export default defineConfig({
     chunkSizeWarningLimit: 1200,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react':  ['react', 'react-dom', 'react-router-dom'],
-          'vendor-ui':     ['react/jsx-runtime'],
-          'vendor-motion': ['framer-motion', 'gsap', '@gsap/react'],
-          // Three.js is NOT in manualChunks — it's lazy-loaded via dynamic imports
-          // and will be automatically split into its own chunk by Vite
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (/[\\/]node_modules[\\/](react|react-dom|react-router-dom)[\\/]/.test(id)) {
+            return 'vendor-react'
+          }
+          if (id.includes('react/jsx-runtime')) {
+            return 'vendor-ui'
+          }
+          if (/[\\/]node_modules[\\/](framer-motion|gsap|@gsap[\\/]react)[\\/]/.test(id)) {
+            return 'vendor-motion'
+          }
+          // Three.js is not grouped here; dynamic imports let Vite split it separately.
         },
       },
     },

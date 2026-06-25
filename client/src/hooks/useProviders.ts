@@ -60,7 +60,7 @@ function stopPolling() {
  */
 export function useProviders() {
   const [status, setStatus] = useState<ProvidersStatus | null>(globalStatus)
-  const listenerRef = useRef<(s: ProvidersStatus | null) => void>()
+  const listenerRef = useRef<((s: ProvidersStatus | null) => void) | undefined>(undefined)
 
   useEffect(() => {
     listenerRef.current = (s) => setStatus(s)

@@ -43,7 +43,7 @@ function stopPolling() {
  */
 export function useOllamaStatus() {
   const [status, setStatus] = useState<OllamaStatus | null>(globalStatus)
-  const listenerRef = useRef<(s: OllamaStatus | null) => void>()
+  const listenerRef = useRef<((s: OllamaStatus | null) => void) | undefined>(undefined)
 
   useEffect(() => {
     listenerRef.current = (s) => setStatus(s)

@@ -1,3 +1,5 @@
+@config "../../tailwind.config.cjs";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -319,12 +321,24 @@
      BUTTON SYSTEM — 3D DEPTH
      ═══════════════════════════════════════════════ */
   .btn-primary {
-    @apply bg-gradient-to-b from-brand-500 to-brand-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed;
+    align-items: center;
+    background: linear-gradient(to bottom, #6366f1, #4f46e5);
+    border-radius: 0.5rem;
+    color: #fff;
+    display: inline-flex;
+    font-weight: 500;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s;
     box-shadow:
       0 1px 2px rgba(0,0,0,0.3),
       0 4px 12px rgba(99,102,241,0.2),
       inset 0 1px 0 rgba(255,255,255,0.12);
     text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  }
+  .btn-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
   }
   .btn-primary:hover:not(:disabled) {
     background: linear-gradient(to bottom, #6366f1, #4f46e5);
@@ -382,7 +396,15 @@
   }
 
   .btn-glow {
-    @apply bg-gradient-to-b from-brand-500 to-brand-600 text-white px-5 py-2.5 rounded-xl font-semibold transition-all duration-300 inline-flex items-center gap-2;
+    align-items: center;
+    background: linear-gradient(to bottom, #6366f1, #4f46e5);
+    border-radius: 0.75rem;
+    color: #fff;
+    display: inline-flex;
+    font-weight: 600;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    transition: all 0.3s;
     box-shadow:
       0 0 20px rgba(99,102,241,0.3),
       0 0 40px rgba(99,102,241,0.15),
@@ -446,10 +468,16 @@
      GRADIENT TEXT
      ═══════════════════════════════════════════════ */
   .gradient-text {
-    @apply bg-gradient-to-r from-brand-400 via-violet-400 to-brand-300 bg-clip-text text-transparent;
+    background: linear-gradient(to right, #8191f8, #a78bfa, #a5b9fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
   .gradient-text-glow {
-    @apply bg-gradient-to-r from-brand-300 via-violet-300 to-brand-200 bg-clip-text text-transparent;
+    background: linear-gradient(to right, #a5b9fc, #c4b5fd, #c7d7fe);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
     filter: drop-shadow(0 0 12px rgba(99,102,241,0.3));
   }
 
