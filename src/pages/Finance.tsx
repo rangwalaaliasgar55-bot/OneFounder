@@ -27,7 +27,7 @@ import {
 } from 'recharts';
 import { useTable } from '../hooks/useTable';
 import Modal from '../components/Modal';
-import { useToast } from '../components/Toast';
+import { useToast } from '../components/useToast';
 
 interface Transaction {
   id: string;
@@ -80,12 +80,11 @@ export default function Finance() {
   );
 
   const mrr = useMemo(() => {
-    const income = transactions.filter((t) => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-    return 12450 + income - 4999 - 199 - 2499;
+    return transactions.filter((t) => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
   }, [transactions]);
 
   const totalExpenses = useMemo(() => {
-    return transactions.filter((t) => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0) + 8500 - 892 - 156 - 299;
+    return transactions.filter((t) => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
   }, [transactions]);
 
   const arr = mrr * 12;

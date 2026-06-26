@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useTable } from '../hooks/useTable';
 import Modal from '../components/Modal';
-import { useToast } from '../components/Toast';
+import { useToast } from '../components/useToast';
 
 interface Task {
   id: string;

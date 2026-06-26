@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useState, useCallback, type ReactNode } from 'react';
 import { CheckCircle, XCircle, Info, X } from 'lucide-react';
 
 type ToastVariant = 'success' | 'error' | 'info';
@@ -9,17 +9,11 @@ interface Toast {
   variant: ToastVariant;
 }
 
-interface ToastContextValue {
+export interface ToastContextValue {
   toast: (message: string, variant?: ToastVariant) => void;
 }
 
-const ToastContext = createContext<ToastContextValue | null>(null);
-
-export function useToast() {
-  const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast must be used within ToastProvider');
-  return ctx.toast;
-}
+export const ToastContext = createContext<ToastContextValue | null>(null);
 
 const variantConfig: Record<ToastVariant, { icon: typeof CheckCircle; bg: string; border: string; text: string }> = {
   success: { icon: CheckCircle, bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400' },

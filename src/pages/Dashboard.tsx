@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   DollarSign,
@@ -15,13 +16,13 @@ import {
 } from 'lucide-react';
 import { askAI } from '../lib/ai';
 import { SkeletonCard } from '../components/Skeleton';
-import { useToast } from '../components/Toast';
+import { useToast } from '../components/useToast';
 
 interface MetricCardProps {
   title: string;
   value: string;
   change: number;
-  icon: React.ReactNode;
+  icon: ReactNode;
   color: 'cyan' | 'emerald' | 'amber' | 'rose';
   onClick?: () => void;
 }
@@ -31,6 +32,13 @@ const colorClasses = {
   emerald: 'from-emerald-500/20 to-teal-600/20 border-emerald-500/30 text-emerald-400',
   amber: 'from-amber-500/20 to-orange-600/20 border-amber-500/30 text-amber-400',
   rose: 'from-rose-500/20 to-pink-600/20 border-rose-500/30 text-rose-400',
+};
+
+const iconTextColor = {
+  cyan: 'text-cyan-400',
+  emerald: 'text-emerald-400',
+  amber: 'text-amber-400',
+  rose: 'text-rose-400',
 };
 
 function MetricCard({ title, value, change, icon, color, onClick }: MetricCardProps) {
@@ -43,7 +51,7 @@ function MetricCard({ title, value, change, icon, color, onClick }: MetricCardPr
       <div className="relative">
         <div className="flex items-center justify-between mb-3">
           <span className="text-slate-300 text-sm font-medium">{title}</span>
-          <div className={`p-2 rounded-lg bg-white/10 ${colorClasses[color].split(' ').pop()}`}>
+          <div className={`p-2 rounded-lg bg-white/10 ${iconTextColor[color]}`}>
             {icon}
           </div>
         </div>

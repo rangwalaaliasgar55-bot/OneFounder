@@ -13,7 +13,7 @@ import {
 import { useTable } from '../hooks/useTable';
 import { askAI } from '../lib/ai';
 import Modal from '../components/Modal';
-import { useToast } from '../components/Toast';
+import { useToast } from '../components/useToast';
 
 interface Idea {
   id: string;

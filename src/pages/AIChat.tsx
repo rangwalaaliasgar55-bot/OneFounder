@@ -21,7 +21,7 @@ import {
 import { askAI, type AIMessage } from '../lib/ai';
 import { EXPERT_MODES, getSystemPrompt, detectMode } from '../lib/expertModes';
 import MarkdownRenderer from '../components/MarkdownRenderer';
-import { useToast } from '../components/Toast';
+import { useToast } from '../components/useToast';
 
 interface Message {
   id: string;
@@ -138,7 +138,7 @@ export default function AIChat() {
     setShowHistory(false);
   };
 
-  const saveCurrentConversation = (msgs: Message[]) => {
+  const saveCurrentConversation = useCallback((msgs: Message[]) => {
     if (msgs.length <= 1) return;
     const userMsgs = msgs.filter((m) => m.role === 'user');
     if (userMsgs.length === 0) return;
@@ -157,7 +157,7 @@ export default function AIChat() {
       setConversations((prev) => [newConv, ...prev]);
       setActiveConvId(newConv.id);
     }
-  };
+  }, [activeConvId]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || isTyping) return;
@@ -201,7 +201,7 @@ export default function AIChat() {
     } finally {
       setIsTyping(false);
     }
-  }, [input, isTyping, messages, activeMode, toast]);
+  }, [input, isTyping, messages, activeMode, toast, saveCurrentConversation]);
 
   const handleRegenerate = async () => {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
