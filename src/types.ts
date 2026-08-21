@@ -8,7 +8,8 @@ export type NavPage =
   | 'automations'
   | 'trust'
   | 'control'
-  | 'playbooks';
+  | 'playbooks'
+  | 'knowledge';
 
 export type MarketSize = 'Niche' | 'Growing' | 'Medium' | 'Large';
 
@@ -189,7 +190,7 @@ export interface WorkflowRun {
 }
 
 export type AlertSeverity = 'info' | 'warning' | 'critical';
-export type AlertCategory = 'governance' | 'revenue' | 'delivery' | 'finance' | 'automation';
+export type AlertCategory = 'governance' | 'revenue' | 'delivery' | 'finance' | 'automation' | 'knowledge';
 
 export interface WorkspaceAlert {
   id: string;
@@ -230,6 +231,49 @@ export interface AITrace {
   notes: string;
 }
 
+export type KnowledgeKind = 'policy' | 'playbook' | 'product' | 'market' | 'support';
+export type KnowledgeStatus = 'canonical' | 'needs-review' | 'stale';
+
+export interface KnowledgeSource {
+  id: string;
+  title: string;
+  owner: string;
+  kind: KnowledgeKind;
+  status: KnowledgeStatus;
+  summary: string;
+  citations: string[];
+  lastReviewed: string;
+  freshnessScore: number;
+  usageCount: number;
+  sensitivity: DataSensitivity;
+}
+
+export type ShadowToolStatus = 'approved' | 'unapproved' | 'restricted';
+
+export interface ShadowAIEntry {
+  id: string;
+  toolName: string;
+  team: string;
+  owner: string;
+  status: ShadowToolStatus;
+  riskLevel: RiskLevel;
+  lastSeen: string;
+  notes: string;
+  dataTypes: string[];
+}
+
+export type PolicyStatus = 'pass' | 'warn' | 'fail';
+
+export interface PolicyRule {
+  id: string;
+  name: string;
+  description: string;
+  severity: AuditSeverity;
+  autoEnforced: boolean;
+  target: string;
+  status: PolicyStatus;
+}
+
 export interface WorkspaceData {
   ideas: Idea[];
   tasks: Task[];
@@ -245,6 +289,9 @@ export interface WorkspaceData {
   workflowRuns: WorkflowRun[];
   reminders: Reminder[];
   aiTraces: AITrace[];
+  knowledgeSources: KnowledgeSource[];
+  shadowAIEntries: ShadowAIEntry[];
+  policyRules: PolicyRule[];
   dismissedAlertIds: string[];
 }
 

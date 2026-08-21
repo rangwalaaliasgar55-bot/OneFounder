@@ -106,6 +106,31 @@ The workspace now stores lightweight AI trace data so operators can monitor:
 
 This is a major step toward treating AI as a production operating layer instead of just a chat box.
 
+### 11. Knowledge vault and shadow AI control
+A major current-world AI problem is that teams blame the model when the deeper issue is stale knowledge, weak source quality, or unsanctioned tool usage.
+
+The product now includes:
+
+- a knowledge vault for canonical vs stale sources
+- source freshness scoring
+- knowledge review actions
+- shadow AI inventory
+- risky tool exposure tracking
+- alerts when stale knowledge or unapproved risky tools are detected
+
+This pushes the product closer to an actual enterprise AI operating model: not just outputs, but governed inputs.
+
+### 12. Runtime safety controls
+The Control Room now includes emergency actions for the hardest modern AI failure mode: when systems keep acting after humans lose confidence.
+
+It now supports:
+
+- pausing all active automations
+- locking down all high-risk AI systems
+- resetting dismissed alerts to re-surface hidden risk
+
+This makes the app more resilient when AI behavior becomes operationally unsafe.
+
 ### 3. Workspace portability
 Founders can now export and import the entire workspace as JSON.
 

@@ -6,6 +6,7 @@ import {
   Download,
   FolderKanban,
   LayoutDashboard,
+  LibraryBig,
   Lightbulb,
   Menu,
   MessageSquare,
@@ -28,6 +29,7 @@ import CRM from './pages/CRM';
 import Dashboard from './pages/Dashboard';
 import Finance from './pages/Finance';
 import IdeaLab from './pages/IdeaLab';
+import KnowledgeVault from './pages/KnowledgeVault';
 import Playbooks from './pages/Playbooks';
 import Projects from './pages/Projects';
 import TrustCenter from './pages/TrustCenter';
@@ -59,8 +61,10 @@ import type {
   Automation,
   DecisionLog,
   Idea,
+  KnowledgeSource,
   Lead,
   NavPage,
+  ShadowAIEntry,
   Task,
   Transaction,
   WorkspaceData,
@@ -131,6 +135,12 @@ const navItems: Array<{
     label: 'Playbooks',
     description: 'Launch guided workflows, alert handling, and repeatable operating templates.',
     icon: Workflow,
+  },
+  {
+    id: 'knowledge',
+    label: 'Knowledge Vault',
+    description: 'Manage canonical sources, stale knowledge, and shadow AI exposure.',
+    icon: LibraryBig,
   },
 ];
 
@@ -521,6 +531,68 @@ function App() {
         target: decisionId,
         summary: 'Updated decision verification or follow-up state.',
         severity: updates.verificationStatus === 'verified' ? 'warning' : 'info',
+      }
+    );
+  };
+
+  const addKnowledgeSource = (source: Omit<KnowledgeSource, 'id'>) => {
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        knowledgeSources: [{ ...source, id: makeId('knowledge') }, ...current.knowledgeSources],
+      }),
+      {
+        action: 'knowledge-add',
+        target: source.title,
+        summary: `Added knowledge source: ${source.title}`,
+      }
+    );
+  };
+
+  const updateKnowledgeSource = (sourceId: string, updates: Partial<KnowledgeSource>) => {
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        knowledgeSources: current.knowledgeSources.map((source) =>
+          source.id === sourceId ? { ...source, ...updates } : source
+        ),
+      }),
+      {
+        action: 'knowledge-update',
+        target: sourceId,
+        summary: 'Updated source-of-truth metadata or freshness state.',
+      }
+    );
+  };
+
+  const addShadowAIEntry = (entry: Omit<ShadowAIEntry, 'id'>) => {
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        shadowAIEntries: [{ ...entry, id: makeId('shadow') }, ...current.shadowAIEntries],
+      }),
+      {
+        action: 'shadow-ai-add',
+        target: entry.toolName,
+        summary: `Tracked AI tool usage: ${entry.toolName}`,
+        severity: entry.status === 'approved' ? 'info' : 'warning',
+      }
+    );
+  };
+
+  const updateShadowAIEntry = (entryId: string, updates: Partial<ShadowAIEntry>) => {
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        shadowAIEntries: current.shadowAIEntries.map((entry) =>
+          entry.id === entryId ? { ...entry, ...updates } : entry
+        ),
+      }),
+      {
+        action: 'shadow-ai-update',
+        target: entryId,
+        summary: 'Updated shadow AI tool approval or risk state.',
+        severity: updates.status === 'restricted' ? 'critical' : 'warning',
       }
     );
   };
@@ -1443,6 +1515,17 @@ function App() {
             onNavigate={navigateTo}
             onAdvanceWorkflow={advanceWorkflowRun}
             onCompleteReminder={completeReminder}
+          />
+        );
+      case 'knowledge':
+        return (
+          <KnowledgeVault
+            knowledgeSources={workspace.knowledgeSources}
+            shadowAIEntries={workspace.shadowAIEntries}
+            onAddKnowledgeSource={addKnowledgeSource}
+            onUpdateKnowledgeSource={updateKnowledgeSource}
+            onAddShadowAIEntry={addShadowAIEntry}
+            onUpdateShadowAIEntry={updateShadowAIEntry}
           />
         );
       default:

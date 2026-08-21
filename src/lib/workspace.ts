@@ -8,7 +8,10 @@ import type {
   DecisionLog,
   Idea,
   Lead,
+  KnowledgeSource,
+  PolicyRule,
   Reminder,
+  ShadowAIEntry,
   Snapshot,
   Task,
   TaskPriority,
@@ -612,6 +615,114 @@ export function createSeedWorkspace(): WorkspaceData {
     },
   ];
 
+  const knowledgeSources: KnowledgeSource[] = [
+    {
+      id: 'knowledge-1',
+      title: 'Founder weekly operating policy',
+      owner: 'Founder',
+      kind: 'policy',
+      status: 'canonical',
+      summary: 'Defines the weekly decision cadence across growth, finance, trust, and execution.',
+      citations: ['Internal operating memo'],
+      lastReviewed: daysAgo(4),
+      freshnessScore: 94,
+      usageCount: 19,
+      sensitivity: 'internal',
+    },
+    {
+      id: 'knowledge-2',
+      title: 'Pricing and packaging FAQ',
+      owner: 'Growth Lead',
+      kind: 'product',
+      status: 'needs-review',
+      summary: 'Reference used in sales and support responses for packaging and pricing questions.',
+      citations: ['Pricing doc v2', 'Sales enablement sheet'],
+      lastReviewed: daysAgo(27),
+      freshnessScore: 68,
+      usageCount: 31,
+      sensitivity: 'internal',
+    },
+    {
+      id: 'knowledge-3',
+      title: 'Refund and escalation playbook',
+      owner: 'Security Lead',
+      kind: 'support',
+      status: 'stale',
+      summary: 'Support escalation guide for sensitive or high-risk customer issues.',
+      citations: ['Support handbook 2025'],
+      lastReviewed: daysAgo(64),
+      freshnessScore: 42,
+      usageCount: 14,
+      sensitivity: 'restricted',
+    },
+  ];
+
+  const shadowAIEntries: ShadowAIEntry[] = [
+    {
+      id: 'shadow-1',
+      toolName: 'Public chat workspace',
+      team: 'Growth',
+      owner: 'Maya Brooks',
+      status: 'unapproved',
+      riskLevel: 'high',
+      lastSeen: daysAgo(1),
+      notes: 'Used for competitive analysis with no approved data handling path.',
+      dataTypes: ['Market notes', 'Prospect messaging'],
+    },
+    {
+      id: 'shadow-2',
+      toolName: 'Experimental browser agent',
+      team: 'Ops',
+      owner: 'Ava Patel',
+      status: 'restricted',
+      riskLevel: 'critical',
+      lastSeen: daysAgo(3),
+      notes: 'Agent can browse and act without full identity controls.',
+      dataTypes: ['Internal process docs', 'Support workflow metadata'],
+    },
+    {
+      id: 'shadow-3',
+      toolName: 'Approved secure coding copilot',
+      team: 'Product',
+      owner: 'Founder',
+      status: 'approved',
+      riskLevel: 'medium',
+      lastSeen: daysAgo(0),
+      notes: 'Approved for product iteration and engineering support.',
+      dataTypes: ['Source code', 'Specs'],
+    },
+  ];
+
+  const policyRules: PolicyRule[] = [
+    {
+      id: 'policy-1',
+      name: 'High-risk AI requires human review',
+      description: 'Any high or critical AI system must have human review enabled before approval.',
+      severity: 'critical',
+      autoEnforced: true,
+      target: 'ai-systems',
+      status: 'fail',
+    },
+    {
+      id: 'policy-2',
+      name: 'Restricted automations cannot auto-approve',
+      description: 'Restricted-data automation should pause for human or dual review.',
+      severity: 'critical',
+      autoEnforced: true,
+      target: 'automations',
+      status: 'pass',
+    },
+    {
+      id: 'policy-3',
+      name: 'Knowledge used by AI should be reviewed regularly',
+      description: 'Canonical sources should stay fresh and high-use stale knowledge should be reviewed.',
+      severity: 'warning',
+      autoEnforced: false,
+      target: 'knowledge',
+      status: 'warn',
+    },
+  ];
+
   const snapshots: Snapshot[] = [
     {
       id: 'snapshot-1',
@@ -637,6 +748,9 @@ export function createSeedWorkspace(): WorkspaceData {
     workflowRuns,
     reminders,
     aiTraces,
+    knowledgeSources,
+    shadowAIEntries,
+    policyRules,
     dismissedAlertIds: [],
   };
 
@@ -859,6 +973,45 @@ export function normalizeWorkspaceData(input: unknown): WorkspaceData {
           notes: trace.notes ?? '',
         }))
       : seed.aiTraces,
+    knowledgeSources: Array.isArray(data.knowledgeSources)
+      ? data.knowledgeSources.map((source, index) => ({
+          id: source.id ?? `knowledge-import-${index}`,
+          title: source.title ?? 'Imported knowledge source',
+          owner: source.owner ?? 'Founder',
+          kind: source.kind ?? 'policy',
+          status: source.status ?? 'needs-review',
+          summary: source.summary ?? '',
+          citations: Array.isArray(source.citations) ? source.citations.filter((item): item is string => typeof item === 'string') : [],
+          lastReviewed: source.lastReviewed ?? new Date().toISOString(),
+          freshnessScore: typeof source.freshnessScore === 'number' ? source.freshnessScore : 60,
+          usageCount: typeof source.usageCount === 'number' ? source.usageCount : 0,
+          sensitivity: normalizeSensitivity(source.sensitivity),
+        }))
+      : seed.knowledgeSources,
+    shadowAIEntries: Array.isArray(data.shadowAIEntries)
+      ? data.shadowAIEntries.map((entry, index) => ({
+          id: entry.id ?? `shadow-import-${index}`,
+          toolName: entry.toolName ?? 'Imported AI tool',
+          team: entry.team ?? 'Unknown',
+          owner: entry.owner ?? 'Unknown',
+          status: entry.status ?? 'unapproved',
+          riskLevel: entry.riskLevel ?? 'medium',
+          lastSeen: entry.lastSeen ?? new Date().toISOString(),
+          notes: entry.notes ?? '',
+          dataTypes: Array.isArray(entry.dataTypes) ? entry.dataTypes.filter((item): item is string => typeof item === 'string') : [],
+        }))
+      : seed.shadowAIEntries,
+    policyRules: Array.isArray(data.policyRules)
+      ? data.policyRules.map((policy, index) => ({
+          id: policy.id ?? `policy-import-${index}`,
+          name: policy.name ?? 'Imported policy',
+          description: policy.description ?? '',
+          severity: policy.severity ?? 'warning',
+          autoEnforced: typeof policy.autoEnforced === 'boolean' ? policy.autoEnforced : false,
+          target: policy.target ?? 'workspace',
+          status: policy.status ?? 'warn',
+        }))
+      : seed.policyRules,
     dismissedAlertIds: Array.isArray(data.dismissedAlertIds)
       ? data.dismissedAlertIds.filter((id): id is string => typeof id === 'string')
       : seed.dismissedAlertIds,
@@ -1209,6 +1362,35 @@ export function getWorkspaceAlerts(workspace: WorkspaceData): WorkspaceAlert[] {
       category: 'governance',
       actionLabel: 'Open Trust Center',
       page: 'trust',
+    });
+  }
+
+  const staleKnowledge = workspace.knowledgeSources.filter((source) => source.status === 'stale');
+  const riskyShadowAI = workspace.shadowAIEntries.filter(
+    (entry) => entry.status !== 'approved' && (entry.riskLevel === 'high' || entry.riskLevel === 'critical')
+  );
+
+  if (staleKnowledge.length) {
+    alerts.push({
+      id: 'alert-stale-knowledge',
+      title: `${staleKnowledge.length} knowledge source(s) are stale`,
+      description: 'Outdated knowledge increases hallucination and answer-quality risk for AI workflows.',
+      severity: 'warning',
+      category: 'knowledge',
+      actionLabel: 'Open Knowledge Vault',
+      page: 'knowledge',
+    });
+  }
+
+  if (riskyShadowAI.length) {
+    alerts.push({
+      id: 'alert-shadow-ai',
+      title: `${riskyShadowAI.length} risky shadow AI tool(s) detected`,
+      description: 'Unapproved or restricted tools are still being used outside governed channels.',
+      severity: 'critical',
+      category: 'knowledge',
+      actionLabel: 'Open Knowledge Vault',
+      page: 'knowledge',
     });
   }
 
