@@ -1,436 +1,419 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import {
+  BarChart3,
   Brain,
   Code,
-  Search,
-  Shield,
-  BarChart3,
-  Microscope,
   DollarSign,
+  Eraser,
+  Microscope,
   Puzzle,
   Rocket,
+  Search,
   Send,
+  Shield,
   Sparkles,
   User,
-  Plus,
-  Copy,
-  Check,
-  RotateCcw,
-  MessageSquare,
 } from 'lucide-react';
-import { askAI, type AIMessage } from '../lib/ai';
-import { EXPERT_MODES, getSystemPrompt, detectMode } from '../lib/expertModes';
-import MarkdownRenderer from '../components/MarkdownRenderer';
-import { useToast } from '../components/useToast';
+import { usePersistentState } from '../hooks/usePersistentState';
+import { researchInsights } from '../lib/aiResearch';
+import { formatCompactCurrency, getDaysUntil } from '../lib/workspace';
+import type { ChatMessage, WorkspaceData } from '../types';
 
-interface Message {
+interface ExpertMode {
   id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  mode?: string;
+  name: string;
+  icon: ReactNode;
+  triggers: string[];
+  description: string;
 }
 
-interface Conversation {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: number;
+interface AIChatProps {
+  workspace: WorkspaceData;
 }
 
-const modeIcons: Record<string, React.ReactNode> = {
-  founder: <Brain className="w-4 h-4" />,
-  code: <Code className="w-4 h-4" />,
-  seo: <Search className="w-4 h-4" />,
-  security: <Shield className="w-4 h-4" />,
-  data: <BarChart3 className="w-4 h-4" />,
-  research: <Microscope className="w-4 h-4" />,
-  finance: <DollarSign className="w-4 h-4" />,
-  product: <Puzzle className="w-4 h-4" />,
-  startup: <Rocket className="w-4 h-4" />,
-};
+const expertModes: ExpertMode[] = [
+  {
+    id: 'founder',
+    name: 'Founder AI',
+    icon: <Brain className="h-4 w-4" />,
+    triggers: ['founder', 'strategy', 'priorities', 'startup'],
+    description: 'Cross-functional startup guidance grounded in your workspace data.',
+  },
+  {
+    id: 'code',
+    name: 'Code Expert',
+    icon: <Code className="h-4 w-4" />,
+    triggers: ['code', 'bug', 'typescript', 'react', 'performance'],
+    description: 'Product engineering, maintainability, and shipping quality.',
+  },
+  {
+    id: 'seo',
+    name: 'SEO Expert',
+    icon: <Search className="h-4 w-4" />,
+    triggers: ['seo', 'ranking', 'content', 'landing page', 'traffic'],
+    description: 'Acquisition and content positioning ideas.',
+  },
+  {
+    id: 'security',
+    name: 'Security Expert',
+    icon: <Shield className="h-4 w-4" />,
+    triggers: ['security', 'auth', 'xss', 'vulnerability', 'risk'],
+    description: 'App hardening, auth hygiene, and risk reduction.',
+  },
+  {
+    id: 'data',
+    name: 'Data Analyst',
+    icon: <BarChart3 className="h-4 w-4" />,
+    triggers: ['metrics', 'kpi', 'dashboard', 'analytics', 'data'],
+    description: 'KPI diagnosis with practical decision support.',
+  },
+  {
+    id: 'research',
+    name: 'Research Expert',
+    icon: <Microscope className="h-4 w-4" />,
+    triggers: ['competitor', 'market', 'trend', 'research'],
+    description: 'Market lens for idea selection and positioning.',
+  },
+  {
+    id: 'finance',
+    name: 'Finance Expert',
+    icon: <DollarSign className="h-4 w-4" />,
+    triggers: ['finance', 'revenue', 'burn', 'runway', 'pricing'],
+    description: 'Cashflow, runway, pricing, and monetization support.',
+  },
+  {
+    id: 'product',
+    name: 'Product Expert',
+    icon: <Puzzle className="h-4 w-4" />,
+    triggers: ['product', 'ux', 'roadmap', 'retention', 'feature'],
+    description: 'Product planning and user experience recommendations.',
+  },
+  {
+    id: 'startup',
+    name: 'Startup Advisor',
+    icon: <Rocket className="h-4 w-4" />,
+    triggers: ['gtm', 'scale', 'sales', 'pitch', 'fundraising'],
+    description: 'Growth sequencing and founder-level next steps.',
+  },
+];
 
-const STORAGE_KEY = 'onefounder_conversations';
+const suggestionPrompts = [
+  'What should I focus on this week based on my workspace?',
+  'Which AI systems or automations look risky right now?',
+  'Which leads need follow-up and what message should I send?',
+  'Give me a quick cost-control plan for the current month.',
+];
 
-function loadConversations(): Conversation[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
+function createWelcomeMessage(): ChatMessage {
+  return {
+    id: 'welcome',
+    role: 'assistant',
+    mode: 'founder',
+    timestamp: new Date().toISOString(),
+    content:
+      'Welcome back to OneFounder AI. I can now read your workspace context, suggest priorities, detect the best expert mode automatically, and keep your chat history saved locally.',
+  };
+}
+
+function detectMode(input: string, fallbackMode: string) {
+  const lower = input.toLowerCase();
+  const detected = expertModes.find((mode) => mode.triggers.some((trigger) => lower.includes(trigger)));
+  return detected?.id ?? fallbackMode;
+}
+
+function buildSourceBackedNote() {
+  return researchInsights
+    .map(
+      (insight) => `- ${insight.problem} Source: ${insight.sourceTitle} (${insight.sourceUrl})`
+    )
+    .join('\n');
+}
+
+function buildResponse(mode: string, input: string, workspace: WorkspaceData) {
+  const openLeads = workspace.leads.filter((lead) => lead.stage !== 'won');
+  const staleLeads = workspace.leads.filter((lead) => lead.stage !== 'won' && getDaysUntil(lead.lastContacted) <= -7);
+  const overdueTasks = workspace.tasks.filter((task) => task.status !== 'done' && getDaysUntil(task.dueDate) < 0);
+  const topIdea = [...workspace.ideas].sort((left, right) => right.score - left.score)[0];
+  const income = workspace.transactions
+    .filter((transaction) => transaction.type === 'income' && getDaysUntil(transaction.date) >= -30)
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const expenses = workspace.transactions
+    .filter((transaction) => transaction.type === 'expense' && getDaysUntil(transaction.date) >= -30)
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const completionRate = workspace.tasks.length
+    ? Math.round((workspace.tasks.filter((task) => task.status === 'done').length / workspace.tasks.length) * 100)
+    : 0;
+  const highRiskSystems = workspace.aiSystems.filter(
+    (system) => system.riskLevel === 'high' || system.riskLevel === 'critical'
+  );
+  const ungatedSystems = workspace.aiSystems.filter((system) => !system.humanReview);
+  const activeAutomations = workspace.automations.filter((automation) => automation.status === 'active');
+  const unresolvedDecisions = workspace.decisionLogs.filter(
+    (decision) => decision.verificationStatus !== 'verified'
+  );
+
+  const sharedContext = `Workspace snapshot: ${openLeads.length} open leads, ${overdueTasks.length} overdue tasks, ${formatCompactCurrency(income)} income, ${formatCompactCurrency(expenses)} spend in the last 30 days, ${activeAutomations.length} active automations, and ${highRiskSystems.length} high-risk AI systems.`;
+  const wantsSources = ['source', 'sources', 'citation', 'citations', 'research', 'evidence', 'trust', 'governance'].some((keyword) => input.toLowerCase().includes(keyword));
+
+  if (wantsSources) {
+    return `${sharedContext} Here is the source-backed version of the advice:\n${buildSourceBackedNote()}\n\nOperational move: combine automation speed with explicit approvals, human review for high-risk outputs, sensitivity labels, and a decision verification log.`;
+  }
+
+  switch (mode) {
+    case 'code':
+      return `${sharedContext} From a product engineering angle, keep the interface modular and data-driven. Your next code improvement should be extracting more shared UI patterns and validating forms before save. If you want, ask me for a specific refactor checklist for “${input}”.`;
+    case 'seo':
+      return `${sharedContext} I would turn ${topIdea?.title ?? 'your best idea'} into a category landing page with founder pain points, ROI proof, and a simple comparison table. Publish one customer story, one template article, and one “how it works” page to build topical depth.`;
+    case 'security':
+      return `${sharedContext} Security priority number one is protecting every data mutation path with validation and safe defaults. You currently have ${ungatedSystems.length} AI system(s) without human review, which is the first gap I would close. For this app, I would keep local persistence minimal, sanitize any future rich text inputs, and add backend auth plus row-level security before handling real customer data.`;
+    case 'data':
+      return `${sharedContext} Your completion rate is ${completionRate}% and the healthiest growth lever looks like pipeline activation. I would track five leading indicators next: stale leads older than 7 days, overdue task count, net cash movement by month, automation hours saved, and the number of unverified AI-influenced decisions.`;
+    case 'research':
+      return `${sharedContext} The strongest opportunity in your current workspace is ${topIdea?.title ?? 'idea discovery'}. I would validate it with five founder interviews, pricing sensitivity checks, and a competitor teardown focused on implementation speed and switching friction.`;
+    case 'finance':
+      return `${sharedContext} Net movement over the last 30 days is ${formatCompactCurrency(income - expenses)}. If you want a quick win, reduce the top expense categories that are not tied directly to acquisition or product reliability, then create one upsell offer for leads already in proposal or negotiation.`;
+    case 'product':
+      return `${sharedContext} Product-wise, I would prioritize improvements that remove friction from onboarding and follow-up workflows. Your top idea should evolve into a clearer problem statement, success metric, and smallest lovable scope before any larger roadmap bet.`;
+    case 'startup':
+      return `${sharedContext} Founder advice: keep your next two weeks centered on revenue, execution, and trust. Close stale follow-ups first, clear overdue tasks second, and review ${unresolvedDecisions.length} AI-influenced decision(s) before turning more workflows fully autonomous.`;
+    default:
+      return `${sharedContext} My founder recommendation for “${input}” is to align sales, product, cashflow, and trust around one outcome at a time. Right now that means reviving ${staleLeads.length} stale lead${staleLeads.length === 1 ? '' : 's'}, protecting focus against ${overdueTasks.length} overdue task${overdueTasks.length === 1 ? '' : 's'}, and reducing risk from ${ungatedSystems.length} ungated AI system(s) before scaling more automation.`;
   }
 }
 
-function saveConversations(convs: Conversation[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(convs));
-}
-
-export default function AIChat() {
-  const toast = useToast();
-  const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
-  const [activeConvId, setActiveConvId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: "Welcome to OneFounder AI! I'm your intelligent assistant with 9 expert modes. Ask me anything about your startup - from code reviews to fundraising strategies. How can I help you today?",
-      mode: 'founder',
-    },
-  ]);
+export default function AIChat({ workspace }: AIChatProps) {
+  const [messages, setMessages] = usePersistentState<ChatMessage[]>('onefounder.chat', () => [createWelcomeMessage()]);
+  const [activeMode, setActiveMode] = usePersistentState('onefounder.chat-mode', 'founder');
   const [input, setInput] = useState('');
-  const [activeMode, setActiveMode] = useState('founder');
   const [isTyping, setIsTyping] = useState(false);
-  const [tokensUsed, setTokensUsed] = useState(0);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [suggestedMode, setSuggestedMode] = useState<string | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const detectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  useEffect(() => {
-    saveConversations(conversations);
-  }, [conversations]);
+  const activeModeData = useMemo(
+    () => expertModes.find((mode) => mode.id === activeMode) ?? expertModes[0],
+    [activeMode]
+  );
 
-  const autoGrow = () => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = 'auto';
-    ta.style.height = `${Math.min(ta.scrollHeight, 6 * 24)}px`;
-  };
+  const suggestedMode = input.trim() ? detectMode(input, activeMode) : activeMode;
 
-  useEffect(() => {
-    autoGrow();
-  }, [input]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-    if (detectTimer.current) clearTimeout(detectTimer.current);
-    detectTimer.current = setTimeout(() => {
-      const detected = detectMode(e.target.value);
-      if (detected && detected !== activeMode) {
-        setSuggestedMode(detected);
-        setTimeout(() => setSuggestedMode(null), 3000);
-      }
-    }, 500);
-  };
-
-  const startNewChat = () => {
-    setMessages([
-      {
-        id: '1',
-        role: 'assistant',
-        content: "New conversation started. What would you like to discuss?",
-        mode: activeMode,
-      },
-    ]);
-    setActiveConvId(null);
-    setShowHistory(false);
-  };
-
-  const loadConversation = (conv: Conversation) => {
-    setMessages(conv.messages);
-    setActiveConvId(conv.id);
-    setShowHistory(false);
-  };
-
-  const saveCurrentConversation = useCallback((msgs: Message[]) => {
-    if (msgs.length <= 1) return;
-    const userMsgs = msgs.filter((m) => m.role === 'user');
-    if (userMsgs.length === 0) return;
-    const title = userMsgs[0].content.slice(0, 40);
-    if (activeConvId) {
-      setConversations((prev) =>
-        prev.map((c) => (c.id === activeConvId ? { ...c, title, messages: msgs } : c)),
-      );
-    } else {
-      const newConv: Conversation = {
-        id: crypto.randomUUID(),
-        title,
-        messages: msgs,
-        createdAt: Date.now(),
-      };
-      setConversations((prev) => [newConv, ...prev]);
-      setActiveConvId(newConv.id);
+  const handleSend = () => {
+    const trimmed = input.trim();
+    if (!trimmed) {
+      return;
     }
-  }, [activeConvId]);
 
-  const handleSend = useCallback(async () => {
-    if (!input.trim() || isTyping) return;
-
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
+    const resolvedMode = detectMode(trimmed, activeMode);
+    const nextTimestamp = new Date().toISOString();
+    const userMessage: ChatMessage = {
+      id: `${Date.now()}-user`,
       role: 'user',
-      content: input.trim(),
+      content: trimmed,
+      mode: resolvedMode,
+      timestamp: nextTimestamp,
     };
 
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    setMessages((current) => [...current, userMessage]);
+    setActiveMode(resolvedMode);
     setInput('');
     setIsTyping(true);
 
-    const aiMessages: AIMessage[] = newMessages
-      .filter((m) => m.id !== '1' || m.role === 'user')
-      .map((m) => ({ role: m.role, content: m.content }));
-
-    try {
-      const res = await askAI(aiMessages, getSystemPrompt(activeMode));
-      const aiResponse: Message = {
-        id: crypto.randomUUID(),
+    window.setTimeout(() => {
+      const assistantMessage: ChatMessage = {
+        id: `${Date.now()}-assistant`,
         role: 'assistant',
-        content: res.text,
-        mode: activeMode,
+        mode: resolvedMode,
+        timestamp: new Date().toISOString(),
+        content: buildResponse(resolvedMode, trimmed, workspace),
       };
-      const updated = [...newMessages, aiResponse];
-      setMessages(updated);
-      setTokensUsed((prev) => prev + res.tokensUsed);
-      saveCurrentConversation(updated);
-    } catch {
-      toast('Failed to get AI response. Please try again.', 'error');
-      const aiResponse: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        mode: activeMode,
-      };
-      setMessages((prev) => [...prev, aiResponse]);
-    } finally {
-      setIsTyping(false);
-    }
-  }, [input, isTyping, messages, activeMode, toast, saveCurrentConversation]);
 
-  const handleRegenerate = async () => {
-    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
-    if (!lastUserMsg || isTyping) return;
-    const withoutLast = messages.slice(0, -1);
-    setMessages(withoutLast);
-    setIsTyping(true);
-    const aiMessages: AIMessage[] = withoutLast
-      .map((m) => ({ role: m.role, content: m.content }));
-    try {
-      const res = await askAI(aiMessages, getSystemPrompt(activeMode));
-      setMessages([...withoutLast, { id: crypto.randomUUID(), role: 'assistant', content: res.text, mode: activeMode }]);
-      setTokensUsed((prev) => prev + res.tokensUsed);
-    } catch {
-      toast('Failed to regenerate response.', 'error');
-    } finally {
+      setMessages((current) => [...current, assistantMessage]);
       setIsTyping(false);
+    }, 650);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSend();
     }
   };
 
-  const copyMessage = (content: string, id: string) => {
-    navigator.clipboard.writeText(content);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const clearChat = () => {
+    setMessages([createWelcomeMessage()]);
+    setIsTyping(false);
   };
-
-  const activeModeData = EXPERT_MODES.find((m) => m.id === activeMode);
-  const lastAssistantIndex = [...messages].reverse().findIndex((m) => m.role === 'assistant');
-  const lastAssistantMsgId = lastAssistantIndex >= 0 ? messages[messages.length - 1 - lastAssistantIndex]?.id : null;
 
   return (
-    <div className="h-[calc(100vh-7rem)] flex gap-6 max-w-7xl mx-auto">
-      {/* Sidebar - Expert Modes + History */}
-      <div className="w-64 flex-shrink-0 rounded-2xl bg-slate-800/50 backdrop-blur-sm border border-white/10 p-4 overflow-y-auto hidden md:block">
-        <button
-          onClick={startNewChat}
-          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium hover:opacity-90 transition-opacity mb-4"
-        >
-          <Plus className="w-4 h-4" />
-          New Chat
-        </button>
-
-        <button
-          onClick={() => setShowHistory(!showHistory)}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors mb-3 text-sm"
-        >
-          <MessageSquare className="w-4 h-4" />
-          {showHistory ? 'Hide History' : 'Show History'}
-          {conversations.length > 0 && (
-            <span className="ml-auto px-2 py-0.5 rounded-full bg-white/10 text-xs">{conversations.length}</span>
-          )}
-        </button>
-
-        {showHistory && conversations.length > 0 && (
-          <div className="space-y-1 mb-4 max-h-40 overflow-y-auto">
-            {conversations.map((conv) => (
-              <button
-                key={conv.id}
-                onClick={() => loadConversation(conv)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors truncate ${
-                  activeConvId === conv.id ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {conv.title}
-              </button>
-            ))}
+    <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
+      <aside className="rounded-3xl border border-white/10 bg-slate-900/60 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">Expert modes</p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Pick your copilot</h2>
           </div>
-        )}
+          <div className="rounded-2xl bg-cyan-500/10 p-3 text-cyan-300">
+            <Sparkles className="h-5 w-5" />
+          </div>
+        </div>
 
-        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Expert Modes</h2>
-        <div className="space-y-1">
-          {EXPERT_MODES.map((mode) => {
+        <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+          {expertModes.map((mode) => {
             const isActive = activeMode === mode.id;
             return (
               <button
                 key={mode.id}
+                type="button"
                 onClick={() => setActiveMode(mode.id)}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left border-l-2 ${
+                className={`rounded-2xl border p-4 text-left transition-all ${
                   isActive
-                    ? 'border-cyan-400 bg-cyan-500/10 text-white'
-                    : 'border-transparent text-slate-400 hover:text-white hover:bg-white/5'
+                    ? 'border-cyan-500/30 bg-cyan-500/10 text-white'
+                    : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:text-white'
                 }`}
               >
-                <div className={`p-1.5 rounded-lg ${isActive ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5'}`}>
-                  {modeIcons[mode.id]}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{mode.name}</p>
+                <div className="flex items-center gap-3">
+                  <div className={`rounded-xl p-2 ${isActive ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-950/60 text-slate-400'}`}>
+                    {mode.icon}
+                  </div>
+                  <div>
+                    <p className="font-medium">{mode.name}</p>
+                    <p className="text-xs text-slate-400">{mode.description}</p>
+                  </div>
                 </div>
               </button>
             );
           })}
         </div>
-      </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col rounded-2xl bg-slate-800/50 backdrop-blur-sm border border-white/10 overflow-hidden">
-        {/* Chat Header */}
-        <div className="flex items-center justify-between gap-3 p-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600">
-              {modeIcons[activeMode]}
-            </div>
-            <div>
-              <h2 className="font-semibold text-white">{activeModeData?.name}</h2>
-              <p className="text-xs text-slate-400">{activeModeData?.description}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-            <Sparkles className="w-4 h-4 text-cyan-400" />
-            <span className="text-sm text-slate-300">~{tokensUsed} tokens used</span>
-          </div>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`group flex gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}
-            >
-              {message.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="w-4 h-4 text-white" />
-                </div>
-              )}
-              <div className={`max-w-[70%] ${message.role === 'assistant' ? 'relative' : ''}`}>
-                <div
-                  className={`rounded-2xl p-4 ${
-                    message.role === 'user'
-                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'
-                      : 'bg-white/5 border border-white/10 text-slate-200'
-                  }`}
-                >
-                  {message.role === 'assistant' ? (
-                    <MarkdownRenderer content={message.content} />
-                  ) : (
-                    <p className="leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                  )}
-                </div>
-                {message.role === 'assistant' && (
-                  <div className="flex items-center gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => copyMessage(message.content, message.id)}
-                      className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                      title="Copy"
-                    >
-                      {copiedId === message.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                    {message.id === lastAssistantMsgId && (
-                      <button
-                        onClick={handleRegenerate}
-                        disabled={isTyping}
-                        className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors disabled:opacity-50"
-                        title="Regenerate"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-              {message.role === 'user' && (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center flex-shrink-0">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-              )}
-            </div>
-          ))}
-          {isTyping && (
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input */}
-        <div className="p-4 border-t border-white/10">
-          {/* Active mode badge */}
-          <div className="flex items-center gap-2 mb-2">
-            <span className="px-2 py-1 rounded-md bg-cyan-500/20 text-cyan-400 text-xs font-medium flex items-center gap-1">
-              {modeIcons[activeMode]}
-              {activeModeData?.name}
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p className="text-sm font-medium text-white">Smart routing</p>
+          <p className="mt-2 text-sm text-slate-400">
+            Suggested mode for your current message:
+            <span className="ml-1 font-medium text-cyan-300">
+              {expertModes.find((mode) => mode.id === suggestedMode)?.name}
             </span>
-            {suggestedMode && (
-              <button
-                onClick={() => setActiveMode(suggestedMode)}
-                className="px-2 py-1 rounded-md bg-amber-500/20 text-amber-400 text-xs font-medium animate-fade-in"
-              >
-                Switch to {EXPERT_MODES.find((m) => m.id === suggestedMode)?.name}? →
-              </button>
-            )}
-          </div>
-          <div className="flex gap-3 items-end">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={handleInputChange}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder="Ask me anything about your startup... (Ctrl+Enter to send)"
-              rows={1}
-              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all resize-none max-h-36"
-            />
+          </p>
+        </div>
+      </aside>
+
+      <section className="flex min-h-[70vh] flex-col rounded-3xl border border-white/10 bg-slate-900/60">
+        <div className="border-b border-white/10 p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 p-3 text-white">
+                  {activeModeData.icon}
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-white">{activeModeData.name}</h2>
+                  <p className="text-sm text-slate-400">{activeModeData.description}</p>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {suggestionPrompts.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => setInput(prompt)}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-cyan-500/30 hover:text-white"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button
-              onClick={handleSend}
-              disabled={!input.trim() || isTyping}
-              className="px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              type="button"
+              onClick={clearChat}
+              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 transition-colors hover:border-white/20 hover:text-white"
             >
-              <Send className="w-4 h-4" />
-              Send
+              <Eraser className="h-4 w-4" />
+              Clear chat
             </button>
           </div>
         </div>
-      </div>
+
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
+          {messages.map((message) => {
+            const modeName = expertModes.find((mode) => mode.id === message.mode)?.name ?? 'Founder AI';
+            return (
+              <div key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
+                {message.role === 'assistant' ? (
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                ) : null}
+                <div
+                  className={`max-w-3xl rounded-3xl border p-4 ${
+                    message.role === 'user'
+                      ? 'border-cyan-500/20 bg-gradient-to-br from-cyan-500 to-blue-600 text-white'
+                      : 'border-white/10 bg-white/5 text-slate-100'
+                  }`}
+                >
+                  <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-300/80">
+                    <span>{message.role === 'assistant' ? modeName : 'You'}</span>
+                    <span>•</span>
+                    <span>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                  <p className="whitespace-pre-wrap leading-7">{message.content}</p>
+                </div>
+                {message.role === 'user' ? (
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-500 text-white">
+                    <User className="h-4 w-4" />
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+
+          {isTyping ? (
+            <div className="flex gap-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                <div className="flex gap-1.5">
+                  {[0, 150, 300].map((delay) => (
+                    <span
+                      key={delay}
+                      className="h-2.5 w-2.5 rounded-full bg-cyan-300 animate-bounce"
+                      style={{ animationDelay: `${delay}ms` }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="border-t border-white/10 p-5">
+          <div className="rounded-3xl border border-white/10 bg-slate-950/50 p-4">
+            <textarea
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={4}
+              placeholder="Ask for strategy, product advice, finance guidance, code cleanup ideas, or follow-up suggestions..."
+              className="w-full resize-none bg-transparent text-white placeholder-slate-500 focus:outline-none"
+            />
+            <div className="mt-4 flex flex-col gap-3 border-t border-white/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-slate-500">Press Enter to send · Shift+Enter for a new line</p>
+              <button
+                type="button"
+                onClick={handleSend}
+                disabled={!input.trim() || isTyping}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3 font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Send className="h-4 w-4" />
+                Send message
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

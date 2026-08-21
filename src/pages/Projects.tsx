@@ -1,449 +1,350 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  Calendar,
+  CheckCircle,
+  Clock,
   FolderKanban,
   Plus,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Calendar,
+  Search,
   User,
 } from 'lucide-react';
-import { useTable } from '../hooks/useTable';
 import Modal from '../components/Modal';
-import { useToast } from '../components/useToast';
+import StatCard from '../components/StatCard';
+import { formatShortDate, getDaysUntil, getStatusLabel, isOverdue } from '../lib/workspace';
+import type { Task, TaskPriority, TaskStatus } from '../types';
 
-interface Task {
-  id: string;
+interface ProjectsProps {
+  tasks: Task[];
+  onAddTask: (task: Omit<Task, 'id'>) => void;
+  onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
+}
+
+interface TaskFormState {
   title: string;
   assignee: string;
   dueDate: string;
-  priority: 'high' | 'medium' | 'low';
-  status: 'todo' | 'in-progress' | 'done';
-  description?: string;
+  priority: TaskPriority;
+  status: TaskStatus;
 }
 
-const initialTasks: Task[] = [
-  { id: '1', title: 'Design system documentation', assignee: 'Alex', dueDate: '2026-06-28', priority: 'high', status: 'todo', description: '' },
-  { id: '2', title: 'API integration for payments', assignee: 'Sam', dueDate: '2026-06-30', priority: 'high', status: 'in-progress', description: '' },
-  { id: '3', title: 'User onboarding flow', assignee: 'Jordan', dueDate: '2026-07-02', priority: 'medium', status: 'in-progress', description: '' },
-  { id: '4', title: 'Analytics dashboard', assignee: 'Alex', dueDate: '2026-07-05', priority: 'medium', status: 'todo', description: '' },
-  { id: '5', title: 'Email notification system', assignee: 'Sam', dueDate: '2026-07-08', priority: 'low', status: 'done', description: '' },
-  { id: '6', title: 'Mobile responsive fixes', assignee: 'Taylor', dueDate: '2026-07-10', priority: 'low', status: 'done', description: '' },
-];
-
-const priorityColors: Record<string, string> = {
-  high: 'bg-rose-500',
-  medium: 'bg-amber-500',
-  low: 'bg-cyan-500',
+const emptyTaskForm: TaskFormState = {
+  title: '',
+  assignee: 'Founder',
+  dueDate: new Date().toISOString().slice(0, 10),
+  priority: 'medium',
+  status: 'todo',
 };
 
-const priorityPillColors: Record<string, string> = {
-  high: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
-  medium: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  low: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+const statusOrder: TaskStatus[] = ['todo', 'in-progress', 'done'];
+
+const statusConfig: Record<TaskStatus, { label: string; icon: typeof Clock; tone: string }> = {
+  todo: { label: 'To do', icon: Clock, tone: 'text-slate-300' },
+  'in-progress': { label: 'In progress', icon: AlertCircle, tone: 'text-amber-300' },
+  done: { label: 'Done', icon: CheckCircle, tone: 'text-emerald-300' },
 };
 
-const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string }> = {
-  todo: { label: 'To Do', icon: Clock, color: 'text-slate-400' },
-  'in-progress': { label: 'In Progress', icon: AlertCircle, color: 'text-amber-400' },
-  done: { label: 'Done', icon: CheckCircle, color: 'text-emerald-400' },
-};
+export default function Projects({ tasks, onAddTask, onUpdateTask }: ProjectsProps) {
+  const [search, setSearch] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formState, setFormState] = useState<TaskFormState>(emptyTaskForm);
 
-const columns = ['todo', 'in-progress', 'done'] as const;
-const assignees = ['Alex', 'Sam', 'Jordan', 'Taylor'];
-
-export default function Projects() {
-  const toast = useToast();
-  const { rows: tasks, addRow, updateRow } = useTable<Task>('tasks', initialTasks);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [draggedTask, setDraggedTask] = useState<string | null>(null);
-  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
-
-  // Add form
-  const [formData, setFormData] = useState({
-    title: '',
-    assignee: 'Alex',
-    dueDate: '',
-    priority: 'medium' as Task['priority'],
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Expand modal form
-  const [expandData, setExpandData] = useState({
-    title: '',
-    description: '',
-    assignee: 'Alex',
-    priority: 'medium' as Task['priority'],
-    dueDate: '',
-    status: 'todo' as Task['status'],
-  });
-
-  const getTasksByStatus = (status: string) => tasks.filter((task) => task.status === status);
-  const doneCount = tasks.filter((t) => t.status === 'done').length;
-  const totalCount = tasks.length;
-  const progress = totalCount > 0 ? (doneCount / totalCount) * 100 : 0;
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.title.trim()) newErrors.title = 'Title is required';
-    if (!formData.dueDate) newErrors.dueDate = 'Due date is required';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleAddTask = async () => {
-    if (!validateForm()) return;
-    await addRow({
-      title: formData.title,
-      assignee: formData.assignee,
-      dueDate: formData.dueDate,
-      priority: formData.priority,
-      status: 'todo',
-      description: '',
-    });
-    toast('Task added successfully');
-    setShowAddModal(false);
-    setFormData({ title: '', assignee: 'Alex', dueDate: '', priority: 'medium' });
-    setErrors({});
-  };
-
-  const handleDragStart = (taskId: string) => setDraggedTask(taskId);
-  const handleDragOver = (e: React.DragEvent, col: string) => {
-    e.preventDefault();
-    setDragOverCol(col);
-  };
-  const handleDrop = async (col: string) => {
-    if (!draggedTask) return;
-    const task = tasks.find((t) => t.id === draggedTask);
-    if (task && task.status !== col) {
-      await updateRow(draggedTask, { status: col as Task['status'] });
-      toast(`Task moved to ${statusConfig[col].label}`);
+  const filteredTasks = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    if (!normalizedSearch) {
+      return tasks;
     }
-    setDraggedTask(null);
-    setDragOverCol(null);
-  };
 
-  const openExpand = (task: Task) => {
-    setSelectedTask(task);
-    setExpandData({
-      title: task.title,
-      description: task.description ?? '',
-      assignee: task.assignee,
-      priority: task.priority,
-      dueDate: task.dueDate,
-      status: task.status,
-    });
-  };
+    return tasks.filter((task) =>
+      [task.title, task.assignee, task.priority, getStatusLabel(task.status)]
+        .join(' ')
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  }, [search, tasks]);
 
-  const saveExpand = async () => {
-    if (!selectedTask) return;
-    await updateRow(selectedTask.id, expandData);
-    toast('Task updated');
-    setSelectedTask(null);
-  };
+  const overdueTasks = tasks.filter((task) => task.status !== 'done' && isOverdue(task.dueDate));
+  const upcomingTasks = tasks.filter((task) => task.status !== 'done' && getDaysUntil(task.dueDate) >= 0 && getDaysUntil(task.dueDate) <= 3);
+  const completionRate = tasks.length ? Math.round((tasks.filter((task) => task.status === 'done').length / tasks.length) * 100) : 0;
 
-  const startInlineEdit = (task: Task) => {
-    setEditingId(task.id);
-    setEditValue(task.title);
-  };
+  const tasksByStatus = (status: TaskStatus) =>
+    filteredTasks
+      .filter((task) => task.status === status)
+      .sort((left, right) => new Date(left.dueDate).getTime() - new Date(right.dueDate).getTime());
 
-  const saveInlineEdit = async (taskId: string) => {
-    if (editValue.trim()) {
-      await updateRow(taskId, { title: editValue.trim() });
-      toast('Task title updated');
+  const moveTask = (task: Task, direction: -1 | 1) => {
+    const currentIndex = statusOrder.indexOf(task.status);
+    const nextStatus = statusOrder[currentIndex + direction];
+    if (!nextStatus) {
+      return;
     }
-    setEditingId(null);
+    onUpdateTask(task.id, { status: nextStatus });
+  };
+
+  const submitTask = () => {
+    if (!formState.title.trim() || !formState.assignee.trim() || !formState.dueDate) {
+      return;
+    }
+
+    onAddTask({
+      title: formState.title.trim(),
+      assignee: formState.assignee.trim(),
+      dueDate: new Date(formState.dueDate).toISOString(),
+      priority: formState.priority,
+      status: formState.status,
+    });
+
+    setFormState(emptyTaskForm);
+    setIsModalOpen(false);
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Projects</h1>
-          <p className="text-slate-400 mt-1">Manage your tasks and track progress.</p>
-        </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium hover:opacity-90 transition-opacity"
-        >
-          <Plus className="w-4 h-4" />
-          New Task
-        </button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Tasks', value: tasks.length, icon: FolderKanban },
-          { label: 'To Do', value: tasks.filter((t) => t.status === 'todo').length, icon: Clock },
-          { label: 'In Progress', value: tasks.filter((t) => t.status === 'in-progress').length, icon: AlertCircle },
-          { label: 'Completed', value: doneCount, icon: CheckCircle },
-        ].map((stat, i) => (
-          <div key={i} className="p-4 rounded-xl bg-slate-800/50 backdrop-blur-sm border border-white/10">
-            <stat.icon className="w-5 h-5 text-cyan-400 mb-2" />
-            <p className="text-2xl font-bold text-white">{stat.value}</p>
-            <p className="text-sm text-slate-400">{stat.label}</p>
+    <div className="space-y-6">
+      <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">Execution hub</p>
+            <h1 className="mt-2 text-3xl font-semibold text-white">Manage tasks with clearer priorities and faster status updates</h1>
+            <p className="mt-3 max-w-2xl text-slate-400">
+              This board is now searchable, persistent, and more actionable. You can add tasks, move them between stages,
+              and quickly spot overdue work before it becomes invisible debt.
+            </p>
           </div>
-        ))}
-      </div>
-
-      {/* Burndown mini-chart */}
-      <div className="rounded-2xl bg-slate-800/50 backdrop-blur-sm border border-white/10 p-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-white">Progress</h2>
-          <span className="text-sm text-slate-400">{doneCount}/{totalCount} done • {Math.round(progress)}%</span>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          >
+            <Plus className="h-4 w-4" />
+            New task
+          </button>
         </div>
-        <div className="h-3 bg-white/5 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-full transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
+      </section>
 
-      {/* Kanban Board */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {columns.map((column) => {
-          const colTasks = getTasksByStatus(column);
-          const config = statusConfig[column];
-          const Icon = config.icon;
-          return (
-            <div
-              key={column}
-              onDragOver={(e) => handleDragOver(e, column)}
-              onDragLeave={() => setDragOverCol(null)}
-              onDrop={() => handleDrop(column)}
-              className={`space-y-4 rounded-xl p-3 transition-colors ${
-                dragOverCol === column ? 'bg-cyan-500/5 border border-cyan-500/30' : ''
-              }`}
-            >
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <Icon className={`w-4 h-4 ${config.color}`} />
-                  <h3 className="font-semibold text-white">{config.label}</h3>
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Total tasks"
+          value={String(tasks.length)}
+          subtitle="Across all delivery stages"
+          icon={<FolderKanban className="h-5 w-5 text-cyan-300" />}
+          tone="cyan"
+        />
+        <StatCard
+          title="Completion rate"
+          value={`${completionRate}%`}
+          subtitle={`${tasks.filter((task) => task.status === 'done').length} task(s) shipped`}
+          icon={<CheckCircle className="h-5 w-5 text-emerald-300" />}
+          tone="emerald"
+        />
+        <StatCard
+          title="Overdue"
+          value={String(overdueTasks.length)}
+          subtitle="Need immediate attention"
+          icon={<AlertCircle className="h-5 w-5 text-rose-300" />}
+          tone="rose"
+        />
+        <StatCard
+          title="Due soon"
+          value={String(upcomingTasks.length)}
+          subtitle="Within the next 3 days"
+          icon={<Calendar className="h-5 w-5 text-amber-300" />}
+          tone="amber"
+        />
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+          <h2 className="text-xl font-semibold text-white">Execution autopilot</h2>
+          <p className="mt-2 text-sm text-slate-400">A short checklist for keeping the team focused and delivery healthy.</p>
+          <div className="mt-5 space-y-3 text-sm text-slate-300">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">Clear overdue tasks before you pull more work into progress.</div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">Keep only the highest-priority work in “In progress” to avoid scattered execution.</div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">Assign every task to a real owner so the board does not become a wish list.</div>
+          </div>
+
+          <div className="mt-6">
+            <label className="relative block">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by task, assignee, or status"
+                className="w-full rounded-2xl border border-white/10 bg-slate-950/50 py-3 pl-11 pr-4 text-sm text-white placeholder-slate-500 focus:border-cyan-500/30 focus:outline-none"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+          <h2 className="text-xl font-semibold text-white">Today’s hotspots</h2>
+          <div className="mt-4 space-y-3">
+            {[...overdueTasks, ...upcomingTasks.filter((task) => !overdueTasks.some((overdue) => overdue.id === task.id))]
+              .slice(0, 4)
+              .map((task) => (
+                <div key={task.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-white">{task.title}</p>
+                      <p className="mt-1 text-sm text-slate-400">{task.assignee} · {task.priority} priority</p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${isOverdue(task.dueDate) ? 'bg-rose-500/15 text-rose-300' : 'bg-cyan-500/15 text-cyan-300'}`}>
+                      {isOverdue(task.dueDate)
+                        ? `${Math.abs(getDaysUntil(task.dueDate))} day${Math.abs(getDaysUntil(task.dueDate)) === 1 ? '' : 's'} overdue`
+                        : `Due in ${getDaysUntil(task.dueDate)} day${getDaysUntil(task.dueDate) === 1 ? '' : 's'}`}
+                    </span>
+                  </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-white/10 text-xs text-slate-400">
-                  {colTasks.length}
-                </span>
+              ))}
+            {!overdueTasks.length && !upcomingTasks.length ? (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-4 text-sm text-slate-400">
+                Nothing urgent right now. Add a task or pull the next priority into motion.
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-3">
+        {statusOrder.map((status) => {
+          const columnTasks = tasksByStatus(status);
+          const config = statusConfig[status];
+          const StatusIcon = config.icon;
+
+          return (
+            <div key={status} className="rounded-3xl border border-white/10 bg-slate-900/60 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-2xl bg-white/5 p-3">
+                    <StatusIcon className={`h-5 w-5 ${config.tone}`} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">{config.label}</h2>
+                    <p className="text-sm text-slate-400">{columnTasks.length} task(s)</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-3">
-                {colTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    draggable
-                    onDragStart={() => handleDragStart(task.id)}
-                    onClick={() => openExpand(task)}
-                    onDoubleClick={(e) => {
-                      e.stopPropagation();
-                      startInlineEdit(task);
-                    }}
-                    className="group p-4 rounded-xl bg-slate-800/50 backdrop-blur-sm border border-white/10 hover:border-cyan-500/30 transition-all cursor-pointer"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      {editingId === task.id ? (
-                        <input
-                          autoFocus
-                          type="text"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onBlur={() => saveInlineEdit(task.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveInlineEdit(task.id);
-                            if (e.key === 'Escape') setEditingId(null);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex-1 bg-white/10 border border-cyan-500/50 rounded px-2 py-1 text-white text-sm focus:outline-none"
-                        />
-                      ) : (
-                        <h4 className="text-white font-medium">{task.title}</h4>
-                      )}
+              <div className="mt-5 space-y-3">
+                {columnTasks.map((task) => (
+                  <div key={task.id} className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-white">{task.title}</p>
+                        <p className="mt-2 text-sm text-slate-400">{task.priority} priority · due {formatShortDate(task.dueDate)}</p>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${isOverdue(task.dueDate) && task.status !== 'done' ? 'bg-rose-500/15 text-rose-300' : 'bg-slate-800 text-slate-300'}`}>
+                        {isOverdue(task.dueDate) && task.status !== 'done' ? 'Overdue' : config.label}
+                      </span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center">
-                          <User className="w-3 h-3 text-white" />
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-sm text-slate-300">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 text-white">
+                          <User className="h-4 w-4" />
                         </div>
-                        <span className="text-xs text-slate-400">{task.assignee}</span>
+                        {task.assignee}
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${priorityColors[task.priority]}`} />
-                        <div className="flex items-center gap-1 text-xs text-slate-400">
-                          <Calendar className="w-3 h-3" />
-                          {task.dueDate}
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => moveTask(task, -1)}
+                          disabled={task.status === 'todo'}
+                          className="rounded-xl border border-white/10 p-2 text-slate-300 transition-colors hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label="Move task left"
+                        >
+                          <ArrowLeft className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveTask(task, 1)}
+                          disabled={task.status === 'done'}
+                          className="rounded-xl border border-white/10 p-2 text-slate-300 transition-colors hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label="Move task right"
+                        >
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
                   </div>
                 ))}
-
-                <button
-                  onClick={() => {
-                    setFormData({ title: '', assignee: 'Alex', dueDate: '', priority: 'medium' });
-                    setShowAddModal(true);
-                  }}
-                  className="w-full p-3 rounded-xl border-2 border-dashed border-white/20 hover:border-cyan-500/50 text-slate-400 hover:text-white transition-all flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Task
-                </button>
+                {!columnTasks.length ? (
+                  <div className="rounded-3xl border border-dashed border-white/10 bg-white/[0.03] p-4 text-sm text-slate-400">
+                    No tasks in this column yet.
+                  </div>
+                ) : null}
               </div>
             </div>
           );
         })}
-      </div>
+      </section>
 
-      {/* Add Task Modal */}
-      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Task">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm text-slate-300 mb-1.5">Title</label>
+      <Modal
+        open={isModalOpen}
+        title="Create a new task"
+        description="Add the task, assign an owner, and place it in the right stage so it becomes actionable immediately."
+        onClose={() => setIsModalOpen(false)}
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="space-y-2 md:col-span-2">
+            <span className="text-sm text-slate-300">Task title</span>
             <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-              placeholder="Task title"
-              className={`w-full bg-white/5 border rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none transition-colors ${
-                errors.title ? 'border-rose-500/50' : 'border-white/10 focus:border-cyan-500/50'
-              }`}
+              value={formState.title}
+              onChange={(event) => setFormState((current) => ({ ...current, title: event.target.value }))}
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white focus:border-cyan-500/30 focus:outline-none"
+              placeholder="Ship onboarding checklist"
             />
-            {errors.title && <p className="text-xs text-rose-400 mt-1">{errors.title}</p>}
-          </div>
-          <div>
-            <label className="block text-sm text-slate-300 mb-1.5">Assignee</label>
-            <select
-              value={formData.assignee}
-              onChange={(e) => setFormData((prev) => ({ ...prev, assignee: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500/50"
-            >
-              {assignees.map((a) => (
-                <option key={a} value={a} className="bg-slate-800">{a}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm text-slate-300 mb-1.5">Due Date</label>
+          </label>
+          <label className="space-y-2">
+            <span className="text-sm text-slate-300">Assignee</span>
+            <input
+              value={formState.assignee}
+              onChange={(event) => setFormState((current) => ({ ...current, assignee: event.target.value }))}
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white focus:border-cyan-500/30 focus:outline-none"
+            />
+          </label>
+          <label className="space-y-2">
+            <span className="text-sm text-slate-300">Due date</span>
             <input
               type="date"
-              value={formData.dueDate}
-              onChange={(e) => setFormData((prev) => ({ ...prev, dueDate: e.target.value }))}
-              className={`w-full bg-white/5 border rounded-xl px-4 py-2.5 text-white focus:outline-none transition-colors ${
-                errors.dueDate ? 'border-rose-500/50' : 'border-white/10 focus:border-cyan-500/50'
-              }`}
+              value={formState.dueDate}
+              onChange={(event) => setFormState((current) => ({ ...current, dueDate: event.target.value }))}
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white focus:border-cyan-500/30 focus:outline-none"
             />
-            {errors.dueDate && <p className="text-xs text-rose-400 mt-1">{errors.dueDate}</p>}
-          </div>
-          <div>
-            <label className="block text-sm text-slate-300 mb-1.5">Priority</label>
-            <div className="flex gap-2">
-              {(['high', 'medium', 'low'] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setFormData((prev) => ({ ...prev, priority: p }))}
-                  className={`flex-1 py-2 rounded-xl border text-sm capitalize transition-all ${
-                    formData.priority === p
-                      ? priorityPillColors[p]
-                      : 'border-white/10 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
-          <button
-            onClick={handleAddTask}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium hover:opacity-90 transition-opacity"
-          >
-            Add Task
-          </button>
-        </div>
-      </Modal>
-
-      {/* Task Expand Modal */}
-      <Modal open={Boolean(selectedTask)} onClose={() => setSelectedTask(null)} title="Edit Task" maxWidth="max-w-xl">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm text-slate-300 mb-1.5">Title</label>
-            <input
-              type="text"
-              value={expandData.title}
-              onChange={(e) => setExpandData((prev) => ({ ...prev, title: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500/50"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-slate-300 mb-1.5">Description</label>
-            <textarea
-              value={expandData.description}
-              onChange={(e) => setExpandData((prev) => ({ ...prev, description: e.target.value }))}
-              rows={4}
-              placeholder="Task description..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 resize-none"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-slate-300 mb-1.5">Assignee</label>
-              <select
-                value={expandData.assignee}
-                onChange={(e) => setExpandData((prev) => ({ ...prev, assignee: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500/50"
-              >
-                {assignees.map((a) => (
-                  <option key={a} value={a} className="bg-slate-800">{a}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-slate-300 mb-1.5">Due Date</label>
-              <input
-                type="date"
-                value={expandData.dueDate}
-                onChange={(e) => setExpandData((prev) => ({ ...prev, dueDate: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500/50"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm text-slate-300 mb-1.5">Priority</label>
-            <div className="flex gap-2">
-              {(['high', 'medium', 'low'] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setExpandData((prev) => ({ ...prev, priority: p }))}
-                  className={`flex-1 py-2 rounded-xl border text-sm capitalize transition-all ${
-                    expandData.priority === p
-                      ? priorityPillColors[p]
-                      : 'border-white/10 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm text-slate-300 mb-1.5">Status</label>
+          </label>
+          <label className="space-y-2">
+            <span className="text-sm text-slate-300">Priority</span>
             <select
-              value={expandData.status}
-              onChange={(e) => setExpandData((prev) => ({ ...prev, status: e.target.value as Task['status'] }))}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500/50"
+              value={formState.priority}
+              onChange={(event) => setFormState((current) => ({ ...current, priority: event.target.value as TaskPriority }))}
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white focus:border-cyan-500/30 focus:outline-none"
             >
-              {columns.map((c) => (
-                <option key={c} value={c} className="bg-slate-800">{statusConfig[c].label}</option>
-              ))}
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
             </select>
-          </div>
+          </label>
+          <label className="space-y-2">
+            <span className="text-sm text-slate-300">Starting status</span>
+            <select
+              value={formState.status}
+              onChange={(event) => setFormState((current) => ({ ...current, status: event.target.value as TaskStatus }))}
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white focus:border-cyan-500/30 focus:outline-none"
+            >
+              <option value="todo">To do</option>
+              <option value="in-progress">In progress</option>
+              <option value="done">Done</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-6 flex justify-end">
           <button
-            onClick={saveExpand}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium hover:opacity-90 transition-opacity"
+            type="button"
+            onClick={submitTask}
+            className="rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3 font-medium text-white transition-opacity hover:opacity-90"
           >
-            Save Changes
+            Save task
           </button>
         </div>
       </Modal>

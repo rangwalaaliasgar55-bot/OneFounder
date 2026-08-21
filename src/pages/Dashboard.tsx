@@ -1,319 +1,370 @@
-import { useState, useEffect, useMemo } from 'react';
-import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  DollarSign,
-  Users,
-  Target,
-  Sparkles,
-  ArrowUpRight,
-  ArrowDownRight,
-  BarChart3,
-  Zap,
+  Activity,
+  ArrowRight,
+  Bot,
   Calendar,
-  CheckCircle,
-  X,
+  CheckCircle2,
+  DollarSign,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
-import { askAI } from '../lib/ai';
-import { SkeletonCard } from '../components/Skeleton';
-import { useToast } from '../components/useToast';
+import StatCard from '../components/StatCard';
+import {
+  calculateAIReadinessScore,
+  calculateAutomationHours,
+  formatCompactCurrency,
+  formatCurrency,
+  formatShortDate,
+  formatWeekdayDate,
+  getDaysSince,
+  getDaysUntil,
+  getPriorityWeight,
+  isOverdue,
+} from '../lib/workspace';
+import type { NavPage, WorkspaceData } from '../types';
 
-interface MetricCardProps {
-  title: string;
-  value: string;
-  change: number;
-  icon: ReactNode;
-  color: 'cyan' | 'emerald' | 'amber' | 'rose';
-  onClick?: () => void;
+interface DashboardProps {
+  data: WorkspaceData;
+  onNavigate: (page: NavPage) => void;
 }
 
-const colorClasses = {
-  cyan: 'from-cyan-500/20 to-blue-600/20 border-cyan-500/30 text-cyan-400',
-  emerald: 'from-emerald-500/20 to-teal-600/20 border-emerald-500/30 text-emerald-400',
-  amber: 'from-amber-500/20 to-orange-600/20 border-amber-500/30 text-amber-400',
-  rose: 'from-rose-500/20 to-pink-600/20 border-rose-500/30 text-rose-400',
-};
+export default function Dashboard({ data, onNavigate }: DashboardProps) {
+  const today = new Date().toISOString();
+  const greetingHour = new Date().getHours();
+  const greeting = greetingHour < 12 ? 'Good morning' : greetingHour < 17 ? 'Good afternoon' : 'Good evening';
 
-const iconTextColor = {
-  cyan: 'text-cyan-400',
-  emerald: 'text-emerald-400',
-  amber: 'text-amber-400',
-  rose: 'text-rose-400',
-};
-
-function MetricCard({ title, value, change, icon, color, onClick }: MetricCardProps) {
-  return (
-    <button
-      onClick={onClick}
-      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${colorClasses[color]} border backdrop-blur-sm p-5 group hover:scale-[1.02] transition-transform duration-300 text-left w-full`}
-    >
-      <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-      <div className="relative">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-slate-300 text-sm font-medium">{title}</span>
-          <div className={`p-2 rounded-lg bg-white/10 ${iconTextColor[color]}`}>
-            {icon}
-          </div>
-        </div>
-        <div className="flex items-end justify-between">
-          <p className="text-3xl font-bold text-white">{value}</p>
-          <div
-            className={`flex items-center gap-1 text-sm ${
-              change >= 0 ? 'text-emerald-400' : 'text-rose-400'
-            }`}
-          >
-            {change >= 0 ? (
-              <ArrowUpRight className="w-4 h-4" />
-            ) : (
-              <ArrowDownRight className="w-4 h-4" />
-            )}
-            <span>{Math.abs(change)}%</span>
-          </div>
-        </div>
-      </div>
-    </button>
+  const monthlyIncome = data.transactions
+    .filter((transaction) => transaction.type === 'income' && getDaysUntil(transaction.date) >= -30)
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const monthlyExpenses = data.transactions
+    .filter((transaction) => transaction.type === 'expense' && getDaysUntil(transaction.date) >= -30)
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const openLeads = data.leads.filter((lead) => lead.stage !== 'won');
+  const wonDeals = data.leads.filter((lead) => lead.stage === 'won');
+  const overdueTasks = data.tasks.filter((task) => task.status !== 'done' && isOverdue(task.dueDate));
+  const activeTasks = data.tasks.filter((task) => task.status !== 'done');
+  const topIdea = [...data.ideas].sort((left, right) => right.score - left.score)[0];
+  const conversionRate = data.leads.length ? Math.round((wonDeals.length / data.leads.length) * 100) : 0;
+  const automationHours = calculateAutomationHours(data.automations);
+  const trustScore = calculateAIReadinessScore(data.aiSystems, data.automations);
+  const highRiskSystems = data.aiSystems.filter(
+    (system) => system.riskLevel === 'high' || system.riskLevel === 'critical'
   );
-}
+  const unresolvedDecisions = data.decisionLogs.filter(
+    (decision) => decision.verificationStatus !== 'verified'
+  );
 
-interface Insight {
-  type: string;
-  color: string;
-  title: string;
-  body: string;
-}
+  const focusTasks = [...activeTasks]
+    .sort((left, right) => {
+      const overdueDiff = Number(isOverdue(right.dueDate)) - Number(isOverdue(left.dueDate));
+      if (overdueDiff !== 0) {
+        return overdueDiff;
+      }
 
-const insightColorMap: Record<string, string> = {
-  cyan: 'from-cyan-500/10 to-transparent border-cyan-500',
-  emerald: 'from-emerald-500/10 to-transparent border-emerald-500',
-  amber: 'from-amber-500/10 to-transparent border-amber-500',
-  rose: 'from-rose-500/10 to-transparent border-rose-500',
-};
+      const priorityDiff = getPriorityWeight(right.priority) - getPriorityWeight(left.priority);
+      if (priorityDiff !== 0) {
+        return priorityDiff;
+      }
 
-const fallbackInsights: Insight[] = [
-  { type: 'revenue', color: 'cyan', title: 'Revenue Opportunity', body: 'Your email open rates increased 23% this week. Consider sending a promotional campaign to capitalize on engagement.' },
-  { type: 'growth', color: 'emerald', title: 'Growth Tip', body: "You're 15% away from your Q3 goal. Focus on converting the 12 warm leads in your pipeline." },
-  { type: 'alert', color: 'amber', title: 'Alert', body: 'Your burn rate is trending 8% above target. Review subscriptions and operational costs.' },
-];
+      return new Date(left.dueDate).getTime() - new Date(right.dueDate).getTime();
+    })
+    .slice(0, 4);
 
-export default function Dashboard() {
-  const navigate = useNavigate();
-  const toast = useToast();
-  const [greeting, setGreeting] = useState('Good morning');
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [insightsLoading, setInsightsLoading] = useState(true);
-  const [showBanner, setShowBanner] = useState(false);
-  const [tasks, setTasks] = useState([
-    { id: '1', title: 'Review Q3 financial projections', completed: false, priority: 'high' as const },
-    { id: '2', title: 'Follow up with enterprise leads', completed: false, priority: 'high' as const },
-    { id: '3', title: 'Update landing page copy', completed: true, priority: 'medium' as const },
-    { id: '4', title: 'Prepare investor pitch deck', completed: false, priority: 'medium' as const },
-    { id: '5', title: 'Team sync meeting', completed: true, priority: 'low' as const },
-  ]);
+  const followUpLeads = data.leads
+    .filter((lead) => lead.stage !== 'won' && getDaysSince(lead.lastContacted) >= 7)
+    .sort((left, right) => right.value - left.value)
+    .slice(0, 3);
 
-  useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour >= 12 && hour < 17) setGreeting('Good afternoon');
-    else if (hour >= 17) setGreeting('Good evening');
-
-    const dismissed = localStorage.getItem('onefounder_welcome_dismissed');
-    if (!dismissed) setShowBanner(true);
-  }, []);
-
-  useEffect(() => {
-    const prompt =
-      'Give 3 brief, actionable insights for a SaaS founder with MRR $12,450 and 284 leads. JSON only: [{type, color, title, body}]. Colors: cyan, emerald, amber.';
-    askAI([{ role: 'user', content: prompt }], 'You are a startup advisor. Respond with valid JSON only.')
-      .then((res) => {
-        try {
-          const parsed = JSON.parse(res.text);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setInsights(parsed);
-          } else {
-            setInsights(fallbackInsights);
-          }
-        } catch {
-          setInsights(fallbackInsights);
+  const autopilotItems = [
+    overdueTasks.length
+      ? {
+          title: `${overdueTasks.length} task${overdueTasks.length > 1 ? 's' : ''} need immediate attention`,
+          description: 'Clear execution blockers before more work enters the system.',
+          page: 'projects' as NavPage,
         }
-      })
-      .catch(() => setInsights(fallbackInsights))
-      .finally(() => setInsightsLoading(false));
-  }, []);
-
-  const metrics: MetricCardProps[] = useMemo(() => [
-    { title: 'Monthly Revenue', value: '$12,450', change: 12.5, icon: <DollarSign className="w-5 h-5" />, color: 'emerald', onClick: () => navigate('/finance') },
-    { title: 'Total Leads', value: '284', change: 8.2, icon: <Users className="w-5 h-5" />, color: 'cyan', onClick: () => navigate('/crm') },
-    { title: 'Conversion Rate', value: '3.2%', change: -2.1, icon: <Target className="w-5 h-5" />, color: 'amber', onClick: () => navigate('/crm') },
-    { title: 'Active Projects', value: '7', change: 5.0, icon: <BarChart3 className="w-5 h-5" />, color: 'rose', onClick: () => navigate('/projects') },
-  ], [navigate]);
-
-  const toggleTask = (id: string) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
-  };
-
-  const dismissBanner = () => {
-    localStorage.setItem('onefounder_welcome_dismissed', 'true');
-    setShowBanner(false);
-    toast('Welcome banner dismissed', 'info');
-  };
-
-  const quickActions = [
-    { label: 'New Project', icon: <Zap className="w-5 h-5" />, color: 'from-cyan-500 to-blue-600', action: () => navigate('/projects') },
-    { label: 'Add Lead', icon: <Users className="w-5 h-5" />, color: 'from-emerald-500 to-teal-600', action: () => navigate('/crm') },
-    { label: 'Log Expense', icon: <DollarSign className="w-5 h-5" />, color: 'from-amber-500 to-orange-600', action: () => navigate('/finance') },
-    { label: 'AI Chat', icon: <Sparkles className="w-5 h-5" />, color: 'from-violet-500 to-purple-600', action: () => navigate('/chat') },
+      : {
+          title: 'Project delivery is on track',
+          description: 'No overdue work detected. This is a good window to pull the next high-impact task forward.',
+          page: 'projects' as NavPage,
+        },
+    followUpLeads.length
+      ? {
+          title: `${followUpLeads.length} stale follow-up${followUpLeads.length > 1 ? 's' : ''} can unlock revenue`,
+          description: 'Warm deals are waiting on a human nudge. Re-open the CRM today.',
+          page: 'crm' as NavPage,
+        }
+      : {
+          title: 'CRM follow-ups look healthy',
+          description: 'No stale pipeline conversations detected right now.',
+          page: 'crm' as NavPage,
+        },
+    highRiskSystems.some((system) => !system.humanReview)
+      ? {
+          title: 'One or more high-risk AI systems need human review',
+          description: 'Add manual checkpoints before sensitive or customer-facing AI actions scale further.',
+          page: 'trust' as NavPage,
+        }
+      : {
+          title: `AI trust posture is ${trustScore}/100`,
+          description: 'Keep decision logs, audit dates, and review controls fresh as usage grows.',
+          page: 'trust' as NavPage,
+        },
+    {
+      title: `${automationHours.toFixed(1)} automation hours saved every week`,
+      description:
+        automationHours >= 6
+          ? 'Good leverage. Review risky or draft automations next so speed does not outrun governance.'
+          : 'There is room to automate repeatable founder work without giving up oversight.',
+      page: 'automations' as NavPage,
+    },
   ];
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* Welcome banner */}
-      {showBanner && (
-        <div className="rounded-2xl bg-gradient-to-r from-cyan-500/10 to-blue-600/10 border border-cyan-500/30 p-6 animate-slide-up">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white">Welcome to OneFounder</h2>
-                <p className="text-sm text-slate-400">Complete these 3 steps to get started:</p>
-              </div>
-            </div>
-            <button onClick={dismissBanner} className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
-              <X className="w-5 h-5" />
-            </button>
+    <div className="space-y-6">
+      <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 shadow-2xl shadow-slate-950/30">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">Founder cockpit</p>
+            <h2 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">
+              {greeting}, founder.
+            </h2>
+            <p className="mt-3 max-w-2xl text-slate-300">
+              You now have a unified operating layer for growth, execution, finance, automation, and AI trust.
+              The goal is not just to ship faster, but to avoid the classic AI-era failure modes: unverified decisions,
+              unsafe automation, and invisible operational drift.
+            </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {[
-              { label: 'Add your first lead', path: '/crm' },
-              { label: 'Start a project', path: '/projects' },
-              { label: 'Try AI Chat', path: '/chat' },
-            ].map((step, i) => (
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+            <div className="flex items-center gap-2 text-cyan-300">
+              <Calendar className="h-4 w-4" />
+              <span>{formatWeekdayDate(today)}</span>
+            </div>
+            <p className="mt-2 text-slate-400">Synced across dashboard, AI chat, automations, and trust center.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Monthly revenue"
+          value={formatCompactCurrency(monthlyIncome)}
+          subtitle={`${data.transactions.filter((transaction) => transaction.type === 'income').length} income entries tracked`}
+          icon={<DollarSign className="h-5 w-5 text-emerald-300" />}
+          tone="emerald"
+          trend={`${formatCurrency(monthlyIncome - monthlyExpenses)} net`}
+        />
+        <StatCard
+          title="Active pipeline"
+          value={formatCompactCurrency(openLeads.reduce((sum, lead) => sum + lead.value, 0))}
+          subtitle={`${openLeads.length} open lead${openLeads.length === 1 ? '' : 's'} in motion`}
+          icon={<Users className="h-5 w-5 text-cyan-300" />}
+          tone="cyan"
+          trend={`${conversionRate}% close rate`}
+        />
+        <StatCard
+          title="Automation leverage"
+          value={`${automationHours.toFixed(1)}h`}
+          subtitle={`${data.automations.filter((automation) => automation.status === 'active').length} active flow(s)`}
+          icon={<Bot className="h-5 w-5 text-violet-300" />}
+          tone="violet"
+          trend="Per week"
+        />
+        <StatCard
+          title="AI trust score"
+          value={`${trustScore}/100`}
+          subtitle={`${highRiskSystems.length} high-risk system(s) tracked`}
+          icon={<ShieldCheck className="h-5 w-5 text-amber-300" />}
+          tone="amber"
+          trend={`${unresolvedDecisions.length} open verification item(s)`}
+        />
+      </section>
+
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.25fr_0.95fr]">
+        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">Autopilot agenda</p>
+              <h3 className="mt-2 text-2xl font-semibold text-white">The highest-leverage actions for today</h3>
+            </div>
+            <div className="rounded-2xl bg-cyan-500/10 p-3 text-cyan-300">
+              <Sparkles className="h-6 w-6" />
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            {autopilotItems.map((item) => (
               <button
-                key={i}
-                onClick={() => navigate(step.path)}
-                className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-left"
+                key={item.title}
+                type="button"
+                onClick={() => onNavigate(item.page)}
+                className="flex w-full items-start justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-left transition-all hover:border-cyan-500/30 hover:bg-white/10"
               >
-                <div className="w-7 h-7 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-semibold flex-shrink-0">
-                  {i + 1}
+                <div>
+                  <p className="font-medium text-white">{item.title}</p>
+                  <p className="mt-1 text-sm text-slate-400">{item.description}</p>
                 </div>
-                <span className="text-sm text-slate-200">{step.label}</span>
+                <ArrowRight className="mt-1 h-5 w-5 flex-shrink-0 text-slate-500" />
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { label: 'Jump to CRM', page: 'crm' as NavPage },
+              { label: 'Review finance', page: 'finance' as NavPage },
+              { label: 'Ship tasks', page: 'projects' as NavPage },
+              { label: 'Audit AI trust', page: 'trust' as NavPage },
+            ].map((action) => (
+              <button
+                key={action.label}
+                type="button"
+                onClick={() => onNavigate(action.page)}
+                className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm font-medium text-slate-200 transition-colors hover:border-cyan-500/30 hover:text-white"
+              >
+                {action.label}
               </button>
             ))}
           </div>
         </div>
-      )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white">
-            {greeting}, Founder
-          </h1>
-          <p className="text-slate-400 mt-1">Here's what's happening with your business today.</p>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
-          <Calendar className="w-4 h-4 text-cyan-400" />
-          <span className="text-sm text-slate-300">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </span>
-        </div>
-      </div>
-
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {metrics.map((metric) => (
-          <MetricCard key={metric.title} {...metric} />
-        ))}
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* AI Insights */}
-        <div className="lg:col-span-2 rounded-2xl bg-slate-800/50 backdrop-blur-sm border border-white/10 p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600">
-              <Sparkles className="w-5 h-5 text-white" />
+        <div className="space-y-6">
+          <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">Priority queue</p>
+                <h3 className="mt-2 text-xl font-semibold text-white">What should move next</h3>
+              </div>
+              <Activity className="h-5 w-5 text-cyan-300" />
             </div>
-            <h2 className="text-lg font-semibold text-white">AI Insights</h2>
+            <div className="mt-5 space-y-3">
+              {focusTasks.map((task) => {
+                const daysUntil = getDaysUntil(task.dueDate);
+                const dueLabel = daysUntil < 0
+                  ? `${Math.abs(daysUntil)} day${Math.abs(daysUntil) === 1 ? '' : 's'} overdue`
+                  : daysUntil === 0
+                    ? 'Due today'
+                    : `Due in ${daysUntil} day${daysUntil === 1 ? '' : 's'}`;
+
+                return (
+                  <div key={task.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-white">{task.title}</p>
+                        <p className="mt-1 text-sm text-slate-400">
+                          {task.assignee} · {task.priority} priority · {formatShortDate(task.dueDate)}
+                        </p>
+                      </div>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                          isOverdue(task.dueDate)
+                            ? 'bg-rose-500/15 text-rose-300'
+                            : 'bg-cyan-500/15 text-cyan-300'
+                        }`}
+                      >
+                        {dueLabel}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          {insightsLoading ? (
-            <div className="space-y-4">
-              <SkeletonCard />
-              <SkeletonCard />
-              <SkeletonCard />
+
+          <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">Revenue follow-ups</p>
+                <h3 className="mt-2 text-xl font-semibold text-white">Warm leads to contact</h3>
+              </div>
+              <Target className="h-5 w-5 text-cyan-300" />
             </div>
-          ) : (
-            <div className="space-y-4">
-              {(insights.length > 0 ? insights : fallbackInsights).map((insight, i) => (
-                <div
-                  key={i}
-                  className={`p-4 rounded-xl bg-gradient-to-r ${insightColorMap[insight.color] ?? insightColorMap.cyan} border-l-2`}
-                >
-                  <p className="text-slate-200 leading-relaxed">
-                    <span className="font-semibold capitalize">{insight.title}:</span> {insight.body}
-                  </p>
+            <div className="mt-5 space-y-3">
+              {followUpLeads.length ? (
+                followUpLeads.map((lead) => (
+                  <div key={lead.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="font-medium text-white">{lead.name}</p>
+                        <p className="mt-1 text-sm text-slate-400">
+                          {lead.company} · {formatCompactCurrency(lead.value)} · {getDaysSince(lead.lastContacted)} days since touchpoint
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('crm')}
+                        className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-300 transition-colors hover:bg-cyan-500/20"
+                      >
+                        Open CRM
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-4 text-sm text-slate-400">
+                  Your follow-up queue is clear. Nice work keeping the pipeline warm.
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
-
-        {/* Tasks */}
-        <div className="rounded-2xl bg-slate-800/50 backdrop-blur-sm border border-white/10 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Today's Tasks</h2>
-            <span className="text-sm text-slate-400">{tasks.filter((t) => t.completed).length}/{tasks.length}</span>
-          </div>
-          <div className="space-y-1">
-            {tasks.map((task) => {
-              const priorityColors = {
-                high: 'bg-rose-500',
-                medium: 'bg-amber-500',
-                low: 'bg-cyan-500',
-              };
-              return (
-                <button
-                  key={task.id}
-                  onClick={() => toggleTask(task.id)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors group text-left"
-                >
-                  <div
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                      task.completed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-600 group-hover:border-cyan-400'
-                    }`}
-                  >
-                    {task.completed && <CheckCircle className="w-4 h-4 text-white" />}
-                  </div>
-                  <div className="flex-1">
-                    <p
-                      className={`text-sm transition-all ${
-                        task.completed ? 'text-slate-500 line-through' : 'text-white'
-                      }`}
-                    >
-                      {task.title}
-                    </p>
-                  </div>
-                  <div className={`w-2 h-2 rounded-full ${priorityColors[task.priority]}`} />
-                </button>
-              );
-            })}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {quickActions.map((action, i) => (
-          <button
-            key={i}
-            onClick={action.action}
-            className={`flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r ${action.color} hover:opacity-90 transition-opacity`}
-          >
-            <div className="p-2 rounded-lg bg-white/20">{action.icon}</div>
-            <span className="font-medium text-white">{action.label}</span>
-          </button>
-        ))}
-      </div>
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_1fr]">
+        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-emerald-500/10 p-3 text-emerald-300">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-white">Cashflow pulse</h3>
+              <p className="text-sm text-slate-400">Live summary from your finance entries.</p>
+            </div>
+          </div>
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm text-slate-400">Income</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{formatCompactCurrency(monthlyIncome)}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm text-slate-400">Expenses</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{formatCompactCurrency(monthlyExpenses)}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm text-slate-400">Net</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{formatCompactCurrency(monthlyIncome - monthlyExpenses)}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-amber-500/10 p-3 text-amber-300">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-white">AI-era risk radar</h3>
+              <p className="text-sm text-slate-400">A quick read on trust, verification, and execution drift.</p>
+            </div>
+          </div>
+          <div className="mt-6 space-y-3 text-sm text-slate-300">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <span className="font-medium text-white">Top idea:</span> {topIdea?.title ?? 'No idea saved yet'}
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <span className="font-medium text-white">Verification queue:</span> {unresolvedDecisions.length} decision item{unresolvedDecisions.length === 1 ? '' : 's'} still need evidence.
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <span className="font-medium text-white">Automation coverage:</span> {data.automations.filter((automation) => automation.status === 'active').length} active automation{data.automations.filter((automation) => automation.status === 'active').length === 1 ? '' : 's'} saving {automationHours.toFixed(1)} hours per week.
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <span className="font-medium text-white">Trust controls:</span> {data.aiSystems.filter((system) => system.humanReview).length}/{data.aiSystems.length} AI systems currently require human review.
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
