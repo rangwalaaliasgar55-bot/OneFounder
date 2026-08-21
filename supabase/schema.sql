@@ -9,6 +9,14 @@ create table if not exists workspaces (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists workspace_state (
+  id uuid primary key default gen_random_uuid(),
+  workspace_key text not null unique,
+  payload jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
 create table if not exists team_members (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references workspaces(id) on delete cascade,
@@ -179,6 +187,7 @@ create table if not exists delivery_events (
 );
 
 alter table workspaces enable row level security;
+alter table workspace_state enable row level security;
 alter table team_members enable row level security;
 alter table ai_systems enable row level security;
 alter table automations enable row level security;

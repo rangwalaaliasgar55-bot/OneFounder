@@ -22,6 +22,7 @@ import {
 import AuthScreen from './components/AuthScreen';
 import CommandPalette, { type CommandAction } from './components/CommandPalette';
 import Modal from './components/Modal';
+import { useWorkspaceCloudSync } from './hooks/useWorkspaceCloudSync';
 import AIChat from './pages/AIChat';
 import Automations from './pages/Automations';
 import ControlRoom from './pages/ControlRoom';
@@ -36,6 +37,7 @@ import TrustCenter from './pages/TrustCenter';
 import { usePersistentState } from './hooks/usePersistentState';
 import {
   appendAuditEvent,
+  appendDeliveryEvents,
   buildBoardReportMarkdown,
   calculateAIReadinessScore,
   calculateAutomationHours,
@@ -168,6 +170,16 @@ function App() {
   );
   const workspace = useMemo(() => normalizeWorkspaceData(storedWorkspace), [storedWorkspace]);
   const importFileRef = useRef<HTMLInputElement>(null);
+  const {
+    cloudAvailable,
+    syncStatus,
+    lastSyncedAt,
+    pullFromCloud,
+    pushToCloud,
+  } = useWorkspaceCloudSync({
+    workspace,
+    setWorkspace: setStoredWorkspace,
+  });
 
   const currentActor =
     workspace.teamMembers.find((member) => member.id === currentActorId) ?? workspace.teamMembers[0];
@@ -191,6 +203,16 @@ function App() {
             meta.severity ?? 'info'
           )
         );
+
+        if (
+          meta.severity === 'critical' ||
+          meta.severity === 'warning' ||
+          meta.action === 'workflow-launch' ||
+          meta.action === 'export-board-report' ||
+          meta.action === 'approval-approved'
+        ) {
+          next = appendDeliveryEvents(next, meta.target, meta.summary);
+        }
       }
 
       return next;
@@ -1079,6 +1101,28 @@ function App() {
     );
   };
 
+  const toggleNotificationChannel = (channelId: string) => {
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        notificationChannels: current.notificationChannels.map((channel) =>
+          channel.id === channelId
+            ? {
+                ...channel,
+                enabled: !channel.enabled,
+                lastTested: new Date().toISOString(),
+              }
+            : channel
+        ),
+      }),
+      {
+        action: 'notification-channel-toggle',
+        target: channelId,
+        summary: 'Updated notification channel delivery state.',
+      }
+    );
+  };
+
   const pauseAllAutomations = () => {
     commitWorkspace(
       (current) => ({
@@ -1494,12 +1538,22 @@ function App() {
             workspace={workspace}
             currentActorId={currentActor.id}
             currentActor={currentActor}
+            cloudAvailable={cloudAvailable}
+            syncStatus={syncStatus}
+            lastSyncedAt={lastSyncedAt}
+            onPullFromCloud={() => {
+              void pullFromCloud();
+            }}
+            onPushToCloud={() => {
+              void pushToCloud();
+            }}
             onSelectActor={selectActor}
             onApproveRequest={approveRequest}
             onRejectRequest={rejectRequest}
             onCreateSnapshot={createWorkspaceSnapshot}
             onRestoreSnapshot={restoreWorkspaceSnapshot}
             onExportBoardReport={exportBoardReport}
+            onToggleNotificationChannel={toggleNotificationChannel}
             onPauseAllAutomations={pauseAllAutomations}
             onLockdownHighRiskAI={lockdownHighRiskAI}
             onResetAlerts={resetAlerts}

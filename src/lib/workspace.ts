@@ -1117,6 +1117,26 @@ export function appendAuditEvent(data: WorkspaceData, event: AuditEvent) {
   };
 }
 
+export function appendDeliveryEvents(
+  data: WorkspaceData,
+  title: string,
+  summary: string
+) {
+  const events: DeliveryEvent[] = data.notificationChannels.map((channel) => ({
+    id: makeId('delivery'),
+    channelId: channel.id,
+    title,
+    summary,
+    status: channel.enabled ? 'sent' : 'queued',
+    createdAt: new Date().toISOString(),
+  }));
+
+  return {
+    ...data,
+    deliveryEvents: [...events, ...data.deliveryEvents].slice(0, 200),
+  };
+}
+
 export function serializeSnapshotData(workspace: WorkspaceData) {
   const snapshotSafeWorkspace: WorkspaceData = {
     ...workspace,

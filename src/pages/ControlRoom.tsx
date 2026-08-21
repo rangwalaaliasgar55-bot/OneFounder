@@ -28,12 +28,18 @@ interface ControlRoomProps {
   workspace: WorkspaceData;
   currentActorId: string;
   currentActor: TeamMember;
+  cloudAvailable: boolean;
+  syncStatus: 'idle' | 'syncing' | 'synced' | 'error' | 'disabled';
+  lastSyncedAt: string | null;
+  onPullFromCloud: () => void;
+  onPushToCloud: () => void;
   onSelectActor: (memberId: string) => void;
   onApproveRequest: (requestId: string) => void;
   onRejectRequest: (requestId: string) => void;
   onCreateSnapshot: () => void;
   onRestoreSnapshot: (snapshotId: string) => void;
   onExportBoardReport: () => void;
+  onToggleNotificationChannel: (channelId: string) => void;
   onPauseAllAutomations: () => void;
   onLockdownHighRiskAI: () => void;
   onResetAlerts: () => void;
@@ -147,12 +153,18 @@ export default function ControlRoom({
   workspace,
   currentActorId,
   currentActor,
+  cloudAvailable,
+  syncStatus,
+  lastSyncedAt,
+  onPullFromCloud,
+  onPushToCloud,
   onSelectActor,
   onApproveRequest,
   onRejectRequest,
   onCreateSnapshot,
   onRestoreSnapshot,
   onExportBoardReport,
+  onToggleNotificationChannel,
   onPauseAllAutomations,
   onLockdownHighRiskAI,
   onResetAlerts,
@@ -352,6 +364,14 @@ export default function ControlRoom({
             </span>
           </div>
           <p className="mt-3 text-sm text-slate-400">{backendReadiness.summary}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className={`rounded-full px-3 py-1 text-xs font-medium ${cloudAvailable ? 'bg-cyan-500/15 text-cyan-300' : 'bg-slate-700/60 text-slate-300'}`}>
+              Cloud sync {syncStatus}
+            </span>
+            <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
+              Last sync {lastSyncedAt ? formatShortDate(lastSyncedAt) : 'never'}
+            </span>
+          </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <p className="text-sm text-slate-400">Project URL</p>
@@ -362,6 +382,22 @@ export default function ControlRoom({
               <p className="mt-2 text-sm text-white">{backendReadiness.anonKeyPresent ? 'Configured' : 'Missing'}</p>
             </div>
           </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onPullFromCloud}
+              className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-300 transition-colors hover:bg-cyan-500/20"
+            >
+              Pull from cloud
+            </button>
+            <button
+              type="button"
+              onClick={onPushToCloud}
+              className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300 transition-colors hover:bg-emerald-500/20"
+            >
+              Push to cloud
+            </button>
+          </div>
           <div className="mt-5 space-y-3">
             {workspace.notificationChannels.map((channel) => (
               <div key={channel.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -370,9 +406,13 @@ export default function ControlRoom({
                     <p className="font-medium text-white">{channel.name}</p>
                     <p className="mt-1 text-sm text-slate-400">{channel.type} · {channel.target}</p>
                   </div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${channel.enabled ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-700/60 text-slate-300'}`}>
+                  <button
+                    type="button"
+                    onClick={() => onToggleNotificationChannel(channel.id)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${channel.enabled ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-700/60 text-slate-300'}`}
+                  >
                     {channel.enabled ? 'enabled' : 'disabled'}
-                  </span>
+                  </button>
                 </div>
                 <p className="mt-3 text-xs text-slate-500">Last tested {formatShortDate(channel.lastTested)} · Delivery rate {channel.deliveryRate}%</p>
               </div>
