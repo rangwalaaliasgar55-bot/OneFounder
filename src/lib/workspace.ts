@@ -1,4 +1,8 @@
 import type {
+  AISystem,
+  Automation,
+  DataSensitivity,
+  DecisionLog,
   Idea,
   Lead,
   Task,
@@ -266,7 +270,264 @@ export function createSeedWorkspace(): WorkspaceData {
     { id: 'txn-12', description: 'Pilot customer invoice', amount: 2800, type: 'income', category: 'Revenue', date: daysAgo(70) },
   ];
 
-  return { ideas, tasks, leads, transactions };
+  const automations: Automation[] = [
+    {
+      id: 'auto-1',
+      name: 'Stale lead nudger',
+      description: 'Flags CRM leads with no activity for 7+ days and sends a follow-up task into the founder queue.',
+      trigger: 'Daily at 9:00 AM',
+      owner: 'Revenue Ops',
+      status: 'active',
+      approvalMode: 'human-review',
+      sensitivity: 'internal',
+      hoursSavedPerWeek: 3.5,
+      reliability: 91,
+      linkedMetric: 'Lead response time',
+      fallback: 'Manual CRM review every Monday',
+      lastRun: daysAgo(0),
+      nextReview: daysFromNow(14),
+    },
+    {
+      id: 'auto-2',
+      name: 'Weekly founder digest',
+      description: 'Compiles finance, project, and CRM summaries into a single board-ready update every Friday.',
+      trigger: 'Friday at 4:30 PM',
+      owner: 'Chief of Staff',
+      status: 'active',
+      approvalMode: 'human-review',
+      sensitivity: 'confidential',
+      hoursSavedPerWeek: 2.5,
+      reliability: 94,
+      linkedMetric: 'Leadership reporting time',
+      fallback: 'Run export manually from each workspace section',
+      lastRun: daysAgo(5),
+      nextReview: daysFromNow(20),
+    },
+    {
+      id: 'auto-3',
+      name: 'Expense anomaly check',
+      description: 'Highlights unusual spend spikes and asks for a human note before approval.',
+      trigger: 'Whenever a new expense is added',
+      owner: 'Finance Lead',
+      status: 'draft',
+      approvalMode: 'dual-review',
+      sensitivity: 'restricted',
+      hoursSavedPerWeek: 1.5,
+      reliability: 79,
+      linkedMetric: 'Unexpected spend',
+      fallback: 'Weekly finance review meeting',
+      lastRun: daysAgo(10),
+      nextReview: daysFromNow(7),
+    },
+  ];
+
+  const aiSystems: AISystem[] = [
+    {
+      id: 'ai-1',
+      name: 'Founder copilot chat',
+      purpose: 'Founder support for planning, prioritization, and quick drafting.',
+      owner: 'Product',
+      modelFamily: 'General-purpose LLM',
+      deployment: 'production',
+      riskLevel: 'medium',
+      sensitivity: 'internal',
+      humanReview: true,
+      sourceRequired: true,
+      piiAllowed: false,
+      status: 'approved',
+      lastAudit: daysAgo(8),
+      incidents: 1,
+      controls: ['Prompt guardrails', 'Manual review', 'Decision log required'],
+    },
+    {
+      id: 'ai-2',
+      name: 'Lead scoring assistant',
+      purpose: 'Suggests lead priority using CRM context and sales heuristics.',
+      owner: 'Revenue Ops',
+      modelFamily: 'Rules + LLM summary',
+      deployment: 'pilot',
+      riskLevel: 'high',
+      sensitivity: 'confidential',
+      humanReview: true,
+      sourceRequired: true,
+      piiAllowed: false,
+      status: 'monitoring',
+      lastAudit: daysAgo(16),
+      incidents: 0,
+      controls: ['Human approval', 'Restricted inputs', 'Weekly drift review'],
+    },
+    {
+      id: 'ai-3',
+      name: 'Support reply draft bot',
+      purpose: 'Creates first-draft replies for customer support and onboarding questions.',
+      owner: 'Customer Success',
+      modelFamily: 'LLM with templates',
+      deployment: 'production',
+      riskLevel: 'critical',
+      sensitivity: 'restricted',
+      humanReview: false,
+      sourceRequired: false,
+      piiAllowed: true,
+      status: 'needs-review',
+      lastAudit: daysAgo(27),
+      incidents: 3,
+      controls: ['Rate limiting', 'Escalation fallback'],
+    },
+  ];
+
+  const decisionLogs: DecisionLog[] = [
+    {
+      id: 'decision-1',
+      title: 'Move onboarding analytics ahead of referral feature',
+      domain: 'product',
+      confidence: 'medium',
+      verificationStatus: 'partially-verified',
+      recommendation: 'AI recommends prioritizing onboarding analytics because retention signals are weak after day 7.',
+      owner: 'Founder',
+      impact: 'Could improve activation and reduce blind spots in the funnel.',
+      createdAt: daysAgo(6),
+      nextCheck: daysFromNow(4),
+    },
+    {
+      id: 'decision-2',
+      title: 'Reduce unused SaaS subscriptions before next payroll cycle',
+      domain: 'finance',
+      confidence: 'high',
+      verificationStatus: 'verified',
+      recommendation: 'Pause low-usage tools and re-approve only those tied to acquisition, reliability, or close rate.',
+      owner: 'Finance Lead',
+      impact: 'Improves net cash movement without slowing shipping velocity.',
+      createdAt: daysAgo(9),
+      nextCheck: daysFromNow(12),
+    },
+    {
+      id: 'decision-3',
+      title: 'Let AI draft customer support replies only after human review',
+      domain: 'ops',
+      confidence: 'high',
+      verificationStatus: 'unverified',
+      recommendation: 'Remove full auto-send and enforce a human approval checkpoint for customer-facing answers.',
+      owner: 'Customer Success',
+      impact: 'Reduces hallucination and tone-risk in live customer interactions.',
+      createdAt: daysAgo(2),
+      nextCheck: daysFromNow(2),
+    },
+  ];
+
+  return { ideas, tasks, leads, transactions, automations, aiSystems, decisionLogs };
+}
+
+function toStringArray(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function normalizeSensitivity(value: unknown): DataSensitivity {
+  return value === 'public' || value === 'internal' || value === 'confidential' || value === 'restricted'
+    ? value
+    : 'internal';
+}
+
+export function normalizeWorkspaceData(input: unknown): WorkspaceData {
+  const seed = createSeedWorkspace();
+  const data = (input && typeof input === 'object' ? input : {}) as Partial<WorkspaceData>;
+
+  return {
+    ideas: Array.isArray(data.ideas)
+      ? data.ideas.map((idea, index) => ({
+          id: idea.id ?? `idea-import-${index}`,
+          title: idea.title ?? 'Untitled idea',
+          description: idea.description ?? '',
+          score: typeof idea.score === 'number' ? idea.score : 60,
+          category: idea.category ?? 'General',
+          tags: Array.isArray(idea.tags) ? idea.tags.filter((tag): tag is string => typeof tag === 'string') : [],
+          market: idea.market ?? 'Growing',
+          createdAt: idea.createdAt ?? new Date().toISOString(),
+        }))
+      : seed.ideas,
+    tasks: Array.isArray(data.tasks)
+      ? data.tasks.map((task, index) => ({
+          id: task.id ?? `task-import-${index}`,
+          title: task.title ?? 'Untitled task',
+          assignee: task.assignee ?? 'Unassigned',
+          dueDate: task.dueDate ?? new Date().toISOString(),
+          priority: task.priority ?? 'medium',
+          status: task.status ?? 'todo',
+        }))
+      : seed.tasks,
+    leads: Array.isArray(data.leads)
+      ? data.leads.map((lead, index) => ({
+          id: lead.id ?? `lead-import-${index}`,
+          name: lead.name ?? 'Unknown lead',
+          email: lead.email ?? '',
+          company: lead.company ?? 'Unknown company',
+          value: typeof lead.value === 'number' ? lead.value : 0,
+          stage: lead.stage ?? 'lead',
+          source: lead.source ?? 'Unknown',
+          lastContacted: lead.lastContacted ?? new Date().toISOString(),
+        }))
+      : seed.leads,
+    transactions: Array.isArray(data.transactions)
+      ? data.transactions.map((transaction, index) => ({
+          id: transaction.id ?? `txn-import-${index}`,
+          description: transaction.description ?? 'Imported transaction',
+          amount: typeof transaction.amount === 'number' ? transaction.amount : 0,
+          type: transaction.type ?? 'expense',
+          category: transaction.category ?? 'General',
+          date: transaction.date ?? new Date().toISOString(),
+        }))
+      : seed.transactions,
+    automations: Array.isArray(data.automations)
+      ? data.automations.map((automation, index) => ({
+          id: automation.id ?? `auto-import-${index}`,
+          name: automation.name ?? 'Imported automation',
+          description: automation.description ?? '',
+          trigger: automation.trigger ?? 'Manual',
+          owner: automation.owner ?? 'Unassigned',
+          status: automation.status ?? 'draft',
+          approvalMode: automation.approvalMode ?? 'human-review',
+          sensitivity: normalizeSensitivity(automation.sensitivity),
+          hoursSavedPerWeek: typeof automation.hoursSavedPerWeek === 'number' ? automation.hoursSavedPerWeek : 0,
+          reliability: typeof automation.reliability === 'number' ? automation.reliability : 70,
+          linkedMetric: automation.linkedMetric ?? 'Not set',
+          fallback: automation.fallback ?? 'Manual fallback not documented',
+          lastRun: automation.lastRun ?? new Date().toISOString(),
+          nextReview: automation.nextReview ?? new Date().toISOString(),
+        }))
+      : seed.automations,
+    aiSystems: Array.isArray(data.aiSystems)
+      ? data.aiSystems.map((system, index) => ({
+          id: system.id ?? `ai-import-${index}`,
+          name: system.name ?? 'Imported AI system',
+          purpose: system.purpose ?? '',
+          owner: system.owner ?? 'Unassigned',
+          modelFamily: system.modelFamily ?? 'Unknown',
+          deployment: system.deployment ?? 'pilot',
+          riskLevel: system.riskLevel ?? 'medium',
+          sensitivity: normalizeSensitivity(system.sensitivity),
+          humanReview: typeof system.humanReview === 'boolean' ? system.humanReview : true,
+          sourceRequired: typeof system.sourceRequired === 'boolean' ? system.sourceRequired : true,
+          piiAllowed: typeof system.piiAllowed === 'boolean' ? system.piiAllowed : false,
+          status: system.status ?? 'monitoring',
+          lastAudit: system.lastAudit ?? new Date().toISOString(),
+          incidents: typeof system.incidents === 'number' ? system.incidents : 0,
+          controls: toStringArray(system.controls),
+        }))
+      : seed.aiSystems,
+    decisionLogs: Array.isArray(data.decisionLogs)
+      ? data.decisionLogs.map((decision, index) => ({
+          id: decision.id ?? `decision-import-${index}`,
+          title: decision.title ?? 'Imported decision',
+          domain: decision.domain ?? 'ops',
+          confidence: decision.confidence ?? 'medium',
+          verificationStatus: decision.verificationStatus ?? 'unverified',
+          recommendation: decision.recommendation ?? '',
+          owner: decision.owner ?? 'Unassigned',
+          impact: decision.impact ?? '',
+          createdAt: decision.createdAt ?? new Date().toISOString(),
+          nextCheck: decision.nextCheck ?? new Date().toISOString(),
+        }))
+      : seed.decisionLogs,
+  };
 }
 
 export function getPriorityWeight(priority: TaskPriority) {
@@ -285,12 +546,91 @@ export function getStageLabel(stage: Lead['stage']) {
   return stage.charAt(0).toUpperCase() + stage.slice(1).replace('-', ' ');
 }
 
+export function getRiskTone(level: AISystem['riskLevel']) {
+  return {
+    low: 'text-emerald-300 bg-emerald-500/15',
+    medium: 'text-cyan-300 bg-cyan-500/15',
+    high: 'text-amber-300 bg-amber-500/15',
+    critical: 'text-rose-300 bg-rose-500/15',
+  }[level];
+}
+
+export function getSensitivityTone(level: DataSensitivity) {
+  return {
+    public: 'text-slate-300 bg-slate-700/60',
+    internal: 'text-cyan-300 bg-cyan-500/15',
+    confidential: 'text-amber-300 bg-amber-500/15',
+    restricted: 'text-rose-300 bg-rose-500/15',
+  }[level];
+}
+
+export function getVerificationTone(status: DecisionLog['verificationStatus']) {
+  return {
+    verified: 'text-emerald-300 bg-emerald-500/15',
+    'partially-verified': 'text-amber-300 bg-amber-500/15',
+    unverified: 'text-rose-300 bg-rose-500/15',
+  }[status];
+}
+
+export function getConfidenceTone(confidence: DecisionLog['confidence']) {
+  return {
+    high: 'text-emerald-300 bg-emerald-500/15',
+    medium: 'text-cyan-300 bg-cyan-500/15',
+    low: 'text-rose-300 bg-rose-500/15',
+  }[confidence];
+}
+
+export function getAutomationStatusTone(status: Automation['status']) {
+  return {
+    active: 'text-emerald-300 bg-emerald-500/15',
+    paused: 'text-amber-300 bg-amber-500/15',
+    draft: 'text-slate-300 bg-slate-700/60',
+  }[status];
+}
+
 export function sortByNewest<T extends { date?: string; createdAt?: string }>(items: T[]) {
   return [...items].sort((left, right) => {
     const leftValue = new Date(left.date ?? left.createdAt ?? 0).getTime();
     const rightValue = new Date(right.date ?? right.createdAt ?? 0).getTime();
     return rightValue - leftValue;
   });
+}
+
+export function calculateAutomationHours(automations: Automation[]) {
+  return automations
+    .filter((automation) => automation.status === 'active')
+    .reduce((sum, automation) => sum + automation.hoursSavedPerWeek, 0);
+}
+
+export function calculateAIReadinessScore(aiSystems: AISystem[], automations: Automation[]) {
+  if (!aiSystems.length) {
+    return 0;
+  }
+
+  const systemScore = aiSystems.reduce((sum, system) => {
+    let current = 40;
+    if (system.humanReview) current += 15;
+    if (system.sourceRequired) current += 10;
+    if (!system.piiAllowed) current += 10;
+    if (system.controls.length >= 3) current += 10;
+    if (system.status === 'approved') current += 10;
+    if (system.status === 'monitoring') current += 5;
+    current -= system.incidents * 4;
+    if (system.riskLevel === 'critical' && !system.humanReview) current -= 15;
+    return sum + Math.max(0, Math.min(100, current));
+  }, 0);
+
+  const automationScore = automations.length
+    ? automations.reduce((sum, automation) => {
+        let current = automation.reliability;
+        if (automation.approvalMode === 'auto' && automation.sensitivity === 'restricted') current -= 18;
+        if (!automation.owner.trim()) current -= 10;
+        if (!automation.fallback.trim()) current -= 8;
+        return sum + Math.max(0, Math.min(100, current));
+      }, 0) / automations.length
+    : 80;
+
+  return Math.round(systemScore / aiSystems.length * 0.65 + automationScore * 0.35);
 }
 
 export function getMonthKey(value: string) {

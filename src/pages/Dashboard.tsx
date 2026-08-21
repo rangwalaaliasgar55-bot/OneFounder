@@ -1,11 +1,11 @@
 import {
   Activity,
   ArrowRight,
+  Bot,
   Calendar,
   CheckCircle2,
   DollarSign,
-  FolderKanban,
-  Lightbulb,
+  ShieldCheck,
   Sparkles,
   Target,
   TrendingUp,
@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import {
+  calculateAIReadinessScore,
+  calculateAutomationHours,
   formatCompactCurrency,
   formatCurrency,
   formatShortDate,
@@ -44,24 +46,32 @@ export default function Dashboard({ data, onNavigate }: DashboardProps) {
   const wonDeals = data.leads.filter((lead) => lead.stage === 'won');
   const overdueTasks = data.tasks.filter((task) => task.status !== 'done' && isOverdue(task.dueDate));
   const activeTasks = data.tasks.filter((task) => task.status !== 'done');
-  const completedTasks = data.tasks.filter((task) => task.status === 'done');
   const topIdea = [...data.ideas].sort((left, right) => right.score - left.score)[0];
-  const tasksCompletion = data.tasks.length ? Math.round((completedTasks.length / data.tasks.length) * 100) : 0;
   const conversionRate = data.leads.length ? Math.round((wonDeals.length / data.leads.length) * 100) : 0;
+  const automationHours = calculateAutomationHours(data.automations);
+  const trustScore = calculateAIReadinessScore(data.aiSystems, data.automations);
+  const highRiskSystems = data.aiSystems.filter(
+    (system) => system.riskLevel === 'high' || system.riskLevel === 'critical'
+  );
+  const unresolvedDecisions = data.decisionLogs.filter(
+    (decision) => decision.verificationStatus !== 'verified'
+  );
 
-  const focusTasks = [...activeTasks].sort((left, right) => {
-    const overdueDiff = Number(isOverdue(right.dueDate)) - Number(isOverdue(left.dueDate));
-    if (overdueDiff !== 0) {
-      return overdueDiff;
-    }
+  const focusTasks = [...activeTasks]
+    .sort((left, right) => {
+      const overdueDiff = Number(isOverdue(right.dueDate)) - Number(isOverdue(left.dueDate));
+      if (overdueDiff !== 0) {
+        return overdueDiff;
+      }
 
-    const priorityDiff = getPriorityWeight(right.priority) - getPriorityWeight(left.priority);
-    if (priorityDiff !== 0) {
-      return priorityDiff;
-    }
+      const priorityDiff = getPriorityWeight(right.priority) - getPriorityWeight(left.priority);
+      if (priorityDiff !== 0) {
+        return priorityDiff;
+      }
 
-    return new Date(left.dueDate).getTime() - new Date(right.dueDate).getTime();
-  }).slice(0, 4);
+      return new Date(left.dueDate).getTime() - new Date(right.dueDate).getTime();
+    })
+    .slice(0, 4);
 
   const followUpLeads = data.leads
     .filter((lead) => lead.stage !== 'won' && getDaysSince(lead.lastContacted) >= 7)
@@ -72,7 +82,7 @@ export default function Dashboard({ data, onNavigate }: DashboardProps) {
     overdueTasks.length
       ? {
           title: `${overdueTasks.length} task${overdueTasks.length > 1 ? 's' : ''} need immediate attention`,
-          description: 'Clear the blockers first so execution momentum comes back quickly.',
+          description: 'Clear execution blockers before more work enters the system.',
           page: 'projects' as NavPage,
         }
       : {
@@ -82,21 +92,33 @@ export default function Dashboard({ data, onNavigate }: DashboardProps) {
         },
     followUpLeads.length
       ? {
-          title: `${followUpLeads.length} follow-up${followUpLeads.length > 1 ? 's' : ''} can unlock revenue`,
-          description: 'Your warm pipeline is waiting on a nudge. Update CRM before the next work block ends.',
+          title: `${followUpLeads.length} stale follow-up${followUpLeads.length > 1 ? 's' : ''} can unlock revenue`,
+          description: 'Warm deals are waiting on a human nudge. Re-open the CRM today.',
           page: 'crm' as NavPage,
         }
       : {
           title: 'CRM follow-ups look healthy',
-          description: 'No stale leads detected in the current pipeline.',
+          description: 'No stale pipeline conversations detected right now.',
           page: 'crm' as NavPage,
         },
+    highRiskSystems.some((system) => !system.humanReview)
+      ? {
+          title: 'One or more high-risk AI systems need human review',
+          description: 'Add manual checkpoints before sensitive or customer-facing AI actions scale further.',
+          page: 'trust' as NavPage,
+        }
+      : {
+          title: `AI trust posture is ${trustScore}/100`,
+          description: 'Keep decision logs, audit dates, and review controls fresh as usage grows.',
+          page: 'trust' as NavPage,
+        },
     {
-      title: `${formatCurrency(monthlyIncome - monthlyExpenses)} net movement in the last 30 days`,
-      description: monthlyIncome >= monthlyExpenses
-        ? 'You are operating above break-even. Keep watch on infrastructure and contractor spend.'
-        : 'Your expenses are outpacing revenue. Review the finance board for cost-control actions.',
-      page: 'finance' as NavPage,
+      title: `${automationHours.toFixed(1)} automation hours saved every week`,
+      description:
+        automationHours >= 6
+          ? 'Good leverage. Review risky or draft automations next so speed does not outrun governance.'
+          : 'There is room to automate repeatable founder work without giving up oversight.',
+      page: 'automations' as NavPage,
     },
   ];
 
@@ -110,8 +132,9 @@ export default function Dashboard({ data, onNavigate }: DashboardProps) {
               {greeting}, founder.
             </h2>
             <p className="mt-3 max-w-2xl text-slate-300">
-              I restored the original app and turned it into a more useful founder workspace with persistent data,
-              better responsive layouts, and lightweight automations that surface what matters next.
+              You now have a unified operating layer for growth, execution, finance, automation, and AI trust.
+              The goal is not just to ship faster, but to avoid the classic AI-era failure modes: unverified decisions,
+              unsafe automation, and invisible operational drift.
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
@@ -119,7 +142,7 @@ export default function Dashboard({ data, onNavigate }: DashboardProps) {
               <Calendar className="h-4 w-4" />
               <span>{formatWeekdayDate(today)}</span>
             </div>
-            <p className="mt-2 text-slate-400">Synced across dashboard, CRM, projects, ideas, and finance.</p>
+            <p className="mt-2 text-slate-400">Synced across dashboard, AI chat, automations, and trust center.</p>
           </div>
         </div>
       </section>
@@ -142,20 +165,20 @@ export default function Dashboard({ data, onNavigate }: DashboardProps) {
           trend={`${conversionRate}% close rate`}
         />
         <StatCard
-          title="Execution health"
-          value={`${tasksCompletion}%`}
-          subtitle={`${completedTasks.length}/${data.tasks.length} tasks complete`}
-          icon={<FolderKanban className="h-5 w-5 text-violet-300" />}
+          title="Automation leverage"
+          value={`${automationHours.toFixed(1)}h`}
+          subtitle={`${data.automations.filter((automation) => automation.status === 'active').length} active flow(s)`}
+          icon={<Bot className="h-5 w-5 text-violet-300" />}
           tone="violet"
-          trend={`${overdueTasks.length} overdue`}
+          trend="Per week"
         />
         <StatCard
-          title="Best idea"
-          value={topIdea ? `${topIdea.score}/100` : '—'}
-          subtitle={topIdea ? topIdea.title : 'Add an idea to get started'}
-          icon={<Lightbulb className="h-5 w-5 text-amber-300" />}
+          title="AI trust score"
+          value={`${trustScore}/100`}
+          subtitle={`${highRiskSystems.length} high-risk system(s) tracked`}
+          icon={<ShieldCheck className="h-5 w-5 text-amber-300" />}
           tone="amber"
-          trend={topIdea ? topIdea.category : undefined}
+          trend={`${unresolvedDecisions.length} open verification item(s)`}
         />
       </section>
 
@@ -193,7 +216,7 @@ export default function Dashboard({ data, onNavigate }: DashboardProps) {
               { label: 'Jump to CRM', page: 'crm' as NavPage },
               { label: 'Review finance', page: 'finance' as NavPage },
               { label: 'Ship tasks', page: 'projects' as NavPage },
-              { label: 'Brainstorm ideas', page: 'ideas' as NavPage },
+              { label: 'Audit AI trust', page: 'trust' as NavPage },
             ].map((action) => (
               <button
                 key={action.label}
@@ -322,8 +345,8 @@ export default function Dashboard({ data, onNavigate }: DashboardProps) {
               <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-xl font-semibold text-white">Momentum snapshot</h3>
-              <p className="text-sm text-slate-400">A quick read on product, sales, and execution.</p>
+              <h3 className="text-xl font-semibold text-white">AI-era risk radar</h3>
+              <p className="text-sm text-slate-400">A quick read on trust, verification, and execution drift.</p>
             </div>
           </div>
           <div className="mt-6 space-y-3 text-sm text-slate-300">
@@ -331,10 +354,13 @@ export default function Dashboard({ data, onNavigate }: DashboardProps) {
               <span className="font-medium text-white">Top idea:</span> {topIdea?.title ?? 'No idea saved yet'}
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <span className="font-medium text-white">Pipeline:</span> {openLeads.length} active opportunity{openLeads.length === 1 ? '' : 'ies'} worth {formatCompactCurrency(openLeads.reduce((sum, lead) => sum + lead.value, 0))}
+              <span className="font-medium text-white">Verification queue:</span> {unresolvedDecisions.length} decision item{unresolvedDecisions.length === 1 ? '' : 's'} still need evidence.
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <span className="font-medium text-white">Execution:</span> {completedTasks.length} completed task{completedTasks.length === 1 ? '' : 's'} with {overdueTasks.length} overdue right now.
+              <span className="font-medium text-white">Automation coverage:</span> {data.automations.filter((automation) => automation.status === 'active').length} active automation{data.automations.filter((automation) => automation.status === 'active').length === 1 ? '' : 's'} saving {automationHours.toFixed(1)} hours per week.
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <span className="font-medium text-white">Trust controls:</span> {data.aiSystems.filter((system) => system.humanReview).length}/{data.aiSystems.length} AI systems currently require human review.
             </div>
           </div>
         </div>

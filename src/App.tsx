@@ -1,26 +1,52 @@
-import { useMemo, useState } from 'react';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  LayoutDashboard,
-  Lightbulb,
-  MessageSquare,
-  FolderKanban,
-  Users,
-  DollarSign,
-  Menu,
-  X,
-  Sparkles,
   Activity,
   Bell,
+  Bot,
+  Download,
+  FolderKanban,
+  LayoutDashboard,
+  Lightbulb,
+  Menu,
+  MessageSquare,
+  ShieldCheck,
+  Sparkles,
+  Upload,
+  Users,
+  Wallet,
+  X,
 } from 'lucide-react';
-import Dashboard from './pages/Dashboard';
 import AIChat from './pages/AIChat';
+import Automations from './pages/Automations';
+import CRM from './pages/CRM';
+import Dashboard from './pages/Dashboard';
+import Finance from './pages/Finance';
 import IdeaLab from './pages/IdeaLab';
 import Projects from './pages/Projects';
-import CRM from './pages/CRM';
-import Finance from './pages/Finance';
+import TrustCenter from './pages/TrustCenter';
 import { usePersistentState } from './hooks/usePersistentState';
-import { createSeedWorkspace, formatCompactCurrency, formatCurrency, getDaysUntil, isOverdue, makeId } from './lib/workspace';
-import type { Idea, Lead, NavPage, Task, Transaction, WorkspaceData } from './types';
+import {
+  calculateAIReadinessScore,
+  calculateAutomationHours,
+  createSeedWorkspace,
+  formatCompactCurrency,
+  formatCurrency,
+  getDaysUntil,
+  isOverdue,
+  makeId,
+  normalizeWorkspaceData,
+} from './lib/workspace';
+import type {
+  AISystem,
+  Automation,
+  DecisionLog,
+  Idea,
+  Lead,
+  NavPage,
+  Task,
+  Transaction,
+  WorkspaceData,
+} from './types';
 
 const navItems: Array<{
   id: NavPage;
@@ -62,7 +88,19 @@ const navItems: Array<{
     id: 'finance',
     label: 'Finance',
     description: 'Monitor revenue, expenses, and runway signals.',
-    icon: DollarSign,
+    icon: Wallet,
+  },
+  {
+    id: 'automations',
+    label: 'Automations',
+    description: 'Run time-saving workflows with owners, fallbacks, and review dates.',
+    icon: Bot,
+  },
+  {
+    id: 'trust',
+    label: 'Trust Center',
+    description: 'Audit AI systems, verification, privacy, and human oversight.',
+    icon: ShieldCheck,
   },
 ];
 
@@ -70,7 +108,16 @@ function App() {
   const [activePage, setActivePage] = useState<NavPage>('dashboard');
   const [sidebarOpen, setSidebarOpen] = usePersistentState('onefounder.sidebar-open', true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [workspace, setWorkspace] = usePersistentState<WorkspaceData>('onefounder.workspace', createSeedWorkspace);
+  const [storedWorkspace, setStoredWorkspace] = usePersistentState<WorkspaceData>(
+    'onefounder.workspace',
+    createSeedWorkspace
+  );
+  const workspace = useMemo(() => normalizeWorkspaceData(storedWorkspace), [storedWorkspace]);
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setStoredWorkspace((current) => normalizeWorkspaceData(current));
+  }, [setStoredWorkspace]);
 
   const activeNavItem = navItems.find((item) => item.id === activePage) ?? navItems[0];
 
@@ -89,16 +136,24 @@ function App() {
       (lead) => lead.stage !== 'won' && getDaysUntil(lead.lastContacted) <= -7
     ).length;
     const net = monthlyIncome - monthlyExpenses;
+    const automationHours = calculateAutomationHours(workspace.automations);
+    const trustScore = calculateAIReadinessScore(workspace.aiSystems, workspace.automations);
+    const riskySystems = workspace.aiSystems.filter(
+      (system) => (system.riskLevel === 'high' || system.riskLevel === 'critical') && !system.humanReview
+    ).length;
 
     return {
       overdueTasks,
       followUps,
       net,
+      automationHours,
+      trustScore,
+      riskySystems,
     };
-  }, [monthlyExpenses, monthlyIncome, workspace.leads, workspace.tasks]);
+  }, [monthlyExpenses, monthlyIncome, workspace.aiSystems, workspace.automations, workspace.leads, workspace.tasks]);
 
   const addIdea = (idea: Omit<Idea, 'id' | 'createdAt' | 'score'> & { score: number }) => {
-    setWorkspace((current) => ({
+    setStoredWorkspace((current) => ({
       ...current,
       ideas: [
         {
@@ -112,21 +167,21 @@ function App() {
   };
 
   const addTask = (task: Omit<Task, 'id'>) => {
-    setWorkspace((current) => ({
+    setStoredWorkspace((current) => ({
       ...current,
       tasks: [{ ...task, id: makeId('task') }, ...current.tasks],
     }));
   };
 
   const updateTask = (taskId: string, updates: Partial<Task>) => {
-    setWorkspace((current) => ({
+    setStoredWorkspace((current) => ({
       ...current,
       tasks: current.tasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)),
     }));
   };
 
   const addLead = (lead: Omit<Lead, 'id' | 'lastContacted'>) => {
-    setWorkspace((current) => ({
+    setStoredWorkspace((current) => ({
       ...current,
       leads: [
         {
@@ -140,22 +195,100 @@ function App() {
   };
 
   const updateLead = (leadId: string, updates: Partial<Lead>) => {
-    setWorkspace((current) => ({
+    setStoredWorkspace((current) => ({
       ...current,
       leads: current.leads.map((lead) => (lead.id === leadId ? { ...lead, ...updates } : lead)),
     }));
   };
 
   const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
-    setWorkspace((current) => ({
+    setStoredWorkspace((current) => ({
       ...current,
       transactions: [{ ...transaction, id: makeId('txn') }, ...current.transactions],
+    }));
+  };
+
+  const addAutomation = (automation: Omit<Automation, 'id'>) => {
+    setStoredWorkspace((current) => ({
+      ...current,
+      automations: [{ ...automation, id: makeId('auto') }, ...current.automations],
+    }));
+  };
+
+  const updateAutomation = (automationId: string, updates: Partial<Automation>) => {
+    setStoredWorkspace((current) => ({
+      ...current,
+      automations: current.automations.map((automation) =>
+        automation.id === automationId ? { ...automation, ...updates } : automation
+      ),
+    }));
+  };
+
+  const addAISystem = (system: Omit<AISystem, 'id'>) => {
+    setStoredWorkspace((current) => ({
+      ...current,
+      aiSystems: [{ ...system, id: makeId('ai') }, ...current.aiSystems],
+    }));
+  };
+
+  const updateAISystem = (systemId: string, updates: Partial<AISystem>) => {
+    setStoredWorkspace((current) => ({
+      ...current,
+      aiSystems: current.aiSystems.map((system) =>
+        system.id === systemId ? { ...system, ...updates } : system
+      ),
+    }));
+  };
+
+  const addDecisionLog = (decision: Omit<DecisionLog, 'id'>) => {
+    setStoredWorkspace((current) => ({
+      ...current,
+      decisionLogs: [{ ...decision, id: makeId('decision') }, ...current.decisionLogs],
+    }));
+  };
+
+  const updateDecisionLog = (decisionId: string, updates: Partial<DecisionLog>) => {
+    setStoredWorkspace((current) => ({
+      ...current,
+      decisionLogs: current.decisionLogs.map((decision) =>
+        decision.id === decisionId ? { ...decision, ...updates } : decision
+      ),
     }));
   };
 
   const navigateTo = (page: NavPage) => {
     setActivePage(page);
     setMobileSidebarOpen(false);
+  };
+
+  const exportWorkspace = () => {
+    const blob = new Blob([JSON.stringify(workspace, null, 2)], {
+      type: 'application/json;charset=utf-8;',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `onefounder-workspace-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importWorkspace = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const text = await file.text();
+    try {
+      const parsed = JSON.parse(text);
+      setStoredWorkspace(normalizeWorkspaceData(parsed));
+      setActivePage('dashboard');
+    } catch {
+      window.alert('Could not import workspace JSON. Please check the file format.');
+    } finally {
+      event.target.value = '';
+    }
   };
 
   const renderPage = () => {
@@ -172,6 +305,24 @@ function App() {
         return <CRM leads={workspace.leads} onAddLead={addLead} onUpdateLead={updateLead} />;
       case 'finance':
         return <Finance transactions={workspace.transactions} onAddTransaction={addTransaction} />;
+      case 'automations':
+        return (
+          <Automations
+            automations={workspace.automations}
+            onAddAutomation={addAutomation}
+            onUpdateAutomation={updateAutomation}
+          />
+        );
+      case 'trust':
+        return (
+          <TrustCenter
+            workspace={workspace}
+            onAddAISystem={addAISystem}
+            onUpdateAISystem={updateAISystem}
+            onAddDecisionLog={addDecisionLog}
+            onUpdateDecisionLog={updateDecisionLog}
+          />
+        );
       default:
         return <Dashboard data={workspace} onNavigate={navigateTo} />;
     }
@@ -202,7 +353,7 @@ function App() {
             </div>
             <div className={`${sidebarOpen ? 'opacity-100' : 'opacity-0'} transition-opacity`}>
               <p className="text-lg font-semibold text-white">OneFounder</p>
-              <p className="text-xs text-slate-400">Founder OS restored & upgraded</p>
+              <p className="text-xs text-slate-400">Founder OS restored, upgraded, and governed</p>
             </div>
           </div>
           <button
@@ -264,6 +415,9 @@ function App() {
             <div className={`mt-3 space-y-2 text-sm text-slate-300 ${sidebarOpen ? 'block' : 'hidden'}`}>
               <p>{workspaceHealth.overdueTasks} overdue task(s)</p>
               <p>{workspaceHealth.followUps} follow-up(s) waiting</p>
+              <p>{workspaceHealth.automationHours.toFixed(1)} automation hours saved weekly</p>
+              <p>Trust score {workspaceHealth.trustScore}/100</p>
+              <p>{workspaceHealth.riskySystems} high-risk system(s) without review</p>
               <p>{workspaceHealth.net >= 0 ? 'Net positive' : 'Net negative'} {formatCompactCurrency(Math.abs(workspaceHealth.net))}</p>
             </div>
           </div>
@@ -287,13 +441,35 @@ function App() {
               </div>
             </div>
 
-            <div className="hidden items-center gap-3 md:flex">
+            <div className="hidden items-center gap-3 xl:flex">
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-right">
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">This month</p>
                 <p className="text-sm font-medium text-white">
                   Revenue {formatCurrency(monthlyIncome)} · Spend {formatCurrency(monthlyExpenses)}
                 </p>
               </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-right">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">AI ops</p>
+                <p className="text-sm font-medium text-white">
+                  {workspace.automations.filter((automation) => automation.status === 'active').length} active · Trust {workspaceHealth.trustScore}/100
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={exportWorkspace}
+                className="rounded-2xl border border-white/10 bg-white/5 p-3 text-slate-300 transition-colors hover:border-white/20 hover:text-white"
+                aria-label="Export workspace"
+              >
+                <Download className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => importFileRef.current?.click()}
+                className="rounded-2xl border border-white/10 bg-white/5 p-3 text-slate-300 transition-colors hover:border-white/20 hover:text-white"
+                aria-label="Import workspace"
+              >
+                <Upload className="h-5 w-5" />
+              </button>
               <button
                 type="button"
                 className="rounded-2xl border border-white/10 bg-white/5 p-3 text-slate-300 transition-colors hover:border-cyan-500/30 hover:text-white"
@@ -307,6 +483,14 @@ function App() {
 
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{renderPage()}</main>
       </div>
+
+      <input
+        ref={importFileRef}
+        type="file"
+        accept="application/json"
+        className="hidden"
+        onChange={importWorkspace}
+      />
     </div>
   );
 }

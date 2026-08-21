@@ -98,7 +98,7 @@ const expertModes: ExpertMode[] = [
 
 const suggestionPrompts = [
   'What should I focus on this week based on my workspace?',
-  'How can I improve the highest scoring idea before building?',
+  'Which AI systems or automations look risky right now?',
   'Which leads need follow-up and what message should I send?',
   'Give me a quick cost-control plan for the current month.',
 ];
@@ -134,8 +134,16 @@ function buildResponse(mode: string, input: string, workspace: WorkspaceData) {
   const completionRate = workspace.tasks.length
     ? Math.round((workspace.tasks.filter((task) => task.status === 'done').length / workspace.tasks.length) * 100)
     : 0;
+  const highRiskSystems = workspace.aiSystems.filter(
+    (system) => system.riskLevel === 'high' || system.riskLevel === 'critical'
+  );
+  const ungatedSystems = workspace.aiSystems.filter((system) => !system.humanReview);
+  const activeAutomations = workspace.automations.filter((automation) => automation.status === 'active');
+  const unresolvedDecisions = workspace.decisionLogs.filter(
+    (decision) => decision.verificationStatus !== 'verified'
+  );
 
-  const sharedContext = `Workspace snapshot: ${openLeads.length} open leads, ${overdueTasks.length} overdue tasks, ${formatCompactCurrency(income)} income, ${formatCompactCurrency(expenses)} spend in the last 30 days.`;
+  const sharedContext = `Workspace snapshot: ${openLeads.length} open leads, ${overdueTasks.length} overdue tasks, ${formatCompactCurrency(income)} income, ${formatCompactCurrency(expenses)} spend in the last 30 days, ${activeAutomations.length} active automations, and ${highRiskSystems.length} high-risk AI systems.`;
 
   switch (mode) {
     case 'code':
@@ -143,9 +151,9 @@ function buildResponse(mode: string, input: string, workspace: WorkspaceData) {
     case 'seo':
       return `${sharedContext} I would turn ${topIdea?.title ?? 'your best idea'} into a category landing page with founder pain points, ROI proof, and a simple comparison table. Publish one customer story, one template article, and one “how it works” page to build topical depth.`;
     case 'security':
-      return `${sharedContext} Security priority number one is protecting every data mutation path with validation and safe defaults. For this app, I would keep local persistence minimal, sanitize any future rich text inputs, and add backend auth plus row-level security before handling real customer data.`;
+      return `${sharedContext} Security priority number one is protecting every data mutation path with validation and safe defaults. You currently have ${ungatedSystems.length} AI system(s) without human review, which is the first gap I would close. For this app, I would keep local persistence minimal, sanitize any future rich text inputs, and add backend auth plus row-level security before handling real customer data.`;
     case 'data':
-      return `${sharedContext} Your completion rate is ${completionRate}% and the healthiest growth lever looks like pipeline activation. I would track three leading indicators next: stale leads older than 7 days, overdue task count, and net cash movement by month.`;
+      return `${sharedContext} Your completion rate is ${completionRate}% and the healthiest growth lever looks like pipeline activation. I would track five leading indicators next: stale leads older than 7 days, overdue task count, net cash movement by month, automation hours saved, and the number of unverified AI-influenced decisions.`;
     case 'research':
       return `${sharedContext} The strongest opportunity in your current workspace is ${topIdea?.title ?? 'idea discovery'}. I would validate it with five founder interviews, pricing sensitivity checks, and a competitor teardown focused on implementation speed and switching friction.`;
     case 'finance':
@@ -153,9 +161,9 @@ function buildResponse(mode: string, input: string, workspace: WorkspaceData) {
     case 'product':
       return `${sharedContext} Product-wise, I would prioritize improvements that remove friction from onboarding and follow-up workflows. Your top idea should evolve into a clearer problem statement, success metric, and smallest lovable scope before any larger roadmap bet.`;
     case 'startup':
-      return `${sharedContext} Founder advice: keep your next two weeks centered on revenue and execution. Close stale follow-ups first, clear overdue tasks second, and use the AI chat plus idea scoring to avoid building low-signal features.`;
+      return `${sharedContext} Founder advice: keep your next two weeks centered on revenue, execution, and trust. Close stale follow-ups first, clear overdue tasks second, and review ${unresolvedDecisions.length} AI-influenced decision(s) before turning more workflows fully autonomous.`;
     default:
-      return `${sharedContext} My founder recommendation for “${input}” is to align sales, product, and cashflow around one outcome at a time. Right now that means reviving ${staleLeads.length} stale lead${staleLeads.length === 1 ? '' : 's'}, protecting focus against ${overdueTasks.length} overdue task${overdueTasks.length === 1 ? '' : 's'}, and only pushing the highest-conviction idea forward.`;
+      return `${sharedContext} My founder recommendation for “${input}” is to align sales, product, cashflow, and trust around one outcome at a time. Right now that means reviving ${staleLeads.length} stale lead${staleLeads.length === 1 ? '' : 's'}, protecting focus against ${overdueTasks.length} overdue task${overdueTasks.length === 1 ? '' : 's'}, and reducing risk from ${ungatedSystems.length} ungated AI system(s) before scaling more automation.`;
   }
 }
 
