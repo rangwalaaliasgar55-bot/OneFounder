@@ -678,6 +678,26 @@ function App() {
     );
   };
 
+  const updatePolicyRule = (
+    ruleId: string,
+    updates: Partial<WorkspaceData['policyRules'][number]>
+  ) => {
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        policyRules: current.policyRules.map((rule) =>
+          rule.id === ruleId ? { ...rule, ...updates } : rule
+        ),
+      }),
+      {
+        action: 'policy-rule-update',
+        target: ruleId,
+        summary: 'Updated policy rule metadata.',
+        severity: 'warning',
+      }
+    );
+  };
+
   const dismissAlert = (alertId: string) => {
     commitWorkspace(
       (current) => ({
@@ -1761,6 +1781,7 @@ function App() {
             onExportBoardReport={exportBoardReport}
             onToggleNotificationChannel={toggleNotificationChannel}
             onSendTestDelivery={sendTestDelivery}
+            onUpdatePolicyRule={updatePolicyRule}
             onRunPolicyEnforcement={runPolicyEnforcement}
             onPauseAllAutomations={pauseAllAutomations}
             onLockdownHighRiskAI={lockdownHighRiskAI}

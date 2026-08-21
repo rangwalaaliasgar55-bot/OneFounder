@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   AlertTriangle,
   CheckCheck,
@@ -9,6 +10,7 @@ import {
   Users,
   XCircle,
 } from 'lucide-react';
+import Modal from '../components/Modal';
 import StatCard from '../components/StatCard';
 import { researchInsights } from '../lib/aiResearch';
 import { getBackendReadiness } from '../lib/cloud';
@@ -51,6 +53,10 @@ interface ControlRoomProps {
   onExportBoardReport: () => void;
   onToggleNotificationChannel: (channelId: string) => void;
   onSendTestDelivery: () => void;
+  onUpdatePolicyRule: (
+    ruleId: string,
+    updates: Partial<WorkspaceData['policyRules'][number]>
+  ) => void;
   onRunPolicyEnforcement: () => void;
   onPauseAllAutomations: () => void;
   onLockdownHighRiskAI: () => void;
@@ -186,6 +192,7 @@ export default function ControlRoom({
   onExportBoardReport,
   onToggleNotificationChannel,
   onSendTestDelivery,
+  onUpdatePolicyRule,
   onRunPolicyEnforcement,
   onPauseAllAutomations,
   onLockdownHighRiskAI,
@@ -217,6 +224,7 @@ export default function ControlRoom({
   ).length;
   const enabledChannelCount = workspace.notificationChannels.filter((channel) => channel.enabled).length;
   const backendReadiness = getBackendReadiness();
+  const [editingPolicyId, setEditingPolicyId] = useState<string | null>(null);
 
   const policyCards: Array<{
     title: string;
@@ -583,6 +591,22 @@ export default function ControlRoom({
                 </div>
                 <p className="mt-2 text-sm text-slate-400">{rule.description}</p>
                 <p className="mt-2 text-xs text-slate-500">Target: {rule.target} · {rule.autoEnforced ? 'Auto-enforced' : 'Manual review'}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingPolicyId(rule.id)}
+                    className="rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 transition-colors hover:border-white/20 hover:text-white"
+                  >
+                    Edit rule
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onUpdatePolicyRule(rule.id, { autoEnforced: !rule.autoEnforced })}
+                    className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-300 transition-colors hover:bg-cyan-500/20"
+                  >
+                    Toggle enforcement
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -749,6 +773,69 @@ export default function ControlRoom({
           ) : null}
         </div>
       </section>
+
+      <Modal
+        open={Boolean(editingPolicyId)}
+        title="Edit policy rule"
+        description="Update the rule metadata while keeping status derived from actual workspace behavior."
+        onClose={() => setEditingPolicyId(null)}
+      >
+        {editingPolicyId ? (() => {
+          const rule = workspace.policyRules.find((item) => item.id === editingPolicyId);
+          if (!rule) return null;
+          return (
+            <div className="space-y-4">
+              <label className="space-y-2 block">
+                <span className="text-sm text-slate-300">Rule name</span>
+                <input
+                  value={rule.name}
+                  onChange={(event) => onUpdatePolicyRule(rule.id, { name: event.target.value })}
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white focus:border-cyan-500/30 focus:outline-none"
+                />
+              </label>
+              <label className="space-y-2 block">
+                <span className="text-sm text-slate-300">Description</span>
+                <textarea
+                  value={rule.description}
+                  onChange={(event) => onUpdatePolicyRule(rule.id, { description: event.target.value })}
+                  rows={4}
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white focus:border-cyan-500/30 focus:outline-none"
+                />
+              </label>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-2 block">
+                  <span className="text-sm text-slate-300">Severity</span>
+                  <select
+                    value={rule.severity}
+                    onChange={(event) => onUpdatePolicyRule(rule.id, { severity: event.target.value as WorkspaceData['policyRules'][number]['severity'] })}
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white focus:border-cyan-500/30 focus:outline-none"
+                  >
+                    <option value="info">Info</option>
+                    <option value="warning">Warning</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </label>
+                <label className="space-y-2 block">
+                  <span className="text-sm text-slate-300">Target</span>
+                  <input
+                    value={rule.target}
+                    onChange={(event) => onUpdatePolicyRule(rule.id, { target: event.target.value })}
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white focus:border-cyan-500/30 focus:outline-none"
+                  />
+                </label>
+              </div>
+              <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={rule.autoEnforced}
+                  onChange={(event) => onUpdatePolicyRule(rule.id, { autoEnforced: event.target.checked })}
+                />
+                Auto enforce this rule when the policy engine runs
+              </label>
+            </div>
+          );
+        })() : null}
+      </Modal>
     </div>
   );
 }

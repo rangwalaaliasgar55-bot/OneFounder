@@ -125,6 +125,26 @@ export default function TrustCenter({
   const averageTraceCost = workspace.aiTraces.length
     ? workspace.aiTraces.reduce((sum, trace) => sum + trace.tokenCostUsd, 0) / workspace.aiTraces.length
     : 0;
+  const traceBySystem = workspace.aiSystems.map((system) => {
+    const traces = workspace.aiTraces.filter((trace) => trace.systemId === system.id);
+    const averageQuality = traces.length
+      ? Math.round(traces.reduce((sum, trace) => sum + trace.qualityScore, 0) / traces.length)
+      : 0;
+    const averageSafety = traces.length
+      ? Math.round(traces.reduce((sum, trace) => sum + trace.safetyScore, 0) / traces.length)
+      : 0;
+    const totalCost = traces.reduce((sum, trace) => sum + trace.tokenCostUsd, 0);
+    const criticalCount = traces.filter((trace) => trace.outcome === 'critical').length;
+
+    return {
+      system,
+      traces,
+      averageQuality,
+      averageSafety,
+      totalCost,
+      criticalCount,
+    };
+  });
 
   const governancePillars = [
     {
@@ -368,6 +388,45 @@ export default function TrustCenter({
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Avg trace cost</p>
               <p className="mt-1 text-lg font-semibold text-white">{formatCurrency(averageTraceCost)}</p>
             </div>
+          </div>
+          <div className="mt-6 grid gap-4 xl:grid-cols-2">
+            {traceBySystem.map(({ system, averageQuality, averageSafety, totalCost, criticalCount, traces }) => (
+              <div key={system.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-white">{system.name}</p>
+                    <p className="mt-1 text-sm text-slate-400">{traces.length} trace(s) recorded</p>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${criticalCount ? 'bg-rose-500/15 text-rose-300' : 'bg-emerald-500/15 text-emerald-300'}`}>
+                    {criticalCount ? `${criticalCount} critical` : 'stable'}
+                  </span>
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
+                      <span>Quality</span>
+                      <span>{averageQuality}/100</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500" style={{ width: `${averageQuality}%` }} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
+                      <span>Safety</span>
+                      <span>{averageSafety}/100</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500" style={{ width: `${averageSafety}%` }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center justify-between text-sm text-slate-400">
+                  <span>Cost {formatCurrency(totalCost)}</span>
+                  <span>{system.status}</span>
+                </div>
+              </div>
+            ))}
           </div>
           <div className="mt-6 space-y-3">
             {workspace.aiTraces.map((trace) => (

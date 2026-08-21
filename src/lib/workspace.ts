@@ -1357,7 +1357,8 @@ export function applyDerivedWorkspaceState(workspace: WorkspaceData): WorkspaceD
   );
   const enabledDeliveryChannels = workspace.notificationChannels.filter((channel) => channel.enabled).length;
 
-  const derivedRules: PolicyRule[] = [
+  const existingRuleMap = new Map(workspace.policyRules.map((rule) => [rule.id, rule]));
+  const baseRules: PolicyRule[] = [
     {
       id: 'policy-1',
       name: 'High-risk AI requires human review',
@@ -1404,6 +1405,20 @@ export function applyDerivedWorkspaceState(workspace: WorkspaceData): WorkspaceD
       status: enabledDeliveryChannels ? 'pass' : 'warn',
     },
   ];
+
+  const derivedRules: PolicyRule[] = baseRules.map((rule) => {
+    const existing = existingRuleMap.get(rule.id);
+    return existing
+      ? {
+          ...rule,
+          name: existing.name,
+          description: existing.description,
+          severity: existing.severity,
+          autoEnforced: existing.autoEnforced,
+          target: existing.target,
+        }
+      : rule;
+  });
 
   return {
     ...workspace,
