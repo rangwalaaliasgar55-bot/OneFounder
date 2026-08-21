@@ -11,10 +11,11 @@ import type {
   Task,
   TaskPriority,
   TaskStatus,
-  TeamMember,
   TeamRole,
   Transaction,
+  WorkspaceAlert,
   WorkspaceData,
+  WorkflowRun,
 } from '../types';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
@@ -463,43 +464,13 @@ export function createSeedWorkspace(): WorkspaceData {
     },
   ];
 
-  const teamMembers: TeamMember[] = [
-    {
-      id: 'member-1',
-      name: 'Founder',
-      email: 'founder@onefounder.app',
-      role: 'founder',
-      status: 'active',
-    },
-    {
-      id: 'member-2',
-      name: 'Ava Patel',
-      email: 'ava@onefounder.app',
-      role: 'ops',
-      status: 'active',
-    },
-    {
-      id: 'member-3',
-      name: 'Priya Shah',
-      email: 'priya@onefounder.app',
-      role: 'security',
-      status: 'active',
-    },
-    {
-      id: 'member-4',
-      name: 'Noah Kim',
-      email: 'noah@onefounder.app',
-      role: 'finance',
-      status: 'active',
-    },
-    {
-      id: 'member-5',
-      name: 'Maya Brooks',
-      email: 'maya@onefounder.app',
-      role: 'growth',
-      status: 'observer',
-    },
-  ];
+  const teamMembers = [
+    { id: 'member-1', name: 'Founder', email: 'founder@onefounder.app', role: 'founder', status: 'active' },
+    { id: 'member-2', name: 'Ava Patel', email: 'ava@onefounder.app', role: 'ops', status: 'active' },
+    { id: 'member-3', name: 'Priya Shah', email: 'priya@onefounder.app', role: 'security', status: 'active' },
+    { id: 'member-4', name: 'Noah Kim', email: 'noah@onefounder.app', role: 'finance', status: 'active' },
+    { id: 'member-5', name: 'Maya Brooks', email: 'maya@onefounder.app', role: 'growth', status: 'observer' },
+  ] as WorkspaceData['teamMembers'];
 
   const approvalRequests: ApprovalRequest[] = [
     {
@@ -544,6 +515,18 @@ export function createSeedWorkspace(): WorkspaceData {
     },
   ];
 
+  const workflowRuns: WorkflowRun[] = [
+    {
+      id: 'workflow-1',
+      name: 'Weekly founder review cadence',
+      templateId: 'weekly-review',
+      owner: 'Founder',
+      status: 'active',
+      createdAt: daysAgo(3),
+      summary: 'Recurring weekly workflow for finance, CRM, trust, and execution review.',
+    },
+  ];
+
   const snapshots: Snapshot[] = [
     {
       id: 'snapshot-1',
@@ -566,6 +549,8 @@ export function createSeedWorkspace(): WorkspaceData {
     approvalRequests,
     auditEvents,
     snapshots,
+    workflowRuns,
+    dismissedAlertIds: [],
   };
 
   baseWorkspace.snapshots = [
@@ -738,6 +723,20 @@ export function normalizeWorkspaceData(input: unknown): WorkspaceData {
           data: typeof snapshot.data === 'string' ? snapshot.data : '{}',
         }))
       : seed.snapshots,
+    workflowRuns: Array.isArray(data.workflowRuns)
+      ? data.workflowRuns.map((run, index) => ({
+          id: run.id ?? `workflow-import-${index}`,
+          name: run.name ?? 'Imported workflow run',
+          templateId: run.templateId ?? 'custom',
+          owner: run.owner ?? 'Founder',
+          status: run.status ?? 'planned',
+          createdAt: run.createdAt ?? new Date().toISOString(),
+          summary: run.summary ?? '',
+        }))
+      : seed.workflowRuns,
+    dismissedAlertIds: Array.isArray(data.dismissedAlertIds)
+      ? data.dismissedAlertIds.filter((id): id is string => typeof id === 'string')
+      : seed.dismissedAlertIds,
   };
 }
 
@@ -908,6 +907,111 @@ export function calculateAIReadinessScore(aiSystems: AISystem[], automations: Au
     : 80;
 
   return Math.round((systemScore / aiSystems.length) * 0.65 + automationScore * 0.35);
+}
+
+export function calculateWorkflowScore(workspace: WorkspaceData) {
+  const activeRuns = workspace.workflowRuns.filter((run) => run.status !== 'completed').length;
+  const overdueTasks = workspace.tasks.filter((task) => task.status !== 'done' && isOverdue(task.dueDate)).length;
+  const unresolvedApprovals = workspace.approvalRequests.filter((request) => request.status === 'pending').length;
+  const automationHours = calculateAutomationHours(workspace.automations);
+  const base = 60 + Math.min(20, Math.round(automationHours * 2)) + Math.min(10, activeRuns * 2);
+  return Math.max(20, Math.min(100, base - overdueTasks * 6 - unresolvedApprovals * 4));
+}
+
+export function getWorkspaceAlerts(workspace: WorkspaceData): WorkspaceAlert[] {
+  const alerts: WorkspaceAlert[] = [];
+  const overdueTasks = workspace.tasks.filter((task) => task.status !== 'done' && isOverdue(task.dueDate));
+  const staleLeads = workspace.leads.filter((lead) => lead.stage !== 'won' && getDaysSince(lead.lastContacted) >= 7);
+  const highRiskUngated = workspace.aiSystems.filter(
+    (system) => (system.riskLevel === 'high' || system.riskLevel === 'critical') && !system.humanReview
+  );
+  const pendingApprovals = workspace.approvalRequests.filter((request) => request.status === 'pending');
+  const restrictedAuto = workspace.automations.filter(
+    (automation) => automation.sensitivity === 'restricted' && automation.approvalMode === 'auto'
+  );
+  const negativeNet = workspace.transactions
+    .filter((transaction) => getDaysUntil(transaction.date) >= -30)
+    .reduce((sum, transaction) => sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount), 0);
+
+  if (highRiskUngated.length) {
+    alerts.push({
+      id: 'alert-ai-ungated',
+      title: `${highRiskUngated.length} high-risk AI system(s) lack human review`,
+      description: 'Add a human checkpoint before scaling more autonomous behavior.',
+      severity: 'critical',
+      category: 'governance',
+      actionLabel: 'Open Trust Center',
+      page: 'trust',
+    });
+  }
+
+  if (pendingApprovals.length) {
+    alerts.push({
+      id: 'alert-approvals-pending',
+      title: `${pendingApprovals.length} approval request(s) are waiting`,
+      description: 'Pending approvals slow workflows and hide ownership if they stay unresolved.',
+      severity: 'warning',
+      category: 'governance',
+      actionLabel: 'Open Control Room',
+      page: 'control',
+    });
+  }
+
+  if (overdueTasks.length) {
+    alerts.push({
+      id: 'alert-overdue-tasks',
+      title: `${overdueTasks.length} overdue task(s) need attention`,
+      description: 'Execution drift is increasing. Clear blockers before adding more work in progress.',
+      severity: overdueTasks.length > 2 ? 'critical' : 'warning',
+      category: 'delivery',
+      actionLabel: 'Open Projects',
+      page: 'projects',
+    });
+  }
+
+  if (staleLeads.length) {
+    alerts.push({
+      id: 'alert-stale-leads',
+      title: `${staleLeads.length} stale revenue follow-up(s) detected`,
+      description: 'Warm pipeline activity is cooling. Route attention back to CRM.',
+      severity: 'warning',
+      category: 'revenue',
+      actionLabel: 'Open CRM',
+      page: 'crm',
+    });
+  }
+
+  if (negativeNet < 0) {
+    alerts.push({
+      id: 'alert-negative-net',
+      title: 'Net cash movement is negative over the last 30 days',
+      description: 'Review expenses and consider a revenue recovery workflow this week.',
+      severity: 'warning',
+      category: 'finance',
+      actionLabel: 'Open Finance',
+      page: 'finance',
+    });
+  }
+
+  if (restrictedAuto.length) {
+    alerts.push({
+      id: 'alert-restricted-automation',
+      title: `${restrictedAuto.length} restricted automation(s) are set to auto-approve`,
+      description: 'Sensitive automations should pause for human or dual review.',
+      severity: 'critical',
+      category: 'automation',
+      actionLabel: 'Open Automations',
+      page: 'automations',
+    });
+  }
+
+  return alerts;
+}
+
+export function getVisibleWorkspaceAlerts(workspace: WorkspaceData) {
+  return getWorkspaceAlerts(workspace).filter(
+    (alert) => !workspace.dismissedAlertIds.includes(alert.id)
+  );
 }
 
 export function getMonthKey(value: string) {

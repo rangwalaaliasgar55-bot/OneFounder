@@ -74,6 +74,16 @@ The product now includes lightweight governance behaviors:
 - decision verification can be routed through approvals
 - risky and sensitive changes create audit records automatically
 
+### 8. Workflow acceleration layer
+To make day-to-day work easier, the product now also includes:
+
+- a global command palette for fast navigation and actions
+- a live alert inbox generated from workspace risk signals
+- repeatable playbooks for weekly reviews, revenue recovery, launch readiness, and AI incidents
+- workflow history so recurring operating motions are visible instead of ad hoc
+
+This is important because the biggest AI-era bottleneck is often not “lack of output,” but lack of structured follow-through.
+
 ### 3. Workspace portability
 Founders can now export and import the entire workspace as JSON.
 

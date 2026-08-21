@@ -1,4 +1,4 @@
-import { type ChangeEvent, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   Bell,
@@ -15,8 +15,11 @@ import {
   Upload,
   Users,
   Wallet,
+  Workflow,
   X,
 } from 'lucide-react';
+import CommandPalette, { type CommandAction } from './components/CommandPalette';
+import Modal from './components/Modal';
 import AIChat from './pages/AIChat';
 import Automations from './pages/Automations';
 import ControlRoom from './pages/ControlRoom';
@@ -24,6 +27,7 @@ import CRM from './pages/CRM';
 import Dashboard from './pages/Dashboard';
 import Finance from './pages/Finance';
 import IdeaLab from './pages/IdeaLab';
+import Playbooks from './pages/Playbooks';
 import Projects from './pages/Projects';
 import TrustCenter from './pages/TrustCenter';
 import { usePersistentState } from './hooks/usePersistentState';
@@ -32,14 +36,17 @@ import {
   buildBoardReportMarkdown,
   calculateAIReadinessScore,
   calculateAutomationHours,
+  calculateWorkflowScore,
   canRolePerform,
   createAuditEvent,
   createSeedWorkspace,
   createSnapshot,
+  daysFromNow,
   formatCompactCurrency,
   formatCurrency,
   getDaysUntil,
   getRoleLabel,
+  getVisibleWorkspaceAlerts,
   isOverdue,
   makeId,
   normalizeWorkspaceData,
@@ -118,6 +125,12 @@ const navItems: Array<{
     description: 'Approve, snapshot, audit, and govern the AI operating layer.',
     icon: SlidersHorizontal,
   },
+  {
+    id: 'playbooks',
+    label: 'Playbooks',
+    description: 'Launch guided workflows, alert handling, and repeatable operating templates.',
+    icon: Workflow,
+  },
 ];
 
 interface ChangeMeta {
@@ -131,11 +144,16 @@ function App() {
   const [activePage, setActivePage] = useState<NavPage>('dashboard');
   const [sidebarOpen, setSidebarOpen] = usePersistentState('onefounder.sidebar-open', true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [storedWorkspace, setStoredWorkspace] = usePersistentState<WorkspaceData>(
     'onefounder.workspace',
     createSeedWorkspace
   );
-  const [currentActorId, setCurrentActorId] = usePersistentState('onefounder.current-actor', 'member-1');
+  const [currentActorId, setCurrentActorId] = usePersistentState(
+    'onefounder.current-actor',
+    'member-1'
+  );
   const workspace = useMemo(() => normalizeWorkspaceData(storedWorkspace), [storedWorkspace]);
   const importFileRef = useRef<HTMLInputElement>(null);
 
@@ -202,6 +220,7 @@ function App() {
   const monthlyExpenses = workspace.transactions
     .filter((transaction) => transaction.type === 'expense' && getDaysUntil(transaction.date) >= -30)
     .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const visibleAlerts = useMemo(() => getVisibleWorkspaceAlerts(workspace), [workspace]);
 
   const workspaceHealth = useMemo(() => {
     const overdueTasks = workspace.tasks.filter(
@@ -216,6 +235,7 @@ function App() {
     const riskySystems = workspace.aiSystems.filter(
       (system) => (system.riskLevel === 'high' || system.riskLevel === 'critical') && !system.humanReview
     ).length;
+    const workflowScore = calculateWorkflowScore(workspace);
 
     return {
       overdueTasks,
@@ -224,8 +244,10 @@ function App() {
       automationHours,
       trustScore,
       riskySystems,
+      workflowScore,
+      alertCount: visibleAlerts.length,
     };
-  }, [monthlyExpenses, monthlyIncome, workspace.aiSystems, workspace.automations, workspace.leads, workspace.tasks]);
+  }, [monthlyExpenses, monthlyIncome, visibleAlerts.length, workspace]);
 
   const addIdea = (idea: Omit<Idea, 'id' | 'createdAt' | 'score'> & { score: number }) => {
     commitWorkspace(
@@ -340,39 +362,44 @@ function App() {
   };
 
   const updateAutomation = (automationId: string, updates: Partial<Automation>) => {
-    commitWorkspace((current) => {
-      const target = current.automations.find((automation) => automation.id === automationId);
-      if (!target) {
-        return current;
+    commitWorkspace(
+      (current) => {
+        const target = current.automations.find((automation) => automation.id === automationId);
+        if (!target) {
+          return current;
+        }
+
+        const wantsActivation = updates.status === 'active';
+        const needsApproval =
+          wantsActivation &&
+          (target.sensitivity === 'restricted' || target.approvalMode === 'dual-review');
+
+        if (needsApproval && !canRolePerform(currentActor.role, 'activate-restricted-automation')) {
+          return queueApprovalRequest(current, {
+            title: `Activate automation: ${target.name}`,
+            type: 'automation',
+            targetId: target.id,
+            approverRole: 'security',
+            reason: `${getRoleLabel(currentActor.role)} cannot activate restricted or dual-review automations directly.`,
+            requestedAction: 'activate-automation',
+            payload: JSON.stringify({ updates }),
+          });
+        }
+
+        return {
+          ...current,
+          automations: current.automations.map((automation) =>
+            automation.id === automationId ? { ...automation, ...updates } : automation
+          ),
+        };
+      },
+      {
+        action: 'automation-update',
+        target: automationId,
+        summary: 'Updated automation state or review data.',
+        severity: updates.status === 'active' ? 'warning' : 'info',
       }
-
-      const wantsActivation = updates.status === 'active';
-      const needsApproval = wantsActivation && (target.sensitivity === 'restricted' || target.approvalMode === 'dual-review');
-
-      if (needsApproval && !canRolePerform(currentActor.role, 'activate-restricted-automation')) {
-        return queueApprovalRequest(current, {
-          title: `Activate automation: ${target.name}`,
-          type: 'automation',
-          targetId: target.id,
-          approverRole: 'security',
-          reason: `${getRoleLabel(currentActor.role)} cannot activate restricted or dual-review automations directly.`,
-          requestedAction: 'activate-automation',
-          payload: JSON.stringify({ updates }),
-        });
-      }
-
-      return {
-        ...current,
-        automations: current.automations.map((automation) =>
-          automation.id === automationId ? { ...automation, ...updates } : automation
-        ),
-      };
-    }, {
-      action: 'automation-update',
-      target: automationId,
-      summary: 'Updated automation state or review data.',
-      severity: updates.status === 'active' ? 'warning' : 'info',
-    });
+    );
   };
 
   const addAISystem = (system: Omit<AISystem, 'id'>) => {
@@ -390,54 +417,57 @@ function App() {
   };
 
   const updateAISystem = (systemId: string, updates: Partial<AISystem>) => {
-    commitWorkspace((current) => {
-      const target = current.aiSystems.find((system) => system.id === systemId);
-      if (!target) {
-        return current;
+    commitWorkspace(
+      (current) => {
+        const target = current.aiSystems.find((system) => system.id === systemId);
+        if (!target) {
+          return current;
+        }
+
+        const effectiveHumanReview = updates.humanReview ?? target.humanReview;
+        const effectiveSourceRequired = updates.sourceRequired ?? target.sourceRequired;
+        const wantsApproval = updates.status === 'approved';
+        const isHighRisk = target.riskLevel === 'high' || target.riskLevel === 'critical';
+
+        if (wantsApproval && isHighRisk && !canRolePerform(currentActor.role, 'approve-high-risk-ai')) {
+          return queueApprovalRequest(current, {
+            title: `Approve AI system: ${target.name}`,
+            type: 'ai-system',
+            targetId: target.id,
+            approverRole: 'security',
+            reason: `${getRoleLabel(currentActor.role)} cannot approve high-risk AI systems directly.`,
+            requestedAction: 'approve-ai-system',
+            payload: JSON.stringify({ updates }),
+          });
+        }
+
+        if (wantsApproval && isHighRisk && (!effectiveHumanReview || !effectiveSourceRequired)) {
+          return appendAuditEvent(
+            current,
+            createAuditEvent(
+              currentActor.name,
+              'ai-system-blocked',
+              target.name,
+              'Approval was blocked because a high-risk system is missing human review or source requirements.',
+              'critical'
+            )
+          );
+        }
+
+        return {
+          ...current,
+          aiSystems: current.aiSystems.map((system) =>
+            system.id === systemId ? { ...system, ...updates } : system
+          ),
+        };
+      },
+      {
+        action: 'ai-system-update',
+        target: systemId,
+        summary: 'Updated AI system governance or risk data.',
+        severity: updates.status === 'approved' ? 'warning' : 'info',
       }
-
-      const effectiveHumanReview = updates.humanReview ?? target.humanReview;
-      const effectiveSourceRequired = updates.sourceRequired ?? target.sourceRequired;
-      const wantsApproval = updates.status === 'approved';
-      const isHighRisk = target.riskLevel === 'high' || target.riskLevel === 'critical';
-
-      if (wantsApproval && isHighRisk && !canRolePerform(currentActor.role, 'approve-high-risk-ai')) {
-        return queueApprovalRequest(current, {
-          title: `Approve AI system: ${target.name}`,
-          type: 'ai-system',
-          targetId: target.id,
-          approverRole: 'security',
-          reason: `${getRoleLabel(currentActor.role)} cannot approve high-risk AI systems directly.`,
-          requestedAction: 'approve-ai-system',
-          payload: JSON.stringify({ updates }),
-        });
-      }
-
-      if (wantsApproval && isHighRisk && (!effectiveHumanReview || !effectiveSourceRequired)) {
-        return appendAuditEvent(
-          current,
-          createAuditEvent(
-            currentActor.name,
-            'ai-system-blocked',
-            target.name,
-            'Approval was blocked because a high-risk system is missing human review or source requirements.',
-            'critical'
-          )
-        );
-      }
-
-      return {
-        ...current,
-        aiSystems: current.aiSystems.map((system) =>
-          system.id === systemId ? { ...system, ...updates } : system
-        ),
-      };
-    }, {
-      action: 'ai-system-update',
-      target: systemId,
-      summary: 'Updated AI system governance or risk data.',
-      severity: updates.status === 'approved' ? 'warning' : 'info',
-    });
+    );
   };
 
   const addDecisionLog = (decision: Omit<DecisionLog, 'id'>) => {
@@ -455,39 +485,58 @@ function App() {
   };
 
   const updateDecisionLog = (decisionId: string, updates: Partial<DecisionLog>) => {
-    commitWorkspace((current) => {
-      const target = current.decisionLogs.find((decision) => decision.id === decisionId);
-      if (!target) {
-        return current;
-      }
+    commitWorkspace(
+      (current) => {
+        const target = current.decisionLogs.find((decision) => decision.id === decisionId);
+        if (!target) {
+          return current;
+        }
 
-      if (
-        updates.verificationStatus === 'verified' &&
-        !canRolePerform(currentActor.role, 'verify-decision')
-      ) {
-        return queueApprovalRequest(current, {
-          title: `Verify decision: ${target.title}`,
-          type: 'decision',
-          targetId: target.id,
-          approverRole: 'security',
-          reason: `${getRoleLabel(currentActor.role)} cannot mark AI-influenced decisions as verified directly.`,
-          requestedAction: 'verify-decision',
-          payload: JSON.stringify({ updates }),
-        });
-      }
+        if (
+          updates.verificationStatus === 'verified' &&
+          !canRolePerform(currentActor.role, 'verify-decision')
+        ) {
+          return queueApprovalRequest(current, {
+            title: `Verify decision: ${target.title}`,
+            type: 'decision',
+            targetId: target.id,
+            approverRole: 'security',
+            reason: `${getRoleLabel(currentActor.role)} cannot mark AI-influenced decisions as verified directly.`,
+            requestedAction: 'verify-decision',
+            payload: JSON.stringify({ updates }),
+          });
+        }
 
-      return {
+        return {
+          ...current,
+          decisionLogs: current.decisionLogs.map((decision) =>
+            decision.id === decisionId ? { ...decision, ...updates } : decision
+          ),
+        };
+      },
+      {
+        action: 'decision-log-update',
+        target: decisionId,
+        summary: 'Updated decision verification or follow-up state.',
+        severity: updates.verificationStatus === 'verified' ? 'warning' : 'info',
+      }
+    );
+  };
+
+  const dismissAlert = (alertId: string) => {
+    commitWorkspace(
+      (current) => ({
         ...current,
-        decisionLogs: current.decisionLogs.map((decision) =>
-          decision.id === decisionId ? { ...decision, ...updates } : decision
-        ),
-      };
-    }, {
-      action: 'decision-log-update',
-      target: decisionId,
-      summary: 'Updated decision verification or follow-up state.',
-      severity: updates.verificationStatus === 'verified' ? 'warning' : 'info',
-    });
+        dismissedAlertIds: current.dismissedAlertIds.includes(alertId)
+          ? current.dismissedAlertIds
+          : [...current.dismissedAlertIds, alertId],
+      }),
+      {
+        action: 'alert-dismiss',
+        target: alertId,
+        summary: `Dismissed workspace alert: ${alertId}`,
+      }
+    );
   };
 
   const selectActor = (memberId: string) => {
@@ -497,12 +546,15 @@ function App() {
   const createWorkspaceSnapshot = () => {
     if (!canRolePerform(currentActor.role, 'create-snapshot')) {
       window.alert(`${getRoleLabel(currentActor.role)} cannot create snapshots directly.`);
-      commitWorkspace((current) => current, {
-        action: 'snapshot-denied',
-        target: 'Workspace snapshot',
-        summary: 'Snapshot creation was denied due to role restrictions.',
-        severity: 'warning',
-      });
+      commitWorkspace(
+        (current) => current,
+        {
+          action: 'snapshot-denied',
+          target: 'Workspace snapshot',
+          summary: 'Snapshot creation was denied due to role restrictions.',
+          severity: 'warning',
+        }
+      );
       return;
     }
 
@@ -547,36 +599,270 @@ function App() {
       return;
     }
 
-    commitWorkspace((current) => {
-      const snapshot = current.snapshots.find((item) => item.id === snapshotId);
-      if (!snapshot) {
-        return current;
-      }
+    commitWorkspace(
+      (current) => {
+        const snapshot = current.snapshots.find((item) => item.id === snapshotId);
+        if (!snapshot) {
+          return current;
+        }
 
-      try {
-        const restored = normalizeWorkspaceData(JSON.parse(snapshot.data));
-        return {
-          ...restored,
-          snapshots: current.snapshots,
-        };
-      } catch {
-        return appendAuditEvent(
-          current,
-          createAuditEvent(
-            currentActor.name,
-            'snapshot-restore-failed',
-            snapshot.name,
-            'Snapshot restore failed because the snapshot data was invalid.',
-            'critical'
-          )
-        );
+        try {
+          const restored = normalizeWorkspaceData(JSON.parse(snapshot.data));
+          return {
+            ...restored,
+            snapshots: current.snapshots,
+          };
+        } catch {
+          return appendAuditEvent(
+            current,
+            createAuditEvent(
+              currentActor.name,
+              'snapshot-restore-failed',
+              snapshot.name,
+              'Snapshot restore failed because the snapshot data was invalid.',
+              'critical'
+            )
+          );
+        }
+      },
+      {
+        action: 'snapshot-restore',
+        target: snapshotId,
+        summary: 'Restored workspace state from a saved snapshot.',
+        severity: 'warning',
       }
-    }, {
-      action: 'snapshot-restore',
-      target: snapshotId,
-      summary: 'Restored workspace state from a saved snapshot.',
-      severity: 'warning',
-    });
+    );
+  };
+
+  const launchWorkflowTemplate = (templateId: string) => {
+    commitWorkspace(
+      (current) => {
+        const workflowRunBase = {
+          id: makeId('workflow'),
+          templateId,
+          owner: currentActor.name,
+          status: 'active' as const,
+          createdAt: new Date().toISOString(),
+        };
+
+        switch (templateId) {
+          case 'weekly-review':
+            return {
+              ...current,
+              workflowRuns: [
+                {
+                  ...workflowRunBase,
+                  name: 'Weekly founder review',
+                  summary: 'Weekly operating cadence across CRM, finance, trust, and execution.',
+                },
+                ...current.workflowRuns,
+              ],
+              tasks: [
+                {
+                  id: makeId('task'),
+                  title: 'Review stale leads and assign next contact owner',
+                  assignee: currentActor.name,
+                  dueDate: daysFromNow(1),
+                  priority: 'high',
+                  status: 'todo',
+                },
+                {
+                  id: makeId('task'),
+                  title: 'Check pending approvals and clear blockers',
+                  assignee: currentActor.name,
+                  dueDate: daysFromNow(1),
+                  priority: 'medium',
+                  status: 'todo',
+                },
+                {
+                  id: makeId('task'),
+                  title: 'Export board report and finance summary',
+                  assignee: currentActor.name,
+                  dueDate: daysFromNow(2),
+                  priority: 'medium',
+                  status: 'todo',
+                },
+                ...current.tasks,
+              ],
+            };
+          case 'revenue-recovery':
+            return {
+              ...current,
+              workflowRuns: [
+                {
+                  ...workflowRunBase,
+                  name: 'Revenue recovery sprint',
+                  summary: 'Focus the week on stale opportunities and cash-moving actions.',
+                },
+                ...current.workflowRuns,
+              ],
+              tasks: [
+                {
+                  id: makeId('task'),
+                  title: 'Contact all stale proposal and negotiation leads',
+                  assignee: 'Revenue Ops',
+                  dueDate: daysFromNow(1),
+                  priority: 'high',
+                  status: 'todo',
+                },
+                {
+                  id: makeId('task'),
+                  title: 'Review pricing objections and prepare counter-offers',
+                  assignee: currentActor.name,
+                  dueDate: daysFromNow(2),
+                  priority: 'high',
+                  status: 'todo',
+                },
+                ...current.tasks,
+              ],
+              decisionLogs: [
+                {
+                  id: makeId('decision'),
+                  title: 'Revenue recovery sprint launched',
+                  domain: 'growth',
+                  confidence: 'medium',
+                  verificationStatus: 'partially-verified',
+                  recommendation:
+                    'Prioritize warm pipeline before spending on new acquisition this week.',
+                  owner: currentActor.name,
+                  impact: 'Shortens time-to-cash and prevents near-term pipeline decay.',
+                  createdAt: new Date().toISOString(),
+                  nextCheck: daysFromNow(5),
+                },
+                ...current.decisionLogs,
+              ],
+            };
+          case 'ai-incident':
+            return queueApprovalRequest(
+              {
+                ...current,
+                workflowRuns: [
+                  {
+                    ...workflowRunBase,
+                    name: 'AI incident response',
+                    summary: 'Runbook for trust, safety, or automation incidents involving AI systems.',
+                  },
+                  ...current.workflowRuns,
+                ],
+                tasks: [
+                  {
+                    id: makeId('task'),
+                    title: 'Freeze the affected automation or AI system scope',
+                    assignee: 'Security Lead',
+                    dueDate: daysFromNow(0),
+                    priority: 'high',
+                    status: 'todo',
+                  },
+                  {
+                    id: makeId('task'),
+                    title: 'Collect incident evidence and user-visible impact notes',
+                    assignee: currentActor.name,
+                    dueDate: daysFromNow(1),
+                    priority: 'high',
+                    status: 'todo',
+                  },
+                  ...current.tasks,
+                ],
+              },
+              {
+                title: 'Review AI incident response state changes',
+                type: 'workspace',
+                targetId: workflowRunBase.id,
+                approverRole: 'security',
+                reason: 'AI incident workflows should be visible to the security lead before wider remediation proceeds.',
+                requestedAction: 'restore-snapshot',
+                payload: JSON.stringify({ snapshotId: current.snapshots[0]?.id ?? '' }),
+              }
+            );
+          case 'launch-readiness':
+            return {
+              ...current,
+              workflowRuns: [
+                {
+                  ...workflowRunBase,
+                  name: 'Launch readiness check',
+                  summary: 'Pre-launch checklist spanning telemetry, support, trust, and execution.',
+                },
+                ...current.workflowRuns,
+              ],
+              tasks: [
+                {
+                  id: makeId('task'),
+                  title: 'Verify launch metrics and alerts are live',
+                  assignee: 'Ops Lead',
+                  dueDate: daysFromNow(1),
+                  priority: 'high',
+                  status: 'todo',
+                },
+                {
+                  id: makeId('task'),
+                  title: 'Review customer-facing AI and support escalation path',
+                  assignee: 'Security Lead',
+                  dueDate: daysFromNow(1),
+                  priority: 'high',
+                  status: 'todo',
+                },
+                ...current.tasks,
+              ],
+            };
+          case 'shadow-ai-cleanup':
+            return {
+              ...current,
+              workflowRuns: [
+                {
+                  ...workflowRunBase,
+                  name: 'Shadow AI cleanup sprint',
+                  summary: 'Find risky usage, inventory workflows, and migrate work into approved channels.',
+                },
+                ...current.workflowRuns,
+              ],
+              tasks: [
+                {
+                  id: makeId('task'),
+                  title: 'Inventory unofficial AI tools and undocumented workflows',
+                  assignee: 'Security Lead',
+                  dueDate: daysFromNow(2),
+                  priority: 'high',
+                  status: 'todo',
+                },
+                {
+                  id: makeId('task'),
+                  title: 'Document approved alternatives and role-based review rules',
+                  assignee: currentActor.name,
+                  dueDate: daysFromNow(3),
+                  priority: 'medium',
+                  status: 'todo',
+                },
+                ...current.tasks,
+              ],
+              decisionLogs: [
+                {
+                  id: makeId('decision'),
+                  title: 'Shadow AI cleanup initiated',
+                  domain: 'ops',
+                  confidence: 'medium',
+                  verificationStatus: 'unverified',
+                  recommendation:
+                    'Map risky usage first, then provide governed alternatives instead of trying to ban behavior blindly.',
+                  owner: currentActor.name,
+                  impact: 'Reduces data leakage, trust fragmentation, and invisible operational risk.',
+                  createdAt: new Date().toISOString(),
+                  nextCheck: daysFromNow(7),
+                },
+                ...current.decisionLogs,
+              ],
+            };
+          default:
+            return current;
+        }
+      },
+      {
+        action: 'workflow-launch',
+        target: templateId,
+        summary: `Launched workflow template: ${templateId}`,
+        severity: 'warning',
+      }
+    );
   };
 
   const approveRequest = (requestId: string) => {
@@ -711,17 +997,21 @@ function App() {
   const navigateTo = (page: NavPage) => {
     setActivePage(page);
     setMobileSidebarOpen(false);
+    setNotificationsOpen(false);
   };
 
   const exportWorkspace = () => {
     if (!canRolePerform(currentActor.role, 'export-workspace')) {
       window.alert(`${getRoleLabel(currentActor.role)} cannot export workspace data directly.`);
-      commitWorkspace((current) => current, {
-        action: 'export-denied',
-        target: 'Workspace export',
-        summary: 'Workspace export was denied due to role restrictions.',
-        severity: 'warning',
-      });
+      commitWorkspace(
+        (current) => current,
+        {
+          action: 'export-denied',
+          target: 'Workspace export',
+          summary: 'Workspace export was denied due to role restrictions.',
+          severity: 'warning',
+        }
+      );
       return;
     }
 
@@ -735,11 +1025,14 @@ function App() {
     link.click();
     URL.revokeObjectURL(url);
 
-    commitWorkspace((current) => current, {
-      action: 'export-workspace',
-      target: 'Workspace export',
-      summary: 'Exported workspace JSON.',
-    });
+    commitWorkspace(
+      (current) => current,
+      {
+        action: 'export-workspace',
+        target: 'Workspace export',
+        summary: 'Exported workspace JSON.',
+      }
+    );
   };
 
   const exportBoardReport = () => {
@@ -757,11 +1050,14 @@ function App() {
     link.click();
     URL.revokeObjectURL(url);
 
-    commitWorkspace((current) => current, {
-      action: 'export-board-report',
-      target: 'Board report',
-      summary: 'Exported board-ready markdown report.',
-    });
+    commitWorkspace(
+      (current) => current,
+      {
+        action: 'export-board-report',
+        target: 'Board report',
+        summary: 'Exported board-ready markdown report.',
+      }
+    );
   };
 
   const importWorkspace = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -793,6 +1089,74 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+      if (event.key === 'Escape') {
+        setCommandPaletteOpen(false);
+        setNotificationsOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const commandActions: CommandAction[] = [
+    ...navItems.map((item) => ({
+      id: `page-${item.id}`,
+      title: item.label,
+      description: item.description,
+      group: 'Pages',
+      onSelect: () => navigateTo(item.id),
+    })),
+    {
+      id: 'action-snapshot',
+      title: 'Create snapshot',
+      description: 'Save a restore point before a big change.',
+      group: 'Actions',
+      onSelect: createWorkspaceSnapshot,
+    },
+    {
+      id: 'action-board-report',
+      title: 'Export board report',
+      description: 'Download a markdown summary for leadership or investors.',
+      group: 'Actions',
+      onSelect: exportBoardReport,
+    },
+    {
+      id: 'action-weekly-review',
+      title: 'Launch weekly founder review',
+      description: 'Create a guided weekly operating cadence.',
+      group: 'Playbooks',
+      onSelect: () => launchWorkflowTemplate('weekly-review'),
+    },
+    {
+      id: 'action-ai-incident',
+      title: 'Launch AI incident response',
+      description: 'Start a guided AI trust and incident workflow.',
+      group: 'Playbooks',
+      onSelect: () => launchWorkflowTemplate('ai-incident'),
+    },
+    {
+      id: 'action-revenue-recovery',
+      title: 'Launch revenue recovery sprint',
+      description: 'Focus the team on stale deals and short-term cash movement.',
+      group: 'Playbooks',
+      onSelect: () => launchWorkflowTemplate('revenue-recovery'),
+    },
+    ...visibleAlerts.map((alert) => ({
+      id: `alert-${alert.id}`,
+      title: alert.title,
+      description: alert.description,
+      group: 'Alerts',
+      onSelect: () => navigateTo(alert.page),
+    })),
+  ];
+
   const renderPage = () => {
     switch (activePage) {
       case 'dashboard':
@@ -802,11 +1166,15 @@ function App() {
       case 'ideas':
         return <IdeaLab ideas={workspace.ideas} onAddIdea={addIdea} />;
       case 'projects':
-        return <Projects tasks={workspace.tasks} onAddTask={addTask} onUpdateTask={updateTask} />;
+        return (
+          <Projects tasks={workspace.tasks} onAddTask={addTask} onUpdateTask={updateTask} />
+        );
       case 'crm':
         return <CRM leads={workspace.leads} onAddLead={addLead} onUpdateLead={updateLead} />;
       case 'finance':
-        return <Finance transactions={workspace.transactions} onAddTransaction={addTransaction} />;
+        return (
+          <Finance transactions={workspace.transactions} onAddTransaction={addTransaction} />
+        );
       case 'automations':
         return (
           <Automations
@@ -837,6 +1205,16 @@ function App() {
             onCreateSnapshot={createWorkspaceSnapshot}
             onRestoreSnapshot={restoreWorkspaceSnapshot}
             onExportBoardReport={exportBoardReport}
+          />
+        );
+      case 'playbooks':
+        return (
+          <Playbooks
+            workspace={workspace}
+            alerts={visibleAlerts}
+            onLaunchTemplate={launchWorkflowTemplate}
+            onDismissAlert={dismissAlert}
+            onNavigate={navigateTo}
           />
         );
       default:
@@ -906,12 +1284,16 @@ function App() {
               >
                 <div
                   className={`rounded-xl p-2 ${
-                    isActive ? 'bg-cyan-500/20 text-cyan-300' : 'bg-white/5 text-slate-400 group-hover:text-cyan-300'
+                    isActive
+                      ? 'bg-cyan-500/20 text-cyan-300'
+                      : 'bg-white/5 text-slate-400 group-hover:text-cyan-300'
                   }`}
                 >
                   <Icon className="h-5 w-5" />
                 </div>
-                <div className={`min-w-0 ${sidebarOpen ? 'opacity-100' : 'opacity-0'} transition-opacity`}>
+                <div
+                  className={`min-w-0 ${sidebarOpen ? 'opacity-100' : 'opacity-0'} transition-opacity`}
+                >
                   <p className="font-medium">{item.label}</p>
                   <p className="truncate text-xs text-slate-400">{item.description}</p>
                 </div>
@@ -933,8 +1315,12 @@ function App() {
               <p>{workspaceHealth.followUps} follow-up(s) waiting</p>
               <p>{workspaceHealth.automationHours.toFixed(1)} automation hours saved weekly</p>
               <p>Trust score {workspaceHealth.trustScore}/100</p>
-              <p>{workspaceHealth.riskySystems} high-risk system(s) without review</p>
-              <p>{workspaceHealth.net >= 0 ? 'Net positive' : 'Net negative'} {formatCompactCurrency(Math.abs(workspaceHealth.net))}</p>
+              <p>Workflow score {workspaceHealth.workflowScore}/100</p>
+              <p>{workspaceHealth.alertCount} live alert(s)</p>
+              <p>
+                {workspaceHealth.net >= 0 ? 'Net positive' : 'Net negative'}{' '}
+                {formatCompactCurrency(Math.abs(workspaceHealth.net))}
+              </p>
             </div>
           </div>
         </div>
@@ -953,11 +1339,20 @@ function App() {
               </button>
               <div>
                 <p className="text-sm text-cyan-300">{activeNavItem.label}</p>
-                <h1 className="text-xl font-semibold text-white sm:text-2xl">{activeNavItem.description}</h1>
+                <h1 className="text-xl font-semibold text-white sm:text-2xl">
+                  {activeNavItem.description}
+                </h1>
               </div>
             </div>
 
             <div className="hidden items-center gap-3 xl:flex">
+              <button
+                type="button"
+                onClick={() => setCommandPaletteOpen(true)}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-slate-300 transition-colors hover:border-white/20 hover:text-white"
+              >
+                Search and actions <span className="ml-2 text-slate-500">Ctrl/Cmd + K</span>
+              </button>
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-right">
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Current actor</p>
                 <p className="text-sm font-medium text-white">{currentActor.name}</p>
@@ -998,10 +1393,16 @@ function App() {
               </button>
               <button
                 type="button"
-                className="rounded-2xl border border-white/10 bg-white/5 p-3 text-slate-300 transition-colors hover:border-cyan-500/30 hover:text-white"
+                onClick={() => setNotificationsOpen(true)}
+                className="relative rounded-2xl border border-white/10 bg-white/5 p-3 text-slate-300 transition-colors hover:border-cyan-500/30 hover:text-white"
                 aria-label="Notifications"
               >
                 <Bell className="h-5 w-5" />
+                {visibleAlerts.length ? (
+                  <span className="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                    {visibleAlerts.length}
+                  </span>
+                ) : null}
               </button>
             </div>
           </div>
@@ -1009,6 +1410,62 @@ function App() {
 
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{renderPage()}</main>
       </div>
+
+      <CommandPalette
+        open={commandPaletteOpen}
+        actions={commandActions}
+        onClose={() => setCommandPaletteOpen(false)}
+      />
+
+      <Modal
+        open={notificationsOpen}
+        title="Live alerts and actions"
+        description="Signals generated from your current workspace state. Use them as an action inbox instead of letting risk hide in dashboards."
+        onClose={() => setNotificationsOpen(false)}
+      >
+        <div className="space-y-3">
+          {visibleAlerts.length ? (
+            visibleAlerts.map((alert) => (
+              <div key={alert.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${alert.severity === 'critical' ? 'bg-rose-500/15 text-rose-300' : alert.severity === 'warning' ? 'bg-amber-500/15 text-amber-300' : 'bg-cyan-500/15 text-cyan-300'}`}>
+                        {alert.severity}
+                      </span>
+                      <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                        {alert.category}
+                      </span>
+                    </div>
+                    <p className="mt-3 font-medium text-white">{alert.title}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-400">{alert.description}</p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigateTo(alert.page)}
+                    className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-300 transition-colors hover:bg-cyan-500/20"
+                  >
+                    {alert.actionLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => dismissAlert(alert.id)}
+                    className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300 transition-colors hover:border-white/20 hover:text-white"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-5 text-sm text-slate-400">
+              No live alerts right now.
+            </div>
+          )}
+        </div>
+      </Modal>
 
       <input
         ref={importFileRef}

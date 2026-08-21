@@ -7,7 +7,8 @@ export type NavPage =
   | 'finance'
   | 'automations'
   | 'trust'
-  | 'control';
+  | 'control'
+  | 'playbooks';
 
 export type MarketSize = 'Niche' | 'Growing' | 'Medium' | 'Large';
 
@@ -171,6 +172,31 @@ export interface Snapshot {
   data: string;
 }
 
+export type WorkflowRunStatus = 'planned' | 'active' | 'completed';
+
+export interface WorkflowRun {
+  id: string;
+  name: string;
+  templateId: string;
+  owner: string;
+  status: WorkflowRunStatus;
+  createdAt: string;
+  summary: string;
+}
+
+export type AlertSeverity = 'info' | 'warning' | 'critical';
+export type AlertCategory = 'governance' | 'revenue' | 'delivery' | 'finance' | 'automation';
+
+export interface WorkspaceAlert {
+  id: string;
+  title: string;
+  description: string;
+  severity: AlertSeverity;
+  category: AlertCategory;
+  actionLabel: string;
+  page: NavPage;
+}
+
 export interface WorkspaceData {
   ideas: Idea[];
   tasks: Task[];
@@ -183,6 +209,8 @@ export interface WorkspaceData {
   approvalRequests: ApprovalRequest[];
   auditEvents: AuditEvent[];
   snapshots: Snapshot[];
+  workflowRuns: WorkflowRun[];
+  dismissedAlertIds: string[];
 }
 
 export interface ChatMessage {
