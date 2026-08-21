@@ -1,4 +1,4 @@
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   Bell,
@@ -10,6 +10,7 @@ import {
   Menu,
   MessageSquare,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Upload,
   Users,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 import AIChat from './pages/AIChat';
 import Automations from './pages/Automations';
+import ControlRoom from './pages/ControlRoom';
 import CRM from './pages/CRM';
 import Dashboard from './pages/Dashboard';
 import Finance from './pages/Finance';
@@ -26,18 +28,26 @@ import Projects from './pages/Projects';
 import TrustCenter from './pages/TrustCenter';
 import { usePersistentState } from './hooks/usePersistentState';
 import {
+  appendAuditEvent,
+  buildBoardReportMarkdown,
   calculateAIReadinessScore,
   calculateAutomationHours,
+  canRolePerform,
+  createAuditEvent,
   createSeedWorkspace,
+  createSnapshot,
   formatCompactCurrency,
   formatCurrency,
   getDaysUntil,
+  getRoleLabel,
   isOverdue,
   makeId,
   normalizeWorkspaceData,
 } from './lib/workspace';
 import type {
   AISystem,
+  ApprovalRequest,
+  AuditEvent,
   Automation,
   DecisionLog,
   Idea,
@@ -102,7 +112,20 @@ const navItems: Array<{
     description: 'Audit AI systems, verification, privacy, and human oversight.',
     icon: ShieldCheck,
   },
+  {
+    id: 'control',
+    label: 'Control Room',
+    description: 'Approve, snapshot, audit, and govern the AI operating layer.',
+    icon: SlidersHorizontal,
+  },
 ];
+
+interface ChangeMeta {
+  action: string;
+  target: string;
+  summary: string;
+  severity?: AuditEvent['severity'];
+}
 
 function App() {
   const [activePage, setActivePage] = useState<NavPage>('dashboard');
@@ -112,12 +135,64 @@ function App() {
     'onefounder.workspace',
     createSeedWorkspace
   );
+  const [currentActorId, setCurrentActorId] = usePersistentState('onefounder.current-actor', 'member-1');
   const workspace = useMemo(() => normalizeWorkspaceData(storedWorkspace), [storedWorkspace]);
   const importFileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setStoredWorkspace((current) => normalizeWorkspaceData(current));
-  }, [setStoredWorkspace]);
+  const currentActor =
+    workspace.teamMembers.find((member) => member.id === currentActorId) ?? workspace.teamMembers[0];
+
+  const commitWorkspace = (
+    updater: (current: WorkspaceData) => WorkspaceData,
+    meta?: ChangeMeta
+  ) => {
+    setStoredWorkspace((current) => {
+      const normalized = normalizeWorkspaceData(current);
+      let next = normalizeWorkspaceData(updater(normalized));
+
+      if (meta) {
+        next = appendAuditEvent(
+          next,
+          createAuditEvent(
+            currentActor.name,
+            meta.action,
+            meta.target,
+            meta.summary,
+            meta.severity ?? 'info'
+          )
+        );
+      }
+
+      return next;
+    });
+  };
+
+  const queueApprovalRequest = (
+    current: WorkspaceData,
+    request: Omit<ApprovalRequest, 'id' | 'createdAt' | 'status' | 'requestedBy'>
+  ) => {
+    const approval: ApprovalRequest = {
+      ...request,
+      id: makeId('approval'),
+      requestedBy: currentActor.name,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    return appendAuditEvent(
+      {
+        ...current,
+        approvalRequests: [approval, ...current.approvalRequests],
+      },
+      createAuditEvent(
+        currentActor.name,
+        'approval-request',
+        request.title,
+        `Approval request created: ${request.reason}`,
+        'warning'
+      )
+    );
+  };
 
   const activeNavItem = navItems.find((item) => item.id === activePage) ?? navItems[0];
 
@@ -153,107 +228,484 @@ function App() {
   }, [monthlyExpenses, monthlyIncome, workspace.aiSystems, workspace.automations, workspace.leads, workspace.tasks]);
 
   const addIdea = (idea: Omit<Idea, 'id' | 'createdAt' | 'score'> & { score: number }) => {
-    setStoredWorkspace((current) => ({
-      ...current,
-      ideas: [
-        {
-          ...idea,
-          id: makeId('idea'),
-          createdAt: new Date().toISOString(),
-        },
-        ...current.ideas,
-      ],
-    }));
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        ideas: [
+          {
+            ...idea,
+            id: makeId('idea'),
+            createdAt: new Date().toISOString(),
+          },
+          ...current.ideas,
+        ],
+      }),
+      {
+        action: 'idea-create',
+        target: idea.title,
+        summary: `Added new idea: ${idea.title}`,
+      }
+    );
   };
 
   const addTask = (task: Omit<Task, 'id'>) => {
-    setStoredWorkspace((current) => ({
-      ...current,
-      tasks: [{ ...task, id: makeId('task') }, ...current.tasks],
-    }));
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        tasks: [{ ...task, id: makeId('task') }, ...current.tasks],
+      }),
+      {
+        action: 'task-create',
+        target: task.title,
+        summary: `Created task: ${task.title}`,
+      }
+    );
   };
 
   const updateTask = (taskId: string, updates: Partial<Task>) => {
-    setStoredWorkspace((current) => ({
-      ...current,
-      tasks: current.tasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)),
-    }));
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        tasks: current.tasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)),
+      }),
+      {
+        action: 'task-update',
+        target: taskId,
+        summary: 'Updated task status or metadata.',
+      }
+    );
   };
 
   const addLead = (lead: Omit<Lead, 'id' | 'lastContacted'>) => {
-    setStoredWorkspace((current) => ({
-      ...current,
-      leads: [
-        {
-          ...lead,
-          id: makeId('lead'),
-          lastContacted: new Date().toISOString(),
-        },
-        ...current.leads,
-      ],
-    }));
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        leads: [
+          {
+            ...lead,
+            id: makeId('lead'),
+            lastContacted: new Date().toISOString(),
+          },
+          ...current.leads,
+        ],
+      }),
+      {
+        action: 'lead-create',
+        target: lead.name,
+        summary: `Added new lead: ${lead.name}`,
+      }
+    );
   };
 
   const updateLead = (leadId: string, updates: Partial<Lead>) => {
-    setStoredWorkspace((current) => ({
-      ...current,
-      leads: current.leads.map((lead) => (lead.id === leadId ? { ...lead, ...updates } : lead)),
-    }));
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        leads: current.leads.map((lead) => (lead.id === leadId ? { ...lead, ...updates } : lead)),
+      }),
+      {
+        action: 'lead-update',
+        target: leadId,
+        summary: 'Updated lead stage or follow-up metadata.',
+      }
+    );
   };
 
   const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
-    setStoredWorkspace((current) => ({
-      ...current,
-      transactions: [{ ...transaction, id: makeId('txn') }, ...current.transactions],
-    }));
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        transactions: [{ ...transaction, id: makeId('txn') }, ...current.transactions],
+      }),
+      {
+        action: 'transaction-create',
+        target: transaction.description,
+        summary: `Added transaction: ${transaction.description}`,
+      }
+    );
   };
 
   const addAutomation = (automation: Omit<Automation, 'id'>) => {
-    setStoredWorkspace((current) => ({
-      ...current,
-      automations: [{ ...automation, id: makeId('auto') }, ...current.automations],
-    }));
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        automations: [{ ...automation, id: makeId('auto') }, ...current.automations],
+      }),
+      {
+        action: 'automation-create',
+        target: automation.name,
+        summary: `Added automation: ${automation.name}`,
+      }
+    );
   };
 
   const updateAutomation = (automationId: string, updates: Partial<Automation>) => {
-    setStoredWorkspace((current) => ({
-      ...current,
-      automations: current.automations.map((automation) =>
-        automation.id === automationId ? { ...automation, ...updates } : automation
-      ),
-    }));
+    commitWorkspace((current) => {
+      const target = current.automations.find((automation) => automation.id === automationId);
+      if (!target) {
+        return current;
+      }
+
+      const wantsActivation = updates.status === 'active';
+      const needsApproval = wantsActivation && (target.sensitivity === 'restricted' || target.approvalMode === 'dual-review');
+
+      if (needsApproval && !canRolePerform(currentActor.role, 'activate-restricted-automation')) {
+        return queueApprovalRequest(current, {
+          title: `Activate automation: ${target.name}`,
+          type: 'automation',
+          targetId: target.id,
+          approverRole: 'security',
+          reason: `${getRoleLabel(currentActor.role)} cannot activate restricted or dual-review automations directly.`,
+          requestedAction: 'activate-automation',
+          payload: JSON.stringify({ updates }),
+        });
+      }
+
+      return {
+        ...current,
+        automations: current.automations.map((automation) =>
+          automation.id === automationId ? { ...automation, ...updates } : automation
+        ),
+      };
+    }, {
+      action: 'automation-update',
+      target: automationId,
+      summary: 'Updated automation state or review data.',
+      severity: updates.status === 'active' ? 'warning' : 'info',
+    });
   };
 
   const addAISystem = (system: Omit<AISystem, 'id'>) => {
-    setStoredWorkspace((current) => ({
-      ...current,
-      aiSystems: [{ ...system, id: makeId('ai') }, ...current.aiSystems],
-    }));
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        aiSystems: [{ ...system, id: makeId('ai') }, ...current.aiSystems],
+      }),
+      {
+        action: 'ai-system-create',
+        target: system.name,
+        summary: `Added AI system inventory entry: ${system.name}`,
+      }
+    );
   };
 
   const updateAISystem = (systemId: string, updates: Partial<AISystem>) => {
-    setStoredWorkspace((current) => ({
-      ...current,
-      aiSystems: current.aiSystems.map((system) =>
-        system.id === systemId ? { ...system, ...updates } : system
-      ),
-    }));
+    commitWorkspace((current) => {
+      const target = current.aiSystems.find((system) => system.id === systemId);
+      if (!target) {
+        return current;
+      }
+
+      const effectiveHumanReview = updates.humanReview ?? target.humanReview;
+      const effectiveSourceRequired = updates.sourceRequired ?? target.sourceRequired;
+      const wantsApproval = updates.status === 'approved';
+      const isHighRisk = target.riskLevel === 'high' || target.riskLevel === 'critical';
+
+      if (wantsApproval && isHighRisk && !canRolePerform(currentActor.role, 'approve-high-risk-ai')) {
+        return queueApprovalRequest(current, {
+          title: `Approve AI system: ${target.name}`,
+          type: 'ai-system',
+          targetId: target.id,
+          approverRole: 'security',
+          reason: `${getRoleLabel(currentActor.role)} cannot approve high-risk AI systems directly.`,
+          requestedAction: 'approve-ai-system',
+          payload: JSON.stringify({ updates }),
+        });
+      }
+
+      if (wantsApproval && isHighRisk && (!effectiveHumanReview || !effectiveSourceRequired)) {
+        return appendAuditEvent(
+          current,
+          createAuditEvent(
+            currentActor.name,
+            'ai-system-blocked',
+            target.name,
+            'Approval was blocked because a high-risk system is missing human review or source requirements.',
+            'critical'
+          )
+        );
+      }
+
+      return {
+        ...current,
+        aiSystems: current.aiSystems.map((system) =>
+          system.id === systemId ? { ...system, ...updates } : system
+        ),
+      };
+    }, {
+      action: 'ai-system-update',
+      target: systemId,
+      summary: 'Updated AI system governance or risk data.',
+      severity: updates.status === 'approved' ? 'warning' : 'info',
+    });
   };
 
   const addDecisionLog = (decision: Omit<DecisionLog, 'id'>) => {
-    setStoredWorkspace((current) => ({
-      ...current,
-      decisionLogs: [{ ...decision, id: makeId('decision') }, ...current.decisionLogs],
-    }));
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        decisionLogs: [{ ...decision, id: makeId('decision') }, ...current.decisionLogs],
+      }),
+      {
+        action: 'decision-log-create',
+        target: decision.title,
+        summary: `Logged AI-influenced decision: ${decision.title}`,
+      }
+    );
   };
 
   const updateDecisionLog = (decisionId: string, updates: Partial<DecisionLog>) => {
-    setStoredWorkspace((current) => ({
-      ...current,
-      decisionLogs: current.decisionLogs.map((decision) =>
-        decision.id === decisionId ? { ...decision, ...updates } : decision
-      ),
-    }));
+    commitWorkspace((current) => {
+      const target = current.decisionLogs.find((decision) => decision.id === decisionId);
+      if (!target) {
+        return current;
+      }
+
+      if (
+        updates.verificationStatus === 'verified' &&
+        !canRolePerform(currentActor.role, 'verify-decision')
+      ) {
+        return queueApprovalRequest(current, {
+          title: `Verify decision: ${target.title}`,
+          type: 'decision',
+          targetId: target.id,
+          approverRole: 'security',
+          reason: `${getRoleLabel(currentActor.role)} cannot mark AI-influenced decisions as verified directly.`,
+          requestedAction: 'verify-decision',
+          payload: JSON.stringify({ updates }),
+        });
+      }
+
+      return {
+        ...current,
+        decisionLogs: current.decisionLogs.map((decision) =>
+          decision.id === decisionId ? { ...decision, ...updates } : decision
+        ),
+      };
+    }, {
+      action: 'decision-log-update',
+      target: decisionId,
+      summary: 'Updated decision verification or follow-up state.',
+      severity: updates.verificationStatus === 'verified' ? 'warning' : 'info',
+    });
+  };
+
+  const selectActor = (memberId: string) => {
+    setCurrentActorId(memberId);
+  };
+
+  const createWorkspaceSnapshot = () => {
+    if (!canRolePerform(currentActor.role, 'create-snapshot')) {
+      window.alert(`${getRoleLabel(currentActor.role)} cannot create snapshots directly.`);
+      commitWorkspace((current) => current, {
+        action: 'snapshot-denied',
+        target: 'Workspace snapshot',
+        summary: 'Snapshot creation was denied due to role restrictions.',
+        severity: 'warning',
+      });
+      return;
+    }
+
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        snapshots: [
+          createSnapshot(
+            current,
+            `Snapshot ${new Date().toLocaleString()}`,
+            'Manual restore point captured from the control room.'
+          ),
+          ...current.snapshots,
+        ].slice(0, 20),
+      }),
+      {
+        action: 'snapshot-create',
+        target: 'Workspace snapshot',
+        summary: 'Created a new workspace restore point.',
+      }
+    );
+  };
+
+  const restoreWorkspaceSnapshot = (snapshotId: string) => {
+    if (!canRolePerform(currentActor.role, 'create-snapshot')) {
+      commitWorkspace((current) => {
+        const snapshot = current.snapshots.find((item) => item.id === snapshotId);
+        if (!snapshot) {
+          return current;
+        }
+
+        return queueApprovalRequest(current, {
+          title: `Restore snapshot: ${snapshot.name}`,
+          type: 'workspace',
+          targetId: snapshot.id,
+          approverRole: 'founder',
+          reason: `${getRoleLabel(currentActor.role)} cannot restore snapshots directly.`,
+          requestedAction: 'restore-snapshot',
+          payload: JSON.stringify({ snapshotId }),
+        });
+      });
+      return;
+    }
+
+    commitWorkspace((current) => {
+      const snapshot = current.snapshots.find((item) => item.id === snapshotId);
+      if (!snapshot) {
+        return current;
+      }
+
+      try {
+        const restored = normalizeWorkspaceData(JSON.parse(snapshot.data));
+        return {
+          ...restored,
+          snapshots: current.snapshots,
+        };
+      } catch {
+        return appendAuditEvent(
+          current,
+          createAuditEvent(
+            currentActor.name,
+            'snapshot-restore-failed',
+            snapshot.name,
+            'Snapshot restore failed because the snapshot data was invalid.',
+            'critical'
+          )
+        );
+      }
+    }, {
+      action: 'snapshot-restore',
+      target: snapshotId,
+      summary: 'Restored workspace state from a saved snapshot.',
+      severity: 'warning',
+    });
+  };
+
+  const approveRequest = (requestId: string) => {
+    commitWorkspace((current) => {
+      const request = current.approvalRequests.find((item) => item.id === requestId);
+      if (!request) {
+        return current;
+      }
+
+      if (!(currentActor.role === request.approverRole || currentActor.role === 'founder')) {
+        return appendAuditEvent(
+          current,
+          createAuditEvent(
+            currentActor.name,
+            'approval-denied',
+            request.title,
+            'Approval was denied because the actor does not have the required role.',
+            'warning'
+          )
+        );
+      }
+
+      let next: WorkspaceData = {
+        ...current,
+        approvalRequests: current.approvalRequests.map((item) =>
+          item.id === requestId ? { ...item, status: 'approved' } : item
+        ),
+      };
+
+      const payload = JSON.parse(request.payload || '{}') as {
+        updates?: Partial<Automation & AISystem & DecisionLog>;
+        snapshotId?: string;
+      };
+
+      if (request.requestedAction === 'activate-automation') {
+        next = {
+          ...next,
+          automations: next.automations.map((automation) =>
+            automation.id === request.targetId ? { ...automation, ...(payload.updates ?? {}) } : automation
+          ),
+        };
+      }
+
+      if (request.requestedAction === 'approve-ai-system') {
+        next = {
+          ...next,
+          aiSystems: next.aiSystems.map((system) =>
+            system.id === request.targetId
+              ? { ...system, ...(payload.updates ?? {}), lastAudit: new Date().toISOString() }
+              : system
+          ),
+        };
+      }
+
+      if (request.requestedAction === 'verify-decision') {
+        next = {
+          ...next,
+          decisionLogs: next.decisionLogs.map((decision) =>
+            decision.id === request.targetId ? { ...decision, ...(payload.updates ?? {}) } : decision
+          ),
+        };
+      }
+
+      if (request.requestedAction === 'restore-snapshot' && payload.snapshotId) {
+        const snapshot = next.snapshots.find((item) => item.id === payload.snapshotId);
+        if (snapshot) {
+          try {
+            const restored = normalizeWorkspaceData(JSON.parse(snapshot.data));
+            next = {
+              ...restored,
+              approvalRequests: next.approvalRequests,
+              auditEvents: next.auditEvents,
+              snapshots: next.snapshots,
+            };
+          } catch {
+            return appendAuditEvent(
+              current,
+              createAuditEvent(
+                currentActor.name,
+                'snapshot-restore-failed',
+                request.title,
+                'Approved snapshot restore failed because the snapshot data was invalid.',
+                'critical'
+              )
+            );
+          }
+        }
+      }
+
+      return appendAuditEvent(
+        next,
+        createAuditEvent(
+          currentActor.name,
+          'approval-approved',
+          request.title,
+          `Approved request: ${request.title}`,
+          'warning'
+        )
+      );
+    });
+  };
+
+  const rejectRequest = (requestId: string) => {
+    commitWorkspace((current) => {
+      const request = current.approvalRequests.find((item) => item.id === requestId);
+      if (!request) {
+        return current;
+      }
+
+      if (!(currentActor.role === request.approverRole || currentActor.role === 'founder')) {
+        return current;
+      }
+
+      return appendAuditEvent(
+        {
+          ...current,
+          approvalRequests: current.approvalRequests.map((item) =>
+            item.id === requestId ? { ...item, status: 'rejected' } : item
+          ),
+        },
+        createAuditEvent(
+          currentActor.name,
+          'approval-rejected',
+          request.title,
+          `Rejected request: ${request.title}`,
+          'warning'
+        )
+      );
+    });
   };
 
   const navigateTo = (page: NavPage) => {
@@ -262,6 +714,17 @@ function App() {
   };
 
   const exportWorkspace = () => {
+    if (!canRolePerform(currentActor.role, 'export-workspace')) {
+      window.alert(`${getRoleLabel(currentActor.role)} cannot export workspace data directly.`);
+      commitWorkspace((current) => current, {
+        action: 'export-denied',
+        target: 'Workspace export',
+        summary: 'Workspace export was denied due to role restrictions.',
+        severity: 'warning',
+      });
+      return;
+    }
+
     const blob = new Blob([JSON.stringify(workspace, null, 2)], {
       type: 'application/json;charset=utf-8;',
     });
@@ -271,6 +734,34 @@ function App() {
     link.download = `onefounder-workspace-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
+
+    commitWorkspace((current) => current, {
+      action: 'export-workspace',
+      target: 'Workspace export',
+      summary: 'Exported workspace JSON.',
+    });
+  };
+
+  const exportBoardReport = () => {
+    if (!canRolePerform(currentActor.role, 'export-workspace')) {
+      window.alert(`${getRoleLabel(currentActor.role)} cannot export board reports directly.`);
+      return;
+    }
+
+    const markdown = buildBoardReportMarkdown(workspace);
+    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `onefounder-board-report-${new Date().toISOString().slice(0, 10)}.md`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    commitWorkspace((current) => current, {
+      action: 'export-board-report',
+      target: 'Board report',
+      summary: 'Exported board-ready markdown report.',
+    });
   };
 
   const importWorkspace = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -282,7 +773,18 @@ function App() {
     const text = await file.text();
     try {
       const parsed = JSON.parse(text);
-      setStoredWorkspace(normalizeWorkspaceData(parsed));
+      const imported = normalizeWorkspaceData(parsed);
+      const next = appendAuditEvent(
+        imported,
+        createAuditEvent(
+          currentActor.name,
+          'workspace-import',
+          file.name,
+          `Imported workspace data from ${file.name}.`,
+          'warning'
+        )
+      );
+      setStoredWorkspace(next);
       setActivePage('dashboard');
     } catch {
       window.alert('Could not import workspace JSON. Please check the file format.');
@@ -321,6 +823,20 @@ function App() {
             onUpdateAISystem={updateAISystem}
             onAddDecisionLog={addDecisionLog}
             onUpdateDecisionLog={updateDecisionLog}
+          />
+        );
+      case 'control':
+        return (
+          <ControlRoom
+            workspace={workspace}
+            currentActorId={currentActor.id}
+            currentActor={currentActor}
+            onSelectActor={selectActor}
+            onApproveRequest={approveRequest}
+            onRejectRequest={rejectRequest}
+            onCreateSnapshot={createWorkspaceSnapshot}
+            onRestoreSnapshot={restoreWorkspaceSnapshot}
+            onExportBoardReport={exportBoardReport}
           />
         );
       default:
@@ -443,15 +959,25 @@ function App() {
 
             <div className="hidden items-center gap-3 xl:flex">
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-right">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Current actor</p>
+                <p className="text-sm font-medium text-white">{currentActor.name}</p>
+                <p className="text-xs text-slate-400">{getRoleLabel(currentActor.role)}</p>
+              </div>
+              <select
+                value={currentActor.id}
+                onChange={(event) => selectActor(event.target.value)}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-cyan-500/30 focus:outline-none"
+              >
+                {workspace.teamMembers.map((member) => (
+                  <option key={member.id} value={member.id} className="bg-slate-900">
+                    {member.name} · {getRoleLabel(member.role)}
+                  </option>
+                ))}
+              </select>
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-right">
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">This month</p>
                 <p className="text-sm font-medium text-white">
                   Revenue {formatCurrency(monthlyIncome)} · Spend {formatCurrency(monthlyExpenses)}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-right">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">AI ops</p>
-                <p className="text-sm font-medium text-white">
-                  {workspace.automations.filter((automation) => automation.status === 'active').length} active · Trust {workspaceHealth.trustScore}/100
                 </p>
               </div>
               <button

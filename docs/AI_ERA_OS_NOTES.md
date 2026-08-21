@@ -37,6 +37,43 @@ A governance layer for AI use with:
 - decision verification log
 - readiness score across governance pillars
 
+### 3. Control Room
+A new operational governance workspace for:
+
+- approval queues
+- audit trail
+- team roles / acting operator mode
+- restore snapshots
+- board report export
+- source-backed AI risk brief
+
+This helps teams move from "everyone is using AI somehow" to "we know who changed what, who approved it, and how to roll back safely."
+
+### 4. Workspace portability
+Founders can now export and import the entire workspace as JSON.
+
+This reduces tool lock-in, makes testing easier, and gives teams a recovery path if experiments go wrong.
+
+### 5. AI-aware dashboard
+The dashboard now surfaces:
+
+- automation leverage
+- trust score
+- stale follow-ups
+- overdue execution risk
+- verification backlog
+
+### 6. Better founder workflow integration
+The AI chat, ideas, CRM, finance, projects, automation, and trust systems are now connected through a single persistent workspace state.
+
+### 7. Governance logic beyond visuals
+The product now includes lightweight governance behaviors:
+
+- restricted automation activation can require approval
+- higher-risk AI system approvals can be role-gated
+- decision verification can be routed through approvals
+- risky and sensitive changes create audit records automatically
+
 ### 3. Workspace portability
 Founders can now export and import the entire workspace as JSON.
 

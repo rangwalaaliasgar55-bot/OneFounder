@@ -15,6 +15,7 @@ import {
   User,
 } from 'lucide-react';
 import { usePersistentState } from '../hooks/usePersistentState';
+import { researchInsights } from '../lib/aiResearch';
 import { formatCompactCurrency, getDaysUntil } from '../lib/workspace';
 import type { ChatMessage, WorkspaceData } from '../types';
 
@@ -120,6 +121,14 @@ function detectMode(input: string, fallbackMode: string) {
   return detected?.id ?? fallbackMode;
 }
 
+function buildSourceBackedNote() {
+  return researchInsights
+    .map(
+      (insight) => `- ${insight.problem} Source: ${insight.sourceTitle} (${insight.sourceUrl})`
+    )
+    .join('\n');
+}
+
 function buildResponse(mode: string, input: string, workspace: WorkspaceData) {
   const openLeads = workspace.leads.filter((lead) => lead.stage !== 'won');
   const staleLeads = workspace.leads.filter((lead) => lead.stage !== 'won' && getDaysUntil(lead.lastContacted) <= -7);
@@ -144,6 +153,11 @@ function buildResponse(mode: string, input: string, workspace: WorkspaceData) {
   );
 
   const sharedContext = `Workspace snapshot: ${openLeads.length} open leads, ${overdueTasks.length} overdue tasks, ${formatCompactCurrency(income)} income, ${formatCompactCurrency(expenses)} spend in the last 30 days, ${activeAutomations.length} active automations, and ${highRiskSystems.length} high-risk AI systems.`;
+  const wantsSources = ['source', 'sources', 'citation', 'citations', 'research', 'evidence', 'trust', 'governance'].some((keyword) => input.toLowerCase().includes(keyword));
+
+  if (wantsSources) {
+    return `${sharedContext} Here is the source-backed version of the advice:\n${buildSourceBackedNote()}\n\nOperational move: combine automation speed with explicit approvals, human review for high-risk outputs, sensitivity labels, and a decision verification log.`;
+  }
 
   switch (mode) {
     case 'code':

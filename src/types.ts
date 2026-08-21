@@ -6,7 +6,8 @@ export type NavPage =
   | 'crm'
   | 'finance'
   | 'automations'
-  | 'trust';
+  | 'trust'
+  | 'control';
 
 export type MarketSize = 'Niche' | 'Growing' | 'Medium' | 'Large';
 
@@ -117,6 +118,59 @@ export interface DecisionLog {
   nextCheck: string;
 }
 
+export type TeamRole = 'founder' | 'ops' | 'security' | 'finance' | 'growth';
+export type TeamStatus = 'active' | 'observer';
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: TeamRole;
+  status: TeamStatus;
+}
+
+export type ApprovalRequestType = 'automation' | 'ai-system' | 'decision' | 'workspace';
+export type ApprovalRequestStatus = 'pending' | 'approved' | 'rejected';
+export type ApprovalAction =
+  | 'activate-automation'
+  | 'approve-ai-system'
+  | 'verify-decision'
+  | 'restore-snapshot';
+
+export interface ApprovalRequest {
+  id: string;
+  title: string;
+  type: ApprovalRequestType;
+  targetId: string;
+  requestedBy: string;
+  approverRole: TeamRole;
+  status: ApprovalRequestStatus;
+  createdAt: string;
+  reason: string;
+  requestedAction: ApprovalAction;
+  payload: string;
+}
+
+export type AuditSeverity = 'info' | 'warning' | 'critical';
+
+export interface AuditEvent {
+  id: string;
+  actor: string;
+  action: string;
+  target: string;
+  summary: string;
+  severity: AuditSeverity;
+  createdAt: string;
+}
+
+export interface Snapshot {
+  id: string;
+  name: string;
+  createdAt: string;
+  summary: string;
+  data: string;
+}
+
 export interface WorkspaceData {
   ideas: Idea[];
   tasks: Task[];
@@ -125,6 +179,10 @@ export interface WorkspaceData {
   automations: Automation[];
   aiSystems: AISystem[];
   decisionLogs: DecisionLog[];
+  teamMembers: TeamMember[];
+  approvalRequests: ApprovalRequest[];
+  auditEvents: AuditEvent[];
+  snapshots: Snapshot[];
 }
 
 export interface ChatMessage {

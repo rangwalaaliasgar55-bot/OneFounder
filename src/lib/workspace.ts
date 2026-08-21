@@ -1,13 +1,18 @@
 import type {
   AISystem,
+  ApprovalRequest,
+  AuditEvent,
   Automation,
   DataSensitivity,
   DecisionLog,
   Idea,
   Lead,
+  Snapshot,
   Task,
   TaskPriority,
   TaskStatus,
+  TeamMember,
+  TeamRole,
   Transaction,
   WorkspaceData,
 } from '../types';
@@ -95,6 +100,50 @@ export function getDaysSince(value: string) {
 
 export function isOverdue(value: string) {
   return getDaysUntil(value) < 0;
+}
+
+export function getRoleLabel(role: TeamRole) {
+  return {
+    founder: 'Founder',
+    ops: 'Ops Lead',
+    security: 'Security Lead',
+    finance: 'Finance Lead',
+    growth: 'Growth Lead',
+  }[role];
+}
+
+export function canRolePerform(
+  role: TeamRole,
+  action:
+    | 'export-workspace'
+    | 'create-snapshot'
+    | 'activate-restricted-automation'
+    | 'approve-high-risk-ai'
+    | 'approve-request'
+    | 'verify-decision'
+) {
+  const roleMatrix: Record<TeamRole, string[]> = {
+    founder: [
+      'export-workspace',
+      'create-snapshot',
+      'activate-restricted-automation',
+      'approve-high-risk-ai',
+      'approve-request',
+      'verify-decision',
+    ],
+    ops: ['create-snapshot'],
+    security: [
+      'create-snapshot',
+      'activate-restricted-automation',
+      'approve-high-risk-ai',
+      'approve-request',
+      'verify-decision',
+    ],
+    finance: ['export-workspace', 'approve-request', 'verify-decision'],
+    growth: [],
+  };
+
+  return roleMatrix[role].includes(action);
 }
 
 export function calculateIdeaScore({
@@ -414,7 +463,119 @@ export function createSeedWorkspace(): WorkspaceData {
     },
   ];
 
-  return { ideas, tasks, leads, transactions, automations, aiSystems, decisionLogs };
+  const teamMembers: TeamMember[] = [
+    {
+      id: 'member-1',
+      name: 'Founder',
+      email: 'founder@onefounder.app',
+      role: 'founder',
+      status: 'active',
+    },
+    {
+      id: 'member-2',
+      name: 'Ava Patel',
+      email: 'ava@onefounder.app',
+      role: 'ops',
+      status: 'active',
+    },
+    {
+      id: 'member-3',
+      name: 'Priya Shah',
+      email: 'priya@onefounder.app',
+      role: 'security',
+      status: 'active',
+    },
+    {
+      id: 'member-4',
+      name: 'Noah Kim',
+      email: 'noah@onefounder.app',
+      role: 'finance',
+      status: 'active',
+    },
+    {
+      id: 'member-5',
+      name: 'Maya Brooks',
+      email: 'maya@onefounder.app',
+      role: 'growth',
+      status: 'observer',
+    },
+  ];
+
+  const approvalRequests: ApprovalRequest[] = [
+    {
+      id: 'approval-1',
+      title: 'Review support reply draft bot for production safety',
+      type: 'ai-system',
+      targetId: 'ai-3',
+      requestedBy: 'Customer Success',
+      approverRole: 'security',
+      status: 'pending',
+      createdAt: daysAgo(1),
+      reason: 'Critical-risk system lacks human review and source requirements.',
+      requestedAction: 'approve-ai-system',
+      payload: JSON.stringify({
+        updates: {
+          humanReview: true,
+          sourceRequired: true,
+          status: 'monitoring',
+        },
+      }),
+    },
+  ];
+
+  const auditEvents: AuditEvent[] = [
+    {
+      id: 'audit-1',
+      actor: 'Founder',
+      action: 'workspace-upgrade',
+      target: 'OneFounder',
+      summary: 'Initial AI-era workspace controls were enabled.',
+      severity: 'info',
+      createdAt: daysAgo(2),
+    },
+    {
+      id: 'audit-2',
+      actor: 'Priya Shah',
+      action: 'risk-review',
+      target: 'Support reply draft bot',
+      summary: 'Flagged missing human review on a restricted, customer-facing system.',
+      severity: 'critical',
+      createdAt: daysAgo(1),
+    },
+  ];
+
+  const snapshots: Snapshot[] = [
+    {
+      id: 'snapshot-1',
+      name: 'Baseline restored upgrade',
+      createdAt: daysAgo(0),
+      summary: 'Snapshot after restoring the original zip and applying the first major workspace upgrade.',
+      data: '',
+    },
+  ];
+
+  const baseWorkspace: WorkspaceData = {
+    ideas,
+    tasks,
+    leads,
+    transactions,
+    automations,
+    aiSystems,
+    decisionLogs,
+    teamMembers,
+    approvalRequests,
+    auditEvents,
+    snapshots,
+  };
+
+  baseWorkspace.snapshots = [
+    {
+      ...snapshots[0],
+      data: serializeSnapshotData(baseWorkspace),
+    },
+  ];
+
+  return baseWorkspace;
 }
 
 function toStringArray(value: unknown) {
@@ -425,6 +586,12 @@ function normalizeSensitivity(value: unknown): DataSensitivity {
   return value === 'public' || value === 'internal' || value === 'confidential' || value === 'restricted'
     ? value
     : 'internal';
+}
+
+function normalizeTeamRole(value: unknown): TeamRole {
+  return value === 'founder' || value === 'ops' || value === 'security' || value === 'finance' || value === 'growth'
+    ? value
+    : 'founder';
 }
 
 export function normalizeWorkspaceData(input: unknown): WorkspaceData {
@@ -527,7 +694,117 @@ export function normalizeWorkspaceData(input: unknown): WorkspaceData {
           nextCheck: decision.nextCheck ?? new Date().toISOString(),
         }))
       : seed.decisionLogs,
+    teamMembers: Array.isArray(data.teamMembers)
+      ? data.teamMembers.map((member, index) => ({
+          id: member.id ?? `member-import-${index}`,
+          name: member.name ?? 'Imported member',
+          email: member.email ?? '',
+          role: normalizeTeamRole(member.role),
+          status: member.status ?? 'active',
+        }))
+      : seed.teamMembers,
+    approvalRequests: Array.isArray(data.approvalRequests)
+      ? data.approvalRequests.map((request, index) => ({
+          id: request.id ?? `approval-import-${index}`,
+          title: request.title ?? 'Imported approval',
+          type: request.type ?? 'workspace',
+          targetId: request.targetId ?? '',
+          requestedBy: request.requestedBy ?? 'System',
+          approverRole: normalizeTeamRole(request.approverRole),
+          status: request.status ?? 'pending',
+          createdAt: request.createdAt ?? new Date().toISOString(),
+          reason: request.reason ?? '',
+          requestedAction: request.requestedAction ?? 'restore-snapshot',
+          payload: typeof request.payload === 'string' ? request.payload : '{}',
+        }))
+      : seed.approvalRequests,
+    auditEvents: Array.isArray(data.auditEvents)
+      ? data.auditEvents.map((event, index) => ({
+          id: event.id ?? `audit-import-${index}`,
+          actor: event.actor ?? 'System',
+          action: event.action ?? 'import',
+          target: event.target ?? 'Workspace',
+          summary: event.summary ?? '',
+          severity: event.severity ?? 'info',
+          createdAt: event.createdAt ?? new Date().toISOString(),
+        }))
+      : seed.auditEvents,
+    snapshots: Array.isArray(data.snapshots)
+      ? data.snapshots.map((snapshot, index) => ({
+          id: snapshot.id ?? `snapshot-import-${index}`,
+          name: snapshot.name ?? 'Imported snapshot',
+          createdAt: snapshot.createdAt ?? new Date().toISOString(),
+          summary: snapshot.summary ?? '',
+          data: typeof snapshot.data === 'string' ? snapshot.data : '{}',
+        }))
+      : seed.snapshots,
   };
+}
+
+export function createAuditEvent(
+  actor: string,
+  action: string,
+  target: string,
+  summary: string,
+  severity: AuditEvent['severity'] = 'info'
+): AuditEvent {
+  return {
+    id: makeId('audit'),
+    actor,
+    action,
+    target,
+    summary,
+    severity,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export function appendAuditEvent(data: WorkspaceData, event: AuditEvent) {
+  return {
+    ...data,
+    auditEvents: [event, ...data.auditEvents].slice(0, 200),
+  };
+}
+
+export function serializeSnapshotData(workspace: WorkspaceData) {
+  const snapshotSafeWorkspace: WorkspaceData = {
+    ...workspace,
+    snapshots: [],
+  };
+
+  return JSON.stringify(snapshotSafeWorkspace);
+}
+
+export function createSnapshot(workspace: WorkspaceData, name: string, summary: string): Snapshot {
+  return {
+    id: makeId('snapshot'),
+    name,
+    createdAt: new Date().toISOString(),
+    summary,
+    data: serializeSnapshotData(workspace),
+  };
+}
+
+export function buildBoardReportMarkdown(workspace: WorkspaceData) {
+  const monthlyIncome = workspace.transactions
+    .filter((transaction) => transaction.type === 'income' && getDaysUntil(transaction.date) >= -30)
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const monthlyExpenses = workspace.transactions
+    .filter((transaction) => transaction.type === 'expense' && getDaysUntil(transaction.date) >= -30)
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const trustScore = calculateAIReadinessScore(workspace.aiSystems, workspace.automations);
+  const activeAutomations = workspace.automations.filter((automation) => automation.status === 'active');
+  const staleLeads = workspace.leads.filter((lead) => lead.stage !== 'won' && getDaysSince(lead.lastContacted) >= 7);
+  const overdueTasks = workspace.tasks.filter((task) => task.status !== 'done' && isOverdue(task.dueDate));
+  const unresolvedDecisions = workspace.decisionLogs.filter((decision) => decision.verificationStatus !== 'verified');
+
+  return `# OneFounder Board Report\n\nGenerated: ${new Date().toLocaleString()}\n\n## Operating Summary\n- Revenue (30d): ${formatCurrency(monthlyIncome)}\n- Expenses (30d): ${formatCurrency(monthlyExpenses)}\n- Net movement (30d): ${formatCurrency(monthlyIncome - monthlyExpenses)}\n- Active automations: ${activeAutomations.length}\n- Automation hours saved/week: ${calculateAutomationHours(workspace.automations).toFixed(1)}\n- AI readiness score: ${trustScore}/100\n\n## Current Risks\n- Overdue tasks: ${overdueTasks.length}\n- Stale revenue follow-ups: ${staleLeads.length}\n- Unverified AI-influenced decisions: ${unresolvedDecisions.length}\n- High-risk AI systems: ${workspace.aiSystems.filter((system) => system.riskLevel === 'high' || system.riskLevel === 'critical').length}\n\n## Governance Actions\n${workspace.approvalRequests
+    .filter((request) => request.status === 'pending')
+    .map((request) => `- Pending approval: ${request.title} (${request.requestedBy})`)
+    .join('\n') || '- No pending approvals'}\n\n## Recent Audit Events\n${workspace.auditEvents
+    .slice(0, 5)
+    .map((event) => `- ${formatShortDate(event.createdAt)} · ${event.actor} · ${event.summary}`)
+    .join('\n')}\n`;
 }
 
 export function getPriorityWeight(priority: TaskPriority) {
@@ -630,7 +907,7 @@ export function calculateAIReadinessScore(aiSystems: AISystem[], automations: Au
       }, 0) / automations.length
     : 80;
 
-  return Math.round(systemScore / aiSystems.length * 0.65 + automationScore * 0.35);
+  return Math.round((systemScore / aiSystems.length) * 0.65 + automationScore * 0.35);
 }
 
 export function getMonthKey(value: string) {
