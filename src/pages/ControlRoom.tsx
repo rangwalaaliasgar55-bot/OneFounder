@@ -40,6 +40,7 @@ interface ControlRoomProps {
   onRestoreSnapshot: (snapshotId: string) => void;
   onExportBoardReport: () => void;
   onToggleNotificationChannel: (channelId: string) => void;
+  onSendTestDelivery: () => void;
   onPauseAllAutomations: () => void;
   onLockdownHighRiskAI: () => void;
   onResetAlerts: () => void;
@@ -165,6 +166,7 @@ export default function ControlRoom({
   onRestoreSnapshot,
   onExportBoardReport,
   onToggleNotificationChannel,
+  onSendTestDelivery,
   onPauseAllAutomations,
   onLockdownHighRiskAI,
   onResetAlerts,
@@ -186,6 +188,14 @@ export default function ControlRoom({
   const criticalAudits = workspace.auditEvents.filter(
     (event) => event.severity === 'critical'
   );
+  const staleKnowledgeCount = workspace.knowledgeSources.filter((source) => source.status === 'stale').length;
+  const riskyShadowCount = workspace.shadowAIEntries.filter(
+    (entry) => entry.status !== 'approved' && (entry.riskLevel === 'high' || entry.riskLevel === 'critical')
+  ).length;
+  const warningOrCriticalTraces = workspace.aiTraces.filter(
+    (trace) => trace.outcome === 'warning' || trace.outcome === 'critical'
+  ).length;
+  const enabledChannelCount = workspace.notificationChannels.filter((channel) => channel.enabled).length;
   const backendReadiness = getBackendReadiness();
 
   const policyCards: Array<{
@@ -217,6 +227,36 @@ export default function ControlRoom({
       description: restrictedAutomations.length
         ? `${restrictedAutomations.length} automation(s) handle restricted data and should stay under explicit approval rules.`
         : 'No restricted-data automations are registered yet.',
+    },
+  ];
+
+  const endpointCards = [
+    {
+      name: 'Workspace Sync API',
+      status: cloudAvailable ? 'ready' : 'local fallback',
+      description: cloudAvailable
+        ? `Cloud sync is ${syncStatus}. Use pull/push controls to validate shared persistence.`
+        : 'Local-first mode is active. Cloud endpoint contracts are scaffolded but not configured.',
+    },
+    {
+      name: 'Approval Queue Endpoint',
+      status: pendingApprovals.length > 4 ? 'under load' : 'healthy',
+      description: `${pendingApprovals.length} request(s) are waiting in the governed approval queue.`,
+    },
+    {
+      name: 'Trace Ingestion Endpoint',
+      status: warningOrCriticalTraces ? 'attention needed' : 'healthy',
+      description: `${warningOrCriticalTraces} warning/critical AI trace(s) currently need review.`,
+    },
+    {
+      name: 'Knowledge Registry Endpoint',
+      status: staleKnowledgeCount || riskyShadowCount ? 'degraded' : 'healthy',
+      description: `${staleKnowledgeCount} stale source(s) and ${riskyShadowCount} risky shadow AI tool(s) are affecting trust.`,
+    },
+    {
+      name: 'Delivery Router Endpoint',
+      status: enabledChannelCount ? 'active' : 'inactive',
+      description: `${enabledChannelCount} delivery channel(s) currently enabled for alerts and board updates.`,
     },
   ];
 
@@ -397,6 +437,13 @@ export default function ControlRoom({
             >
               Push to cloud
             </button>
+            <button
+              type="button"
+              onClick={onSendTestDelivery}
+              className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-sm text-violet-300 transition-colors hover:bg-violet-500/20"
+            >
+              Send test delivery
+            </button>
           </div>
           <div className="mt-5 space-y-3">
             {workspace.notificationChannels.map((channel) => (
@@ -446,6 +493,23 @@ export default function ControlRoom({
                 </div>
                 <p className="mt-2 text-sm text-slate-400">{rule.description}</p>
                 <p className="mt-2 text-xs text-slate-500">Target: {rule.target} · {rule.autoEnforced ? 'Auto-enforced' : 'Manual review'}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+          <h2 className="text-xl font-semibold text-white">Core endpoints and service contracts</h2>
+          <div className="mt-5 grid gap-3">
+            {endpointCards.map((endpoint) => (
+              <div key={endpoint.name} className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium text-white">{endpoint.name}</p>
+                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${endpoint.status === 'healthy' || endpoint.status === 'ready' || endpoint.status === 'active' ? 'bg-emerald-500/15 text-emerald-300' : endpoint.status === 'local fallback' || endpoint.status === 'under load' || endpoint.status === 'attention needed' || endpoint.status === 'degraded' ? 'bg-amber-500/15 text-amber-300' : 'bg-slate-700/60 text-slate-300'}`}>
+                    {endpoint.status}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-slate-400">{endpoint.description}</p>
               </div>
             ))}
           </div>

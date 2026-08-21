@@ -1316,6 +1316,131 @@ export function calculateTraceHealth(traces: AITrace[]) {
   );
 }
 
+export function applyDerivedWorkspaceState(workspace: WorkspaceData): WorkspaceData {
+  const knowledgeSources: WorkspaceData['knowledgeSources'] = workspace.knowledgeSources.map((source) => {
+    const ageDays = getDaysSince(source.lastReviewed);
+    const freshnessScore = Math.max(0, Math.min(source.freshnessScore, 100 - Math.max(0, ageDays - 5)));
+    const status: KnowledgeSource['status'] = ageDays > 45 || freshnessScore < 50
+      ? 'stale'
+      : ageDays > 21 || freshnessScore < 80
+        ? 'needs-review'
+        : 'canonical';
+
+    return {
+      ...source,
+      freshnessScore,
+      status,
+    };
+  });
+
+  const reminders: WorkspaceData['reminders'] = workspace.reminders.map((reminder) => {
+    const status: Reminder['status'] = reminder.status === 'done'
+      ? 'done'
+      : new Date(reminder.dueAt).getTime() <= Date.now()
+        ? 'due'
+        : 'upcoming';
+
+    return {
+      ...reminder,
+      status,
+    };
+  });
+
+  const riskyShadowAI = workspace.shadowAIEntries.filter(
+    (entry) => entry.status !== 'approved' && (entry.riskLevel === 'high' || entry.riskLevel === 'critical')
+  );
+  const highRiskUngated = workspace.aiSystems.filter(
+    (system) => (system.riskLevel === 'high' || system.riskLevel === 'critical') && !system.humanReview
+  );
+  const restrictedAuto = workspace.automations.filter(
+    (automation) => automation.sensitivity === 'restricted' && automation.approvalMode === 'auto'
+  );
+  const enabledDeliveryChannels = workspace.notificationChannels.filter((channel) => channel.enabled).length;
+
+  const derivedRules: PolicyRule[] = [
+    {
+      id: 'policy-1',
+      name: 'High-risk AI requires human review',
+      description: 'Any high or critical AI system must have human review enabled before approval.',
+      severity: 'critical',
+      autoEnforced: true,
+      target: 'ai-systems',
+      status: highRiskUngated.length ? 'fail' : 'pass',
+    },
+    {
+      id: 'policy-2',
+      name: 'Restricted automations cannot auto-approve',
+      description: 'Restricted-data automation should pause for human or dual review.',
+      severity: 'critical',
+      autoEnforced: true,
+      target: 'automations',
+      status: restrictedAuto.length ? 'fail' : 'pass',
+    },
+    {
+      id: 'policy-3',
+      name: 'Knowledge used by AI should be reviewed regularly',
+      description: 'Canonical sources should stay fresh and high-use stale knowledge should be reviewed.',
+      severity: 'warning',
+      autoEnforced: false,
+      target: 'knowledge',
+      status: knowledgeSources.some((source) => source.status === 'stale') ? 'warn' : 'pass',
+    },
+    {
+      id: 'policy-4',
+      name: 'Shadow AI must be brought into governed channels',
+      description: 'High-risk unapproved AI tools should not remain outside the formal inventory and approval path.',
+      severity: 'critical',
+      autoEnforced: false,
+      target: 'shadow-ai',
+      status: riskyShadowAI.length ? 'fail' : 'pass',
+    },
+    {
+      id: 'policy-5',
+      name: 'At least one delivery channel should stay active',
+      description: 'Approvals, alerts, and workflow outcomes should route to a live delivery path.',
+      severity: 'warning',
+      autoEnforced: false,
+      target: 'delivery',
+      status: enabledDeliveryChannels ? 'pass' : 'warn',
+    },
+  ];
+
+  return {
+    ...workspace,
+    knowledgeSources,
+    reminders,
+    policyRules: derivedRules,
+  };
+}
+
+export function runWorkspaceSchedulerSweep(workspace: WorkspaceData): WorkspaceData {
+  const next = applyDerivedWorkspaceState(workspace);
+  const hasRecurringReviewReminder = next.reminders.some(
+    (reminder) =>
+      reminder.title === 'Next weekly founder review' && reminder.status !== 'done'
+  );
+
+  if (!hasRecurringReviewReminder && next.workflowRuns.some((run) => run.templateId === 'weekly-review')) {
+    return {
+      ...next,
+      reminders: [
+        {
+          id: makeId('reminder'),
+          title: 'Next weekly founder review',
+          description: 'Keep the weekly operating cadence alive with a recurring reminder.',
+          owner: 'Founder',
+          dueAt: daysFromNow(5),
+          status: 'upcoming',
+          linkedPage: 'playbooks',
+        },
+        ...next.reminders,
+      ],
+    };
+  }
+
+  return next;
+}
+
 export function getWorkspaceAlerts(workspace: WorkspaceData): WorkspaceAlert[] {
   const alerts: WorkspaceAlert[] = [];
   const overdueTasks = workspace.tasks.filter((task) => task.status !== 'done' && isOverdue(task.dueDate));

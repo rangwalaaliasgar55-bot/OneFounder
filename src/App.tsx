@@ -55,6 +55,7 @@ import {
   isOverdue,
   makeId,
   normalizeWorkspaceData,
+  runWorkspaceSchedulerSweep,
 } from './lib/workspace';
 import type {
   AISystem,
@@ -168,7 +169,10 @@ function App() {
     'onefounder.current-actor',
     'member-1'
   );
-  const workspace = useMemo(() => normalizeWorkspaceData(storedWorkspace), [storedWorkspace]);
+  const workspace = useMemo(
+    () => runWorkspaceSchedulerSweep(normalizeWorkspaceData(storedWorkspace)),
+    [storedWorkspace]
+  );
   const importFileRef = useRef<HTMLInputElement>(null);
   const {
     cloudAvailable,
@@ -189,8 +193,8 @@ function App() {
     meta?: ChangeMeta
   ) => {
     setStoredWorkspace((current) => {
-      const normalized = normalizeWorkspaceData(current);
-      let next = normalizeWorkspaceData(updater(normalized));
+      const normalized = runWorkspaceSchedulerSweep(normalizeWorkspaceData(current));
+      let next = runWorkspaceSchedulerSweep(normalizeWorkspaceData(updater(normalized)));
 
       if (meta) {
         next = appendAuditEvent(
@@ -1123,6 +1127,22 @@ function App() {
     );
   };
 
+  const sendTestDelivery = () => {
+    commitWorkspace(
+      (current) =>
+        appendDeliveryEvents(
+          current,
+          'Synthetic delivery test',
+          `Test delivery triggered by ${currentActor.name} from the control room.`
+        ),
+      {
+        action: 'delivery-test',
+        target: 'Notification channels',
+        summary: 'Sent a synthetic delivery test across configured channels.',
+      }
+    );
+  };
+
   const pauseAllAutomations = () => {
     commitWorkspace(
       (current) => ({
@@ -1554,6 +1574,7 @@ function App() {
             onRestoreSnapshot={restoreWorkspaceSnapshot}
             onExportBoardReport={exportBoardReport}
             onToggleNotificationChannel={toggleNotificationChannel}
+            onSendTestDelivery={sendTestDelivery}
             onPauseAllAutomations={pauseAllAutomations}
             onLockdownHighRiskAI={lockdownHighRiskAI}
             onResetAlerts={resetAlerts}
