@@ -1,215 +1,397 @@
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import {
+  BarChart3,
   Brain,
   Code,
-  Search,
-  Shield,
-  BarChart3,
-  Microscope,
   DollarSign,
+  Eraser,
+  Microscope,
   Puzzle,
   Rocket,
+  Search,
   Send,
+  Shield,
   Sparkles,
   User,
 } from 'lucide-react';
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  mode?: string;
-}
+import { usePersistentState } from '../hooks/usePersistentState';
+import { formatCompactCurrency, getDaysUntil } from '../lib/workspace';
+import type { ChatMessage, WorkspaceData } from '../types';
 
 interface ExpertMode {
   id: string;
   name: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   triggers: string[];
   description: string;
 }
 
+interface AIChatProps {
+  workspace: WorkspaceData;
+}
+
 const expertModes: ExpertMode[] = [
-  { id: 'founder', name: 'Founder AI', icon: <Brain className="w-4 h-4" />, triggers: [], description: 'Cross-domain founder advice' },
-  { id: 'code', name: 'Code Expert', icon: <Code className="w-4 h-4" />, triggers: ['code', 'bug', 'typescript'], description: 'Full-stack engineering' },
-  { id: 'seo', name: 'SEO Expert', icon: <Search className="w-4 h-4" />, triggers: ['seo', 'keywords', 'ranking'], description: 'Technical SEO & content' },
-  { id: 'security', name: 'Security Expert', icon: <Shield className="w-4 h-4" />, triggers: ['vulnerability', 'xss', 'auth'], description: 'OWASP & pen-testing' },
-  { id: 'data', name: 'Data Analyst', icon: <BarChart3 className="w-4 h-4" />, triggers: ['metrics', 'kpi', 'mrr'], description: 'Analytics & visualization' },
-  { id: 'research', name: 'Research Expert', icon: <Microscope className="w-4 h-4" />, triggers: ['competitor', 'market', 'trend'], description: 'Market research' },
-  { id: 'finance', name: 'Finance Expert', icon: <DollarSign className="w-4 h-4" />, triggers: ['revenue', 'burn', 'fundraising'], description: 'SaaS metrics & fundraising' },
-  { id: 'product', name: 'Product Expert', icon: <Puzzle className="w-4 h-4" />, triggers: ['roadmap', 'ux', 'sprint'], description: 'Product management' },
-  { id: 'startup', name: 'Startup Advisor', icon: <Rocket className="w-4 h-4" />, triggers: ['strategy', 'gtm', 'scale'], description: 'YC-style advice' },
+  {
+    id: 'founder',
+    name: 'Founder AI',
+    icon: <Brain className="h-4 w-4" />,
+    triggers: ['founder', 'strategy', 'priorities', 'startup'],
+    description: 'Cross-functional startup guidance grounded in your workspace data.',
+  },
+  {
+    id: 'code',
+    name: 'Code Expert',
+    icon: <Code className="h-4 w-4" />,
+    triggers: ['code', 'bug', 'typescript', 'react', 'performance'],
+    description: 'Product engineering, maintainability, and shipping quality.',
+  },
+  {
+    id: 'seo',
+    name: 'SEO Expert',
+    icon: <Search className="h-4 w-4" />,
+    triggers: ['seo', 'ranking', 'content', 'landing page', 'traffic'],
+    description: 'Acquisition and content positioning ideas.',
+  },
+  {
+    id: 'security',
+    name: 'Security Expert',
+    icon: <Shield className="h-4 w-4" />,
+    triggers: ['security', 'auth', 'xss', 'vulnerability', 'risk'],
+    description: 'App hardening, auth hygiene, and risk reduction.',
+  },
+  {
+    id: 'data',
+    name: 'Data Analyst',
+    icon: <BarChart3 className="h-4 w-4" />,
+    triggers: ['metrics', 'kpi', 'dashboard', 'analytics', 'data'],
+    description: 'KPI diagnosis with practical decision support.',
+  },
+  {
+    id: 'research',
+    name: 'Research Expert',
+    icon: <Microscope className="h-4 w-4" />,
+    triggers: ['competitor', 'market', 'trend', 'research'],
+    description: 'Market lens for idea selection and positioning.',
+  },
+  {
+    id: 'finance',
+    name: 'Finance Expert',
+    icon: <DollarSign className="h-4 w-4" />,
+    triggers: ['finance', 'revenue', 'burn', 'runway', 'pricing'],
+    description: 'Cashflow, runway, pricing, and monetization support.',
+  },
+  {
+    id: 'product',
+    name: 'Product Expert',
+    icon: <Puzzle className="h-4 w-4" />,
+    triggers: ['product', 'ux', 'roadmap', 'retention', 'feature'],
+    description: 'Product planning and user experience recommendations.',
+  },
+  {
+    id: 'startup',
+    name: 'Startup Advisor',
+    icon: <Rocket className="h-4 w-4" />,
+    triggers: ['gtm', 'scale', 'sales', 'pitch', 'fundraising'],
+    description: 'Growth sequencing and founder-level next steps.',
+  },
 ];
 
-export default function AIChat() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: "Welcome to OneFounder AI! I'm your intelligent assistant with 9 expert modes. Ask me anything about your startup - from code reviews to fundraising strategies. How can I help you today?",
-      mode: 'founder',
-    },
-  ]);
+const suggestionPrompts = [
+  'What should I focus on this week based on my workspace?',
+  'How can I improve the highest scoring idea before building?',
+  'Which leads need follow-up and what message should I send?',
+  'Give me a quick cost-control plan for the current month.',
+];
+
+function createWelcomeMessage(): ChatMessage {
+  return {
+    id: 'welcome',
+    role: 'assistant',
+    mode: 'founder',
+    timestamp: new Date().toISOString(),
+    content:
+      'Welcome back to OneFounder AI. I can now read your workspace context, suggest priorities, detect the best expert mode automatically, and keep your chat history saved locally.',
+  };
+}
+
+function detectMode(input: string, fallbackMode: string) {
+  const lower = input.toLowerCase();
+  const detected = expertModes.find((mode) => mode.triggers.some((trigger) => lower.includes(trigger)));
+  return detected?.id ?? fallbackMode;
+}
+
+function buildResponse(mode: string, input: string, workspace: WorkspaceData) {
+  const openLeads = workspace.leads.filter((lead) => lead.stage !== 'won');
+  const staleLeads = workspace.leads.filter((lead) => lead.stage !== 'won' && getDaysUntil(lead.lastContacted) <= -7);
+  const overdueTasks = workspace.tasks.filter((task) => task.status !== 'done' && getDaysUntil(task.dueDate) < 0);
+  const topIdea = [...workspace.ideas].sort((left, right) => right.score - left.score)[0];
+  const income = workspace.transactions
+    .filter((transaction) => transaction.type === 'income' && getDaysUntil(transaction.date) >= -30)
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const expenses = workspace.transactions
+    .filter((transaction) => transaction.type === 'expense' && getDaysUntil(transaction.date) >= -30)
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const completionRate = workspace.tasks.length
+    ? Math.round((workspace.tasks.filter((task) => task.status === 'done').length / workspace.tasks.length) * 100)
+    : 0;
+
+  const sharedContext = `Workspace snapshot: ${openLeads.length} open leads, ${overdueTasks.length} overdue tasks, ${formatCompactCurrency(income)} income, ${formatCompactCurrency(expenses)} spend in the last 30 days.`;
+
+  switch (mode) {
+    case 'code':
+      return `${sharedContext} From a product engineering angle, keep the interface modular and data-driven. Your next code improvement should be extracting more shared UI patterns and validating forms before save. If you want, ask me for a specific refactor checklist for “${input}”.`;
+    case 'seo':
+      return `${sharedContext} I would turn ${topIdea?.title ?? 'your best idea'} into a category landing page with founder pain points, ROI proof, and a simple comparison table. Publish one customer story, one template article, and one “how it works” page to build topical depth.`;
+    case 'security':
+      return `${sharedContext} Security priority number one is protecting every data mutation path with validation and safe defaults. For this app, I would keep local persistence minimal, sanitize any future rich text inputs, and add backend auth plus row-level security before handling real customer data.`;
+    case 'data':
+      return `${sharedContext} Your completion rate is ${completionRate}% and the healthiest growth lever looks like pipeline activation. I would track three leading indicators next: stale leads older than 7 days, overdue task count, and net cash movement by month.`;
+    case 'research':
+      return `${sharedContext} The strongest opportunity in your current workspace is ${topIdea?.title ?? 'idea discovery'}. I would validate it with five founder interviews, pricing sensitivity checks, and a competitor teardown focused on implementation speed and switching friction.`;
+    case 'finance':
+      return `${sharedContext} Net movement over the last 30 days is ${formatCompactCurrency(income - expenses)}. If you want a quick win, reduce the top expense categories that are not tied directly to acquisition or product reliability, then create one upsell offer for leads already in proposal or negotiation.`;
+    case 'product':
+      return `${sharedContext} Product-wise, I would prioritize improvements that remove friction from onboarding and follow-up workflows. Your top idea should evolve into a clearer problem statement, success metric, and smallest lovable scope before any larger roadmap bet.`;
+    case 'startup':
+      return `${sharedContext} Founder advice: keep your next two weeks centered on revenue and execution. Close stale follow-ups first, clear overdue tasks second, and use the AI chat plus idea scoring to avoid building low-signal features.`;
+    default:
+      return `${sharedContext} My founder recommendation for “${input}” is to align sales, product, and cashflow around one outcome at a time. Right now that means reviving ${staleLeads.length} stale lead${staleLeads.length === 1 ? '' : 's'}, protecting focus against ${overdueTasks.length} overdue task${overdueTasks.length === 1 ? '' : 's'}, and only pushing the highest-conviction idea forward.`;
+  }
+}
+
+export default function AIChat({ workspace }: AIChatProps) {
+  const [messages, setMessages] = usePersistentState<ChatMessage[]>('onefounder.chat', () => [createWelcomeMessage()]);
+  const [activeMode, setActiveMode] = usePersistentState('onefounder.chat-mode', 'founder');
   const [input, setInput] = useState('');
-  const [activeMode, setActiveMode] = useState('founder');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isTyping]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const activeModeData = useMemo(
+    () => expertModes.find((mode) => mode.id === activeMode) ?? expertModes[0],
+    [activeMode]
+  );
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
+  const suggestedMode = input.trim() ? detectMode(input, activeMode) : activeMode;
+
+  const handleSend = () => {
+    const trimmed = input.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    const resolvedMode = detectMode(trimmed, activeMode);
+    const nextTimestamp = new Date().toISOString();
+    const userMessage: ChatMessage = {
+      id: `${Date.now()}-user`,
       role: 'user',
-      content: input.trim(),
+      content: trimmed,
+      mode: resolvedMode,
+      timestamp: nextTimestamp,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((current) => [...current, userMessage]);
+    setActiveMode(resolvedMode);
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const responses: Record<string, string> = {
-        founder: "Looking at your current trajectory, I'd recommend focusing on customer acquisition before scaling. Your conversion rate of 3.2% has room for improvement. Let's dive into specific strategies...",
-        code: "I've analyzed your code structure. For better maintainability, consider implementing a repository pattern for your data layer. This will decouple your business logic from the database implementation.",
-        seo: "Based on your target keywords, I recommend creating topic clusters around 'startup tools' and 'founder productivity'. Your current content gap shows opportunity in how-to guides.",
-        security: "I've identified 3 potential vulnerabilities in your auth flow. The main concern is CSRF token validation. Here's a fix: implement double-submit cookie pattern...",
-        data: "Your MRR growth rate of 12.5% is solid for this stage. Churn analysis shows most users leave after month 3. Recommend implementing onboarding improvements.",
-        research: "Market analysis shows your competitors are pricing 20% higher on average. There's an opportunity to capture the budget-conscious segment while maintaining quality positioning.",
-        finance: "With a current burn rate of $8,500/month and 14 months runway, you're in a healthy position. Consider raising when you hit $20K MRR for better terms.",
-        product: "Your roadmap looks solid. I'd recommend moving the analytics feature earlier - users have been requesting it and it directly impacts retention.",
-        startup: "Your go-to-market strategy needs refinement. Focus on a single channel first, validate with 100 customers, then expand. Don't spread too thin.",
-      };
-
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
+    window.setTimeout(() => {
+      const assistantMessage: ChatMessage = {
+        id: `${Date.now()}-assistant`,
         role: 'assistant',
-        content: responses[activeMode] || responses.founder,
-        mode: activeMode,
+        mode: resolvedMode,
+        timestamp: new Date().toISOString(),
+        content: buildResponse(resolvedMode, trimmed, workspace),
       };
 
-      setMessages((prev) => [...prev, aiResponse]);
+      setMessages((current) => [...current, assistantMessage]);
       setIsTyping(false);
-    }, 1500);
+    }, 650);
   };
 
-  const activeModeData = expertModes.find((m) => m.id === activeMode);
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSend();
+    }
+  };
+
+  const clearChat = () => {
+    setMessages([createWelcomeMessage()]);
+    setIsTyping(false);
+  };
 
   return (
-    <div className="h-[calc(100vh-7rem)] flex gap-6 max-w-7xl mx-auto">
-      {/* Sidebar - Expert Modes */}
-      <div className="w-64 flex-shrink-0 rounded-2xl bg-slate-800/50 backdrop-blur-sm border border-white/10 p-4 overflow-y-auto">
-        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Expert Modes</h2>
-        <div className="space-y-1">
+    <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
+      <aside className="rounded-3xl border border-white/10 bg-slate-900/60 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">Expert modes</p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Pick your copilot</h2>
+          </div>
+          <div className="rounded-2xl bg-cyan-500/10 p-3 text-cyan-300">
+            <Sparkles className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
           {expertModes.map((mode) => {
             const isActive = activeMode === mode.id;
             return (
               <button
                 key={mode.id}
+                type="button"
                 onClick={() => setActiveMode(mode.id)}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left ${
+                className={`rounded-2xl border p-4 text-left transition-all ${
                   isActive
-                    ? 'bg-gradient-to-r from-cyan-500/20 to-blue-600/20 border border-cyan-500/30 text-white'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    ? 'border-cyan-500/30 bg-cyan-500/10 text-white'
+                    : 'border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:text-white'
                 }`}
               >
-                <div className={`p-1.5 rounded-lg ${isActive ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5'}`}>
-                  {mode.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{mode.name}</p>
+                <div className="flex items-center gap-3">
+                  <div className={`rounded-xl p-2 ${isActive ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-950/60 text-slate-400'}`}>
+                    {mode.icon}
+                  </div>
+                  <div>
+                    <p className="font-medium">{mode.name}</p>
+                    <p className="text-xs text-slate-400">{mode.description}</p>
+                  </div>
                 </div>
               </button>
             );
           })}
         </div>
-      </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col rounded-2xl bg-slate-800/50 backdrop-blur-sm border border-white/10 overflow-hidden">
-        {/* Chat Header */}
-        <div className="flex items-center gap-3 p-4 border-b border-white/10">
-          <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600">
-            {activeModeData?.icon}
-          </div>
-          <div>
-            <h2 className="font-semibold text-white">{activeModeData?.name}</h2>
-            <p className="text-xs text-slate-400">{activeModeData?.description}</p>
-          </div>
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p className="text-sm font-medium text-white">Smart routing</p>
+          <p className="mt-2 text-sm text-slate-400">
+            Suggested mode for your current message:
+            <span className="ml-1 font-medium text-cyan-300">
+              {expertModes.find((mode) => mode.id === suggestedMode)?.name}
+            </span>
+          </p>
         </div>
+      </aside>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}
-            >
-              {message.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="w-4 h-4 text-white" />
+      <section className="flex min-h-[70vh] flex-col rounded-3xl border border-white/10 bg-slate-900/60">
+        <div className="border-b border-white/10 p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 p-3 text-white">
+                  {activeModeData.icon}
                 </div>
-              )}
-              <div
-                className={`max-w-[70%] rounded-2xl p-4 ${
-                  message.role === 'user'
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'
-                    : 'bg-white/5 border border-white/10 text-slate-200'
-                }`}
-              >
-                <p className="leading-relaxed">{message.content}</p>
+                <div>
+                  <h2 className="text-xl font-semibold text-white">{activeModeData.name}</h2>
+                  <p className="text-sm text-slate-400">{activeModeData.description}</p>
+                </div>
               </div>
-              {message.role === 'user' && (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center flex-shrink-0">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-              )}
-            </div>
-          ))}
-          {isTyping && (
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {suggestionPrompts.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => setInput(prompt)}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-cyan-500/30 hover:text-white"
+                  >
+                    {prompt}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input */}
-        <div className="p-4 border-t border-white/10">
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Ask me anything about your startup..."
-              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
-            />
             <button
-              onClick={handleSend}
-              disabled={!input.trim()}
-              className="px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              type="button"
+              onClick={clearChat}
+              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 transition-colors hover:border-white/20 hover:text-white"
             >
-              <Send className="w-4 h-4" />
-              Send
+              <Eraser className="h-4 w-4" />
+              Clear chat
             </button>
           </div>
         </div>
-      </div>
+
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
+          {messages.map((message) => {
+            const modeName = expertModes.find((mode) => mode.id === message.mode)?.name ?? 'Founder AI';
+            return (
+              <div key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
+                {message.role === 'assistant' ? (
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                ) : null}
+                <div
+                  className={`max-w-3xl rounded-3xl border p-4 ${
+                    message.role === 'user'
+                      ? 'border-cyan-500/20 bg-gradient-to-br from-cyan-500 to-blue-600 text-white'
+                      : 'border-white/10 bg-white/5 text-slate-100'
+                  }`}
+                >
+                  <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-300/80">
+                    <span>{message.role === 'assistant' ? modeName : 'You'}</span>
+                    <span>•</span>
+                    <span>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                  <p className="whitespace-pre-wrap leading-7">{message.content}</p>
+                </div>
+                {message.role === 'user' ? (
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-500 text-white">
+                    <User className="h-4 w-4" />
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+
+          {isTyping ? (
+            <div className="flex gap-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                <div className="flex gap-1.5">
+                  {[0, 150, 300].map((delay) => (
+                    <span
+                      key={delay}
+                      className="h-2.5 w-2.5 rounded-full bg-cyan-300 animate-bounce"
+                      style={{ animationDelay: `${delay}ms` }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="border-t border-white/10 p-5">
+          <div className="rounded-3xl border border-white/10 bg-slate-950/50 p-4">
+            <textarea
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={4}
+              placeholder="Ask for strategy, product advice, finance guidance, code cleanup ideas, or follow-up suggestions..."
+              className="w-full resize-none bg-transparent text-white placeholder-slate-500 focus:outline-none"
+            />
+            <div className="mt-4 flex flex-col gap-3 border-t border-white/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-slate-500">Press Enter to send · Shift+Enter for a new line</p>
+              <button
+                type="button"
+                onClick={handleSend}
+                disabled={!input.trim() || isTyping}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3 font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Send className="h-4 w-4" />
+                Send message
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
