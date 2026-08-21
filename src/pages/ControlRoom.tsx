@@ -33,6 +33,9 @@ interface ControlRoomProps {
   onCreateSnapshot: () => void;
   onRestoreSnapshot: (snapshotId: string) => void;
   onExportBoardReport: () => void;
+  onPauseAllAutomations: () => void;
+  onLockdownHighRiskAI: () => void;
+  onResetAlerts: () => void;
 }
 
 function PolicyCard({
@@ -149,10 +152,15 @@ export default function ControlRoom({
   onCreateSnapshot,
   onRestoreSnapshot,
   onExportBoardReport,
+  onPauseAllAutomations,
+  onLockdownHighRiskAI,
+  onResetAlerts,
 }: ControlRoomProps) {
   const pendingApprovals = workspace.approvalRequests.filter(
     (request) => request.status === 'pending'
   );
+  const activeAutomations = workspace.automations.filter((automation) => automation.status === 'active');
+  const dueReminders = workspace.reminders.filter((reminder) => reminder.status === 'due');
   const failingPolicies = workspace.aiSystems.filter(
     (system) => (system.riskLevel === 'high' || system.riskLevel === 'critical') && !system.humanReview
   ).length;
@@ -344,24 +352,73 @@ export default function ControlRoom({
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
-          <h2 className="text-xl font-semibold text-white">Pending approvals</h2>
-          <div className="mt-5 space-y-3">
-            {pendingApprovals.length ? (
-              pendingApprovals.map((request) => (
-                <ApprovalCard
-                  key={request.id}
-                  request={request}
-                  canApprove={currentActor.role === request.approverRole || currentActor.role === 'founder'}
-                  onApprove={() => onApproveRequest(request.id)}
-                  onReject={() => onRejectRequest(request.id)}
-                />
-              ))
-            ) : (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-4 text-sm text-slate-400">
-                No approvals are pending right now.
-              </div>
-            )}
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold text-white">Emergency controls</h2>
+            <span className="rounded-full bg-rose-500/10 px-3 py-1 text-xs font-medium text-rose-300">
+              Runtime safety
+            </span>
           </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm text-slate-400">Active automations</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{activeAutomations.length}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm text-slate-400">Due reminders</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{dueReminders.length}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm text-slate-400">Pending approvals</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{pendingApprovals.length}</p>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <button
+              type="button"
+              onClick={onPauseAllAutomations}
+              className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-left text-sm text-amber-300 transition-colors hover:bg-amber-500/20"
+            >
+              Pause all active automations
+            </button>
+            <button
+              type="button"
+              onClick={onLockdownHighRiskAI}
+              className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-4 text-left text-sm text-rose-300 transition-colors hover:bg-rose-500/20"
+            >
+              Lock down high-risk AI systems
+            </button>
+            <button
+              type="button"
+              onClick={onResetAlerts}
+              className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-4 text-left text-sm text-cyan-300 transition-colors hover:bg-cyan-500/20"
+            >
+              Reset dismissed alerts
+            </button>
+          </div>
+          <p className="mt-4 text-sm text-slate-400">
+            These controls are designed for the ultimate AI-world failure mode: systems that keep acting after humans lose confidence.
+          </p>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+        <h2 className="text-xl font-semibold text-white">Pending approvals</h2>
+        <div className="mt-5 space-y-3">
+          {pendingApprovals.length ? (
+            pendingApprovals.map((request) => (
+              <ApprovalCard
+                key={request.id}
+                request={request}
+                canApprove={currentActor.role === request.approverRole || currentActor.role === 'founder'}
+                onApprove={() => onApproveRequest(request.id)}
+                onReject={() => onRejectRequest(request.id)}
+              />
+            ))
+          ) : (
+            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-4 text-sm text-slate-400">
+              No approvals are pending right now.
+            </div>
+          )}
         </div>
       </section>
 

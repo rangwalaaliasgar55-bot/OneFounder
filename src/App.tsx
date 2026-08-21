@@ -1007,6 +1007,62 @@ function App() {
     );
   };
 
+  const pauseAllAutomations = () => {
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        automations: current.automations.map((automation) =>
+          automation.status === 'active' ? { ...automation, status: 'paused' } : automation
+        ),
+      }),
+      {
+        action: 'automation-emergency-pause',
+        target: 'All automations',
+        summary: 'Paused all active automations using the emergency control.',
+        severity: 'critical',
+      }
+    );
+  };
+
+  const lockdownHighRiskAI = () => {
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        aiSystems: current.aiSystems.map((system) =>
+          system.riskLevel === 'high' || system.riskLevel === 'critical'
+            ? {
+                ...system,
+                humanReview: true,
+                sourceRequired: true,
+                status: 'needs-review',
+                lastAudit: new Date().toISOString(),
+              }
+            : system
+        ),
+      }),
+      {
+        action: 'ai-lockdown',
+        target: 'High-risk AI systems',
+        summary: 'Applied emergency lockdown controls to all high-risk AI systems.',
+        severity: 'critical',
+      }
+    );
+  };
+
+  const resetAlerts = () => {
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        dismissedAlertIds: [],
+      }),
+      {
+        action: 'alerts-reset',
+        target: 'Workspace alerts',
+        summary: 'Reset all dismissed workspace alerts.',
+      }
+    );
+  };
+
   const approveRequest = (requestId: string) => {
     commitWorkspace((current) => {
       const request = current.approvalRequests.find((item) => item.id === requestId);
@@ -1290,6 +1346,27 @@ function App() {
       group: 'Playbooks',
       onSelect: () => launchWorkflowTemplate('revenue-recovery'),
     },
+    {
+      id: 'action-pause-automations',
+      title: 'Pause all automations',
+      description: 'Emergency stop for all active automation flows.',
+      group: 'Safety',
+      onSelect: pauseAllAutomations,
+    },
+    {
+      id: 'action-lockdown-ai',
+      title: 'Lock down high-risk AI',
+      description: 'Force human review and needs-review state on high-risk AI systems.',
+      group: 'Safety',
+      onSelect: lockdownHighRiskAI,
+    },
+    {
+      id: 'action-reset-alerts',
+      title: 'Reset dismissed alerts',
+      description: 'Bring all workspace alerts back into view.',
+      group: 'Safety',
+      onSelect: resetAlerts,
+    },
     ...visibleAlerts.map((alert) => ({
       id: `alert-${alert.id}`,
       title: alert.title,
@@ -1351,6 +1428,9 @@ function App() {
             onCreateSnapshot={createWorkspaceSnapshot}
             onRestoreSnapshot={restoreWorkspaceSnapshot}
             onExportBoardReport={exportBoardReport}
+            onPauseAllAutomations={pauseAllAutomations}
+            onLockdownHighRiskAI={lockdownHighRiskAI}
+            onResetAlerts={resetAlerts}
           />
         );
       case 'playbooks':

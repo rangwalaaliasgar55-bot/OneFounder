@@ -1085,6 +1085,12 @@ export function getWorkspaceAlerts(workspace: WorkspaceData): WorkspaceAlert[] {
     .reduce((sum, transaction) => sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount), 0);
   const dueReminders = workspace.reminders.filter((reminder) => reminder.status === 'due');
   const criticalTraces = workspace.aiTraces.filter((trace) => trace.outcome === 'critical');
+  const monthlyTraceSpend = workspace.aiTraces
+    .filter((trace) => getDaysUntil(trace.createdAt) >= -30)
+    .reduce((sum, trace) => sum + trace.tokenCostUsd, 0);
+  const averageTraceQuality = workspace.aiTraces.length
+    ? workspace.aiTraces.reduce((sum, trace) => sum + trace.qualityScore, 0) / workspace.aiTraces.length
+    : 100;
 
   if (highRiskUngated.length) {
     alerts.push({
@@ -1176,6 +1182,30 @@ export function getWorkspaceAlerts(workspace: WorkspaceData): WorkspaceAlert[] {
       title: `${criticalTraces.length} AI trace(s) show critical quality or safety issues`,
       description: 'Recent AI runs need immediate review in observability and trust workflows.',
       severity: 'critical',
+      category: 'governance',
+      actionLabel: 'Open Trust Center',
+      page: 'trust',
+    });
+  }
+
+  if (monthlyTraceSpend > 0.5) {
+    alerts.push({
+      id: 'alert-ai-spend',
+      title: `AI trace spend is rising: ${formatCurrency(monthlyTraceSpend)} this month`,
+      description: 'Watch token cost and confirm it still maps to measurable workflow value.',
+      severity: monthlyTraceSpend > 1 ? 'warning' : 'info',
+      category: 'finance',
+      actionLabel: 'Open Trust Center',
+      page: 'trust',
+    });
+  }
+
+  if (averageTraceQuality < 75) {
+    alerts.push({
+      id: 'alert-trace-quality',
+      title: `Average AI quality dropped to ${Math.round(averageTraceQuality)}/100`,
+      description: 'Review poor traces, prompts, and source quality before scaling usage further.',
+      severity: 'warning',
       category: 'governance',
       actionLabel: 'Open Trust Center',
       page: 'trust',
