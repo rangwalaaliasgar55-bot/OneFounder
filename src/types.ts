@@ -296,6 +296,20 @@ export interface DeliveryEvent {
   createdAt: string;
 }
 
+export interface WorkspaceProfile {
+  id: string;
+  name: string;
+  description: string;
+  lastModified: string;
+}
+
+export interface SyncConflict {
+  detectedAt: string;
+  remoteUpdatedAt: string | null;
+  remoteProfileId: string;
+  remoteWorkspace: WorkspaceData;
+}
+
 export interface WorkspaceData {
   ideas: Idea[];
   tasks: Task[];

@@ -20,19 +20,29 @@ import {
 import type {
   ApprovalRequest,
   Snapshot,
+  SyncConflict,
   TeamMember,
   WorkspaceData,
+  WorkspaceProfile,
 } from '../types';
 
 interface ControlRoomProps {
   workspace: WorkspaceData;
+  workspaceProfiles: WorkspaceProfile[];
+  activeWorkspaceProfileId: string;
   currentActorId: string;
   currentActor: TeamMember;
   cloudAvailable: boolean;
   syncStatus: 'idle' | 'syncing' | 'synced' | 'error' | 'disabled';
   lastSyncedAt: string | null;
+  syncConflict: SyncConflict | null;
   onPullFromCloud: () => void;
   onPushToCloud: () => void;
+  onAcceptRemoteConflict: () => void;
+  onKeepLocalConflict: () => void;
+  onCreateWorkspaceProfile: () => void;
+  onSwitchWorkspaceProfile: (profileId: string) => void;
+  onDeleteWorkspaceProfile: (profileId: string) => void;
   onSelectActor: (memberId: string) => void;
   onApproveRequest: (requestId: string) => void;
   onRejectRequest: (requestId: string) => void;
@@ -41,6 +51,7 @@ interface ControlRoomProps {
   onExportBoardReport: () => void;
   onToggleNotificationChannel: (channelId: string) => void;
   onSendTestDelivery: () => void;
+  onRunPolicyEnforcement: () => void;
   onPauseAllAutomations: () => void;
   onLockdownHighRiskAI: () => void;
   onResetAlerts: () => void;
@@ -152,13 +163,21 @@ function SnapshotCard({
 
 export default function ControlRoom({
   workspace,
+  workspaceProfiles,
+  activeWorkspaceProfileId,
   currentActorId,
   currentActor,
   cloudAvailable,
   syncStatus,
   lastSyncedAt,
+  syncConflict,
   onPullFromCloud,
   onPushToCloud,
+  onAcceptRemoteConflict,
+  onKeepLocalConflict,
+  onCreateWorkspaceProfile,
+  onSwitchWorkspaceProfile,
+  onDeleteWorkspaceProfile,
   onSelectActor,
   onApproveRequest,
   onRejectRequest,
@@ -167,6 +186,7 @@ export default function ControlRoom({
   onExportBoardReport,
   onToggleNotificationChannel,
   onSendTestDelivery,
+  onRunPolicyEnforcement,
   onPauseAllAutomations,
   onLockdownHighRiskAI,
   onResetAlerts,
@@ -363,6 +383,47 @@ export default function ControlRoom({
             <p className="font-medium text-white">Current actor: {currentActor.name}</p>
             <p className="mt-1 text-slate-400">Role: {getRoleLabel(currentActor.role)}</p>
           </div>
+          <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-medium text-white">Workspace profiles</p>
+              <button
+                type="button"
+                onClick={onCreateWorkspaceProfile}
+                className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-300 transition-colors hover:bg-cyan-500/20"
+              >
+                Clone current
+              </button>
+            </div>
+            <div className="mt-4 space-y-2">
+              {workspaceProfiles.map((profile) => (
+                <div key={profile.id} className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium text-white">{profile.name}</p>
+                    <p className="mt-1 text-sm text-slate-400">{profile.description}</p>
+                    <p className="mt-1 text-xs text-slate-500">Last modified {formatShortDate(profile.lastModified)}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onSwitchWorkspaceProfile(profile.id)}
+                      className={`rounded-xl px-3 py-2 text-sm transition-colors ${activeWorkspaceProfileId === profile.id ? 'bg-emerald-500/15 text-emerald-300' : 'border border-white/10 text-slate-300 hover:border-white/20 hover:text-white'}`}
+                    >
+                      {activeWorkspaceProfileId === profile.id ? 'Active' : 'Switch'}
+                    </button>
+                    {workspaceProfiles.length > 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteWorkspaceProfile(profile.id)}
+                        className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300 transition-colors hover:bg-rose-500/20"
+                      >
+                        Delete
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
@@ -411,7 +472,36 @@ export default function ControlRoom({
             <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
               Last sync {lastSyncedAt ? formatShortDate(lastSyncedAt) : 'never'}
             </span>
+            {syncConflict ? (
+              <span className="rounded-full bg-rose-500/15 px-3 py-1 text-xs font-medium text-rose-300">
+                Sync conflict detected
+              </span>
+            ) : null}
           </div>
+          {syncConflict ? (
+            <div className="mt-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4">
+              <p className="font-medium text-white">Cloud conflict requires resolution</p>
+              <p className="mt-2 text-sm text-slate-300">
+                Remote workspace updated {syncConflict.remoteUpdatedAt ? formatShortDate(syncConflict.remoteUpdatedAt) : 'recently'} while local unsynced changes existed.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={onAcceptRemoteConflict}
+                  className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-300 transition-colors hover:bg-cyan-500/20"
+                >
+                  Accept remote version
+                </button>
+                <button
+                  type="button"
+                  onClick={onKeepLocalConflict}
+                  className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-300 transition-colors hover:bg-amber-500/20"
+                >
+                  Keep local and re-push
+                </button>
+              </div>
+            </div>
+          ) : null}
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <p className="text-sm text-slate-400">Project URL</p>
@@ -536,7 +626,7 @@ export default function ControlRoom({
               <p className="mt-2 text-2xl font-semibold text-white">{pendingApprovals.length}</p>
             </div>
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <button
               type="button"
               onClick={onPauseAllAutomations}
@@ -550,6 +640,13 @@ export default function ControlRoom({
               className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-4 text-left text-sm text-rose-300 transition-colors hover:bg-rose-500/20"
             >
               Lock down high-risk AI systems
+            </button>
+            <button
+              type="button"
+              onClick={onRunPolicyEnforcement}
+              className="rounded-2xl border border-violet-500/30 bg-violet-500/10 px-4 py-4 text-left text-sm text-violet-300 transition-colors hover:bg-violet-500/20"
+            >
+              Run policy enforcement
             </button>
             <button
               type="button"

@@ -71,6 +71,7 @@ import type {
   Task,
   Transaction,
   WorkspaceData,
+  WorkspaceProfile,
 } from './types';
 
 const navItems: Array<{
@@ -165,6 +166,21 @@ function App() {
     'onefounder.workspace',
     createSeedWorkspace
   );
+  const [workspaceProfiles, setWorkspaceProfiles] = usePersistentState<WorkspaceProfile[]>(
+    'onefounder.workspace-profiles',
+    () => [
+      {
+        id: 'profile-default',
+        name: 'Primary Workspace',
+        description: 'Main founder operating workspace',
+        lastModified: new Date().toISOString(),
+      },
+    ]
+  );
+  const [activeWorkspaceProfileId, setActiveWorkspaceProfileId] = usePersistentState(
+    'onefounder.active-workspace-profile',
+    'profile-default'
+  );
   const [currentActorId, setCurrentActorId] = usePersistentState(
     'onefounder.current-actor',
     'member-1'
@@ -178,15 +194,54 @@ function App() {
     cloudAvailable,
     syncStatus,
     lastSyncedAt,
+    syncConflict,
     pullFromCloud,
     pushToCloud,
+    acceptRemoteConflict,
+    keepLocalConflictVersion,
   } = useWorkspaceCloudSync({
     workspace,
+    workspaceKey: activeWorkspaceProfileId,
     setWorkspace: setStoredWorkspace,
   });
 
   const currentActor =
     workspace.teamMembers.find((member) => member.id === currentActorId) ?? workspace.teamMembers[0];
+
+  const getProfileStorageKey = (profileId: string) => `onefounder.workspace.profile.${profileId}`;
+
+  useEffect(() => {
+    try {
+      const existing = window.localStorage.getItem(getProfileStorageKey(activeWorkspaceProfileId));
+      if (!existing) {
+        window.localStorage.setItem(
+          getProfileStorageKey(activeWorkspaceProfileId),
+          JSON.stringify(storedWorkspace)
+        );
+      }
+    } catch {
+      // ignore storage setup failures
+    }
+  }, [activeWorkspaceProfileId, storedWorkspace]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        getProfileStorageKey(activeWorkspaceProfileId),
+        JSON.stringify(storedWorkspace)
+      );
+      setWorkspaceProfiles((current) => {
+        const next = current.map((profile) =>
+          profile.id === activeWorkspaceProfileId
+            ? { ...profile, lastModified: new Date().toISOString() }
+            : profile
+        );
+        return next;
+      });
+    } catch {
+      // ignore profile persistence failures
+    }
+  }, [activeWorkspaceProfileId, setWorkspaceProfiles, storedWorkspace]);
 
   const commitWorkspace = (
     updater: (current: WorkspaceData) => WorkspaceData,
@@ -641,6 +696,67 @@ function App() {
 
   const selectActor = (memberId: string) => {
     setCurrentActorId(memberId);
+  };
+
+  const createWorkspaceProfile = () => {
+    const profileId = makeId('profile');
+    const profile: WorkspaceProfile = {
+      id: profileId,
+      name: `Workspace ${workspaceProfiles.length + 1}`,
+      description: 'Cloned workspace profile',
+      lastModified: new Date().toISOString(),
+    };
+
+    try {
+      window.localStorage.setItem(getProfileStorageKey(profileId), JSON.stringify(workspace));
+    } catch {
+      // ignore profile persistence failures
+    }
+
+    setWorkspaceProfiles((current) => [profile, ...current]);
+    setActiveWorkspaceProfileId(profileId);
+    setStoredWorkspace(workspace);
+  };
+
+  const switchWorkspaceProfile = (profileId: string) => {
+    if (profileId === activeWorkspaceProfileId) {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(
+        getProfileStorageKey(activeWorkspaceProfileId),
+        JSON.stringify(storedWorkspace)
+      );
+      const nextRaw = window.localStorage.getItem(getProfileStorageKey(profileId));
+      const nextWorkspace = nextRaw
+        ? normalizeWorkspaceData(JSON.parse(nextRaw))
+        : createSeedWorkspace();
+      setActiveWorkspaceProfileId(profileId);
+      setStoredWorkspace(nextWorkspace);
+    } catch {
+      setActiveWorkspaceProfileId(profileId);
+      setStoredWorkspace(createSeedWorkspace());
+    }
+  };
+
+  const deleteWorkspaceProfile = (profileId: string) => {
+    if (workspaceProfiles.length <= 1) {
+      return;
+    }
+
+    const fallbackProfile = workspaceProfiles.find((profile) => profile.id !== profileId);
+    try {
+      window.localStorage.removeItem(getProfileStorageKey(profileId));
+    } catch {
+      // ignore storage cleanup failures
+    }
+
+    setWorkspaceProfiles((current) => current.filter((profile) => profile.id !== profileId));
+
+    if (activeWorkspaceProfileId === profileId && fallbackProfile) {
+      switchWorkspaceProfile(fallbackProfile.id);
+    }
   };
 
   const signInAs = (memberId: string) => {
@@ -1199,6 +1315,39 @@ function App() {
     );
   };
 
+  const runPolicyEnforcement = () => {
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        automations: current.automations.map((automation) =>
+          automation.sensitivity === 'restricted' && automation.approvalMode === 'auto'
+            ? { ...automation, approvalMode: 'human-review', status: 'paused' }
+            : automation
+        ),
+        aiSystems: current.aiSystems.map((system) =>
+          system.riskLevel === 'high' || system.riskLevel === 'critical'
+            ? {
+                ...system,
+                humanReview: true,
+                sourceRequired: true,
+                status: system.status === 'approved' ? 'monitoring' : system.status,
+                lastAudit: new Date().toISOString(),
+              }
+            : system
+        ),
+        notificationChannels: current.notificationChannels.map((channel, index) =>
+          index === 0 ? { ...channel, enabled: true, lastTested: new Date().toISOString() } : channel
+        ),
+      }),
+      {
+        action: 'policy-enforcement-run',
+        target: 'Workspace policy engine',
+        summary: 'Applied auto-remediation for enforceable policy rules.',
+        severity: 'critical',
+      }
+    );
+  };
+
   const approveRequest = (requestId: string) => {
     commitWorkspace((current) => {
       const request = current.approvalRequests.find((item) => item.id === requestId);
@@ -1423,6 +1572,14 @@ function App() {
     }
   };
 
+  const acceptRemoteConflictResolution = () => {
+    acceptRemoteConflict();
+  };
+
+  const keepLocalConflictResolution = () => {
+    void keepLocalConflictVersion();
+  };
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -1503,6 +1660,27 @@ function App() {
       group: 'Safety',
       onSelect: resetAlerts,
     },
+    {
+      id: 'action-run-policy-enforcement',
+      title: 'Run policy enforcement',
+      description: 'Apply auto-remediation for enforceable governance rules.',
+      group: 'Safety',
+      onSelect: runPolicyEnforcement,
+    },
+    {
+      id: 'action-send-test-delivery',
+      title: 'Send delivery test',
+      description: 'Simulate alert routing through configured channels.',
+      group: 'Actions',
+      onSelect: sendTestDelivery,
+    },
+    {
+      id: 'action-clone-workspace',
+      title: 'Clone current workspace profile',
+      description: 'Create a separate workspace profile for testing or sandboxing.',
+      group: 'Actions',
+      onSelect: createWorkspaceProfile,
+    },
     ...visibleAlerts.map((alert) => ({
       id: `alert-${alert.id}`,
       title: alert.title,
@@ -1556,17 +1734,25 @@ function App() {
         return (
           <ControlRoom
             workspace={workspace}
+            workspaceProfiles={workspaceProfiles}
+            activeWorkspaceProfileId={activeWorkspaceProfileId}
             currentActorId={currentActor.id}
             currentActor={currentActor}
             cloudAvailable={cloudAvailable}
             syncStatus={syncStatus}
             lastSyncedAt={lastSyncedAt}
+            syncConflict={syncConflict}
             onPullFromCloud={() => {
               void pullFromCloud();
             }}
             onPushToCloud={() => {
               void pushToCloud();
             }}
+            onAcceptRemoteConflict={acceptRemoteConflictResolution}
+            onKeepLocalConflict={keepLocalConflictResolution}
+            onCreateWorkspaceProfile={createWorkspaceProfile}
+            onSwitchWorkspaceProfile={switchWorkspaceProfile}
+            onDeleteWorkspaceProfile={deleteWorkspaceProfile}
             onSelectActor={selectActor}
             onApproveRequest={approveRequest}
             onRejectRequest={rejectRequest}
@@ -1575,6 +1761,7 @@ function App() {
             onExportBoardReport={exportBoardReport}
             onToggleNotificationChannel={toggleNotificationChannel}
             onSendTestDelivery={sendTestDelivery}
+            onRunPolicyEnforcement={runPolicyEnforcement}
             onPauseAllAutomations={pauseAllAutomations}
             onLockdownHighRiskAI={lockdownHighRiskAI}
             onResetAlerts={resetAlerts}

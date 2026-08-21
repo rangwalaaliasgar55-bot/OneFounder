@@ -7,7 +7,11 @@ The app remains local-first for this sandbox session, but it now includes a clou
 - optional Supabase client wiring in `src/lib/supabase.ts`
 - environment readiness detection in `src/lib/cloud.ts`
 - a Supabase starter schema in `supabase/schema.sql`
+- a cloud sync hook in `src/hooks/useWorkspaceCloudSync.ts`
 - control-room visibility for cloud readiness and notification channels
+- push/pull sync actions
+- sync conflict detection and resolution paths
+- multi-workspace local profile management that can map to workspace keys in cloud storage
 
 ## Required environment variables
 

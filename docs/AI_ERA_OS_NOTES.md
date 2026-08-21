@@ -128,6 +128,9 @@ It now supports:
 - pausing all active automations
 - locking down all high-risk AI systems
 - resetting dismissed alerts to re-surface hidden risk
+- policy enforcement sweeps
+- sync conflict resolution paths
+- multi-workspace profile switching for safer experimentation
 
 This makes the app more resilient when AI behavior becomes operationally unsafe.
 
