@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import { researchInsights } from '../lib/aiResearch';
+import { getBackendReadiness } from '../lib/cloud';
 import {
   formatShortDate,
   getRoleLabel,
@@ -173,6 +174,7 @@ export default function ControlRoom({
   const criticalAudits = workspace.auditEvents.filter(
     (event) => event.severity === 'critical'
   );
+  const backendReadiness = getBackendReadiness();
 
   const policyCards: Array<{
     title: string;
@@ -343,10 +345,68 @@ export default function ControlRoom({
 
       <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold text-white">Cloud and delivery readiness</h2>
+            <span className={`rounded-full px-3 py-1 text-xs font-medium ${backendReadiness.supabaseConfigured ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'}`}>
+              {backendReadiness.mode}
+            </span>
+          </div>
+          <p className="mt-3 text-sm text-slate-400">{backendReadiness.summary}</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm text-slate-400">Project URL</p>
+              <p className="mt-2 text-sm text-white">{backendReadiness.projectUrlPresent ? 'Configured' : 'Missing'}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm text-slate-400">Anon key</p>
+              <p className="mt-2 text-sm text-white">{backendReadiness.anonKeyPresent ? 'Configured' : 'Missing'}</p>
+            </div>
+          </div>
+          <div className="mt-5 space-y-3">
+            {workspace.notificationChannels.map((channel) => (
+              <div key={channel.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-medium text-white">{channel.name}</p>
+                    <p className="mt-1 text-sm text-slate-400">{channel.type} · {channel.target}</p>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${channel.enabled ? 'bg-emerald-500/15 text-emerald-300' : 'bg-slate-700/60 text-slate-300'}`}>
+                    {channel.enabled ? 'enabled' : 'disabled'}
+                  </span>
+                </div>
+                <p className="mt-3 text-xs text-slate-500">Last tested {formatShortDate(channel.lastTested)} · Delivery rate {channel.deliveryRate}%</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 space-y-3">
+            {workspace.deliveryEvents.slice(0, 3).map((event) => (
+              <div key={event.id} className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 text-sm text-slate-300">
+                <p className="font-medium text-white">{event.title}</p>
+                <p className="mt-1 text-slate-400">{event.summary}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
           <h2 className="text-xl font-semibold text-white">Policy health</h2>
           <div className="mt-5 space-y-3">
             {policyCards.map((card) => (
               <PolicyCard key={card.title} {...card} />
+            ))}
+          </div>
+          <div className="mt-5 space-y-3">
+            {workspace.policyRules.map((rule) => (
+              <div key={rule.id} className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium text-white">{rule.name}</p>
+                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${rule.status === 'pass' ? 'bg-emerald-500/15 text-emerald-300' : rule.status === 'warn' ? 'bg-amber-500/15 text-amber-300' : 'bg-rose-500/15 text-rose-300'}`}>
+                    {rule.status}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-slate-400">{rule.description}</p>
+                <p className="mt-2 text-xs text-slate-500">Target: {rule.target} · {rule.autoEnforced ? 'Auto-enforced' : 'Manual review'}</p>
+              </div>
             ))}
           </div>
         </div>

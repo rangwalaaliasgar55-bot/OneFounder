@@ -274,6 +274,28 @@ export interface PolicyRule {
   status: PolicyStatus;
 }
 
+export type DeliveryChannelType = 'dashboard' | 'email' | 'slack';
+export type DeliveryStatus = 'sent' | 'queued' | 'failed';
+
+export interface NotificationChannel {
+  id: string;
+  name: string;
+  type: DeliveryChannelType;
+  enabled: boolean;
+  target: string;
+  lastTested: string;
+  deliveryRate: number;
+}
+
+export interface DeliveryEvent {
+  id: string;
+  channelId: string;
+  title: string;
+  summary: string;
+  status: DeliveryStatus;
+  createdAt: string;
+}
+
 export interface WorkspaceData {
   ideas: Idea[];
   tasks: Task[];
@@ -292,6 +314,8 @@ export interface WorkspaceData {
   knowledgeSources: KnowledgeSource[];
   shadowAIEntries: ShadowAIEntry[];
   policyRules: PolicyRule[];
+  notificationChannels: NotificationChannel[];
+  deliveryEvents: DeliveryEvent[];
   dismissedAlertIds: string[];
 }
 

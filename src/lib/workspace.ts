@@ -7,8 +7,10 @@ import type {
   DataSensitivity,
   DecisionLog,
   Idea,
+  DeliveryEvent,
   Lead,
   KnowledgeSource,
+  NotificationChannel,
   PolicyRule,
   Reminder,
   ShadowAIEntry,
@@ -723,6 +725,55 @@ export function createSeedWorkspace(): WorkspaceData {
     },
   ];
 
+  const notificationChannels: NotificationChannel[] = [
+    {
+      id: 'channel-1',
+      name: 'Dashboard inbox',
+      type: 'dashboard',
+      enabled: true,
+      target: 'In-app notifications',
+      lastTested: daysAgo(1),
+      deliveryRate: 100,
+    },
+    {
+      id: 'channel-2',
+      name: 'Founder email digest',
+      type: 'email',
+      enabled: false,
+      target: 'founder@onefounder.app',
+      lastTested: daysAgo(14),
+      deliveryRate: 92,
+    },
+    {
+      id: 'channel-3',
+      name: 'Ops Slack channel',
+      type: 'slack',
+      enabled: false,
+      target: '#ai-ops-alerts',
+      lastTested: daysAgo(21),
+      deliveryRate: 88,
+    },
+  ];
+
+  const deliveryEvents: DeliveryEvent[] = [
+    {
+      id: 'delivery-1',
+      channelId: 'channel-1',
+      title: 'Weekly founder review launched',
+      summary: 'Dashboard inbox captured the weekly review launch event.',
+      status: 'sent',
+      createdAt: daysAgo(1),
+    },
+    {
+      id: 'delivery-2',
+      channelId: 'channel-2',
+      title: 'Board report delivery queued',
+      summary: 'Email digest remains disabled, so board report delivery is only queued.',
+      status: 'queued',
+      createdAt: daysAgo(3),
+    },
+  ];
+
   const snapshots: Snapshot[] = [
     {
       id: 'snapshot-1',
@@ -751,6 +802,8 @@ export function createSeedWorkspace(): WorkspaceData {
     knowledgeSources,
     shadowAIEntries,
     policyRules,
+    notificationChannels,
+    deliveryEvents,
     dismissedAlertIds: [],
   };
 
@@ -1012,6 +1065,27 @@ export function normalizeWorkspaceData(input: unknown): WorkspaceData {
           status: policy.status ?? 'warn',
         }))
       : seed.policyRules,
+    notificationChannels: Array.isArray(data.notificationChannels)
+      ? data.notificationChannels.map((channel, index) => ({
+          id: channel.id ?? `channel-import-${index}`,
+          name: channel.name ?? 'Imported channel',
+          type: channel.type ?? 'dashboard',
+          enabled: typeof channel.enabled === 'boolean' ? channel.enabled : true,
+          target: channel.target ?? 'Unknown target',
+          lastTested: channel.lastTested ?? new Date().toISOString(),
+          deliveryRate: typeof channel.deliveryRate === 'number' ? channel.deliveryRate : 0,
+        }))
+      : seed.notificationChannels,
+    deliveryEvents: Array.isArray(data.deliveryEvents)
+      ? data.deliveryEvents.map((event, index) => ({
+          id: event.id ?? `delivery-import-${index}`,
+          channelId: event.channelId ?? 'unknown',
+          title: event.title ?? 'Imported delivery event',
+          summary: event.summary ?? '',
+          status: event.status ?? 'queued',
+          createdAt: event.createdAt ?? new Date().toISOString(),
+        }))
+      : seed.deliveryEvents,
     dismissedAlertIds: Array.isArray(data.dismissedAlertIds)
       ? data.dismissedAlertIds.filter((id): id is string => typeof id === 'string')
       : seed.dismissedAlertIds,
