@@ -14,10 +14,13 @@ import Modal from '../components/Modal';
 import StatCard from '../components/StatCard';
 import {
   calculateAIReadinessScore,
+  calculateTraceHealth,
+  formatCurrency,
   formatShortDate,
   getConfidenceTone,
   getRiskTone,
   getSensitivityTone,
+  getTraceTone,
   getVerificationTone,
 } from '../lib/workspace';
 import type {
@@ -117,6 +120,11 @@ export default function TrustCenter({
     (decision) => decision.verificationStatus !== 'verified'
   );
   const totalIncidents = workspace.aiSystems.reduce((sum, system) => sum + system.incidents, 0);
+  const traceHealth = calculateTraceHealth(workspace.aiTraces);
+  const criticalTraces = workspace.aiTraces.filter((trace) => trace.outcome === 'critical');
+  const averageTraceCost = workspace.aiTraces.length
+    ? workspace.aiTraces.reduce((sum, trace) => sum + trace.tokenCostUsd, 0) / workspace.aiTraces.length
+    : 0;
 
   const governancePillars = [
     {
@@ -240,7 +248,7 @@ export default function TrustCenter({
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         <StatCard
           title="AI readiness"
           value={`${readinessScore}/100`}
@@ -268,6 +276,13 @@ export default function TrustCenter({
           subtitle={`${totalIncidents} total incident(s) logged`}
           icon={<AlertTriangle className="h-5 w-5 text-rose-300" />}
           tone="rose"
+        />
+        <StatCard
+          title="Trace health"
+          value={`${traceHealth}/100`}
+          subtitle={`${criticalTraces.length} critical trace(s)`}
+          icon={<Bot className="h-5 w-5 text-cyan-300" />}
+          tone="cyan"
         />
       </section>
 
@@ -338,6 +353,62 @@ export default function TrustCenter({
                 Your current trust posture looks strong. Keep auditing and logging decisions as the system grows.
               </div>
             ) : null}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-semibold text-white">AI observability</h2>
+              <p className="mt-1 text-sm text-slate-400">Track quality, safety, cost, and recent AI run outcomes instead of trusting vibes.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-right">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Avg trace cost</p>
+              <p className="mt-1 text-lg font-semibold text-white">{formatCurrency(averageTraceCost)}</p>
+            </div>
+          </div>
+          <div className="mt-6 space-y-3">
+            {workspace.aiTraces.map((trace) => (
+              <div key={trace.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${getTraceTone(trace.outcome)}`}>
+                        {trace.outcome}
+                      </span>
+                      <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                        {trace.feedback}
+                      </span>
+                    </div>
+                    <p className="mt-3 font-medium text-white">{trace.title}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-400">{trace.notes}</p>
+                  </div>
+                  <div className="grid gap-2 text-right text-xs text-slate-400 sm:grid-cols-2 lg:grid-cols-1">
+                    <span>Latency {trace.latencyMs}ms</span>
+                    <span>Quality {trace.qualityScore}/100</span>
+                    <span>Safety {trace.safetyScore}/100</span>
+                    <span>Cost ${trace.tokenCostUsd.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-semibold text-white">Monitoring guidance</h2>
+              <p className="mt-1 text-sm text-slate-400">What your operators should always watch in AI production flows.</p>
+            </div>
+          </div>
+          <div className="mt-6 space-y-3 text-sm text-slate-300">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">Trace every important AI run from prompt to output so failures are debuggable, not mysterious.</div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">Track quality and safety separately. A fast answer can still be a dangerous answer.</div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">Use alerts for spikes and regressions, but use human review for slower trust failures like hallucination and tone drift.</div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">Keep costs visible. Hidden token spend becomes real margin pressure fast when teams scale usage.</div>
           </div>
         </div>
       </section>

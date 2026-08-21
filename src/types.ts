@@ -182,6 +182,10 @@ export interface WorkflowRun {
   status: WorkflowRunStatus;
   createdAt: string;
   summary: string;
+  steps: string[];
+  completedSteps: number;
+  nextAction: string;
+  relatedPages: NavPage[];
 }
 
 export type AlertSeverity = 'info' | 'warning' | 'critical';
@@ -197,6 +201,35 @@ export interface WorkspaceAlert {
   page: NavPage;
 }
 
+export type ReminderStatus = 'upcoming' | 'due' | 'done';
+
+export interface Reminder {
+  id: string;
+  title: string;
+  description: string;
+  owner: string;
+  dueAt: string;
+  status: ReminderStatus;
+  linkedPage: NavPage;
+}
+
+export type TraceOutcome = 'healthy' | 'warning' | 'critical';
+export type TraceFeedback = 'positive' | 'neutral' | 'negative';
+
+export interface AITrace {
+  id: string;
+  systemId: string;
+  title: string;
+  latencyMs: number;
+  tokenCostUsd: number;
+  qualityScore: number;
+  safetyScore: number;
+  outcome: TraceOutcome;
+  feedback: TraceFeedback;
+  createdAt: string;
+  notes: string;
+}
+
 export interface WorkspaceData {
   ideas: Idea[];
   tasks: Task[];
@@ -210,6 +243,8 @@ export interface WorkspaceData {
   auditEvents: AuditEvent[];
   snapshots: Snapshot[];
   workflowRuns: WorkflowRun[];
+  reminders: Reminder[];
+  aiTraces: AITrace[];
   dismissedAlertIds: string[];
 }
 

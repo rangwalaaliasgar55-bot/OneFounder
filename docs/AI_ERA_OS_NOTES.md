@@ -81,8 +81,30 @@ To make day-to-day work easier, the product now also includes:
 - a live alert inbox generated from workspace risk signals
 - repeatable playbooks for weekly reviews, revenue recovery, launch readiness, and AI incidents
 - workflow history so recurring operating motions are visible instead of ad hoc
+- reminder tracking so AI recommendations are tied to real follow-through
 
 This is important because the biggest AI-era bottleneck is often not “lack of output,” but lack of structured follow-through.
+
+### 9. Session and operator workflow
+The app now opens through a role-aware sign-in screen and supports explicit operator switching.
+
+This makes it much easier to test:
+
+- who should approve risky actions
+- who should review trust issues
+- how the workflow changes for founders, finance, ops, security, and growth roles
+
+### 10. AI observability layer
+The workspace now stores lightweight AI trace data so operators can monitor:
+
+- quality
+- safety
+- latency
+- cost
+- negative feedback
+- critical AI runs
+
+This is a major step toward treating AI as a production operating layer instead of just a chat box.
 
 ### 3. Workspace portability
 Founders can now export and import the entire workspace as JSON.

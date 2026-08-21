@@ -1,5 +1,6 @@
 import type {
   AISystem,
+  AITrace,
   ApprovalRequest,
   AuditEvent,
   Automation,
@@ -7,6 +8,7 @@ import type {
   DecisionLog,
   Idea,
   Lead,
+  Reminder,
   Snapshot,
   Task,
   TaskPriority,
@@ -66,6 +68,12 @@ export function daysFromNow(days: number) {
   return date.toISOString();
 }
 
+export function hoursFromNow(hours: number) {
+  const date = new Date();
+  date.setHours(date.getHours() + hours, 0, 0, 0);
+  return date.toISOString();
+}
+
 export function formatCurrency(value: number) {
   return currencyFormatter.format(value);
 }
@@ -93,6 +101,11 @@ export function getDaysUntil(value: string) {
   target.setHours(0, 0, 0, 0);
   const diff = target.getTime() - today.getTime();
   return Math.round(diff / (1000 * 60 * 60 * 24));
+}
+
+export function getHoursUntil(value: string) {
+  const diff = new Date(value).getTime() - Date.now();
+  return Math.round(diff / (1000 * 60 * 60));
 }
 
 export function getDaysSince(value: string) {
@@ -464,13 +477,13 @@ export function createSeedWorkspace(): WorkspaceData {
     },
   ];
 
-  const teamMembers = [
+  const teamMembers: WorkspaceData['teamMembers'] = [
     { id: 'member-1', name: 'Founder', email: 'founder@onefounder.app', role: 'founder', status: 'active' },
     { id: 'member-2', name: 'Ava Patel', email: 'ava@onefounder.app', role: 'ops', status: 'active' },
     { id: 'member-3', name: 'Priya Shah', email: 'priya@onefounder.app', role: 'security', status: 'active' },
     { id: 'member-4', name: 'Noah Kim', email: 'noah@onefounder.app', role: 'finance', status: 'active' },
     { id: 'member-5', name: 'Maya Brooks', email: 'maya@onefounder.app', role: 'growth', status: 'observer' },
-  ] as WorkspaceData['teamMembers'];
+  ];
 
   const approvalRequests: ApprovalRequest[] = [
     {
@@ -485,11 +498,7 @@ export function createSeedWorkspace(): WorkspaceData {
       reason: 'Critical-risk system lacks human review and source requirements.',
       requestedAction: 'approve-ai-system',
       payload: JSON.stringify({
-        updates: {
-          humanReview: true,
-          sourceRequired: true,
-          status: 'monitoring',
-        },
+        updates: { humanReview: true, sourceRequired: true, status: 'monitoring' },
       }),
     },
   ];
@@ -524,6 +533,82 @@ export function createSeedWorkspace(): WorkspaceData {
       status: 'active',
       createdAt: daysAgo(3),
       summary: 'Recurring weekly workflow for finance, CRM, trust, and execution review.',
+      steps: ['Review alerts', 'Clear stale leads', 'Audit AI trust', 'Export board report'],
+      completedSteps: 2,
+      nextAction: 'Audit AI trust',
+      relatedPages: ['playbooks', 'crm', 'trust', 'control'],
+    },
+  ];
+
+  const reminders: Reminder[] = [
+    {
+      id: 'reminder-1',
+      title: 'Review pending approvals',
+      description: 'Clear approval backlog before the weekly review ends.',
+      owner: 'Founder',
+      dueAt: hoursFromNow(8),
+      status: 'due',
+      linkedPage: 'control',
+    },
+    {
+      id: 'reminder-2',
+      title: 'Check lead follow-up queue',
+      description: 'Warm leads older than 7 days need a human touch.',
+      owner: 'Revenue Ops',
+      dueAt: daysFromNow(1),
+      status: 'upcoming',
+      linkedPage: 'crm',
+    },
+    {
+      id: 'reminder-3',
+      title: 'Run weekly founder digest',
+      description: 'Export board report and finance summary for the week.',
+      owner: 'Chief of Staff',
+      dueAt: daysFromNow(2),
+      status: 'upcoming',
+      linkedPage: 'playbooks',
+    },
+  ];
+
+  const aiTraces: AITrace[] = [
+    {
+      id: 'trace-1',
+      systemId: 'ai-1',
+      title: 'Founder strategy answer with grounded notes',
+      latencyMs: 1900,
+      tokenCostUsd: 0.08,
+      qualityScore: 92,
+      safetyScore: 97,
+      outcome: 'healthy',
+      feedback: 'positive',
+      createdAt: daysAgo(1),
+      notes: 'Source-backed answer with strong user feedback and no policy violations.',
+    },
+    {
+      id: 'trace-2',
+      systemId: 'ai-2',
+      title: 'Lead scoring recommendation for enterprise segment',
+      latencyMs: 2450,
+      tokenCostUsd: 0.11,
+      qualityScore: 84,
+      safetyScore: 95,
+      outcome: 'warning',
+      feedback: 'neutral',
+      createdAt: daysAgo(2),
+      notes: 'Output required manual override because account history was incomplete.',
+    },
+    {
+      id: 'trace-3',
+      systemId: 'ai-3',
+      title: 'Support reply draft for refund complaint',
+      latencyMs: 1600,
+      tokenCostUsd: 0.06,
+      qualityScore: 58,
+      safetyScore: 49,
+      outcome: 'critical',
+      feedback: 'negative',
+      createdAt: daysAgo(0),
+      notes: 'Unsafe draft tone and missing human review created a policy concern.',
     },
   ];
 
@@ -550,6 +635,8 @@ export function createSeedWorkspace(): WorkspaceData {
     auditEvents,
     snapshots,
     workflowRuns,
+    reminders,
+    aiTraces,
     dismissedAlertIds: [],
   };
 
@@ -732,8 +819,46 @@ export function normalizeWorkspaceData(input: unknown): WorkspaceData {
           status: run.status ?? 'planned',
           createdAt: run.createdAt ?? new Date().toISOString(),
           summary: run.summary ?? '',
+          steps: Array.isArray(run.steps) ? run.steps.filter((step): step is string => typeof step === 'string') : [],
+          completedSteps: typeof run.completedSteps === 'number' ? run.completedSteps : 0,
+          nextAction: run.nextAction ?? 'Review workflow',
+          relatedPages: Array.isArray(run.relatedPages) ? run.relatedPages.filter((page): page is WorkflowRun['relatedPages'][number] => typeof page === 'string') : ['playbooks'],
         }))
       : seed.workflowRuns,
+    reminders: Array.isArray(data.reminders)
+      ? data.reminders.map((reminder, index) => {
+          const dueAt = reminder.dueAt ?? new Date().toISOString();
+          const computedStatus = reminder.status === 'done'
+            ? 'done'
+            : new Date(dueAt).getTime() <= Date.now()
+              ? 'due'
+              : 'upcoming';
+          return {
+            id: reminder.id ?? `reminder-import-${index}`,
+            title: reminder.title ?? 'Imported reminder',
+            description: reminder.description ?? '',
+            owner: reminder.owner ?? 'Founder',
+            dueAt,
+            status: computedStatus,
+            linkedPage: reminder.linkedPage ?? 'dashboard',
+          };
+        })
+      : seed.reminders,
+    aiTraces: Array.isArray(data.aiTraces)
+      ? data.aiTraces.map((trace, index) => ({
+          id: trace.id ?? `trace-import-${index}`,
+          systemId: trace.systemId ?? 'unknown',
+          title: trace.title ?? 'Imported trace',
+          latencyMs: typeof trace.latencyMs === 'number' ? trace.latencyMs : 0,
+          tokenCostUsd: typeof trace.tokenCostUsd === 'number' ? trace.tokenCostUsd : 0,
+          qualityScore: typeof trace.qualityScore === 'number' ? trace.qualityScore : 0,
+          safetyScore: typeof trace.safetyScore === 'number' ? trace.safetyScore : 0,
+          outcome: trace.outcome ?? 'warning',
+          feedback: trace.feedback ?? 'neutral',
+          createdAt: trace.createdAt ?? new Date().toISOString(),
+          notes: trace.notes ?? '',
+        }))
+      : seed.aiTraces,
     dismissedAlertIds: Array.isArray(data.dismissedAlertIds)
       ? data.dismissedAlertIds.filter((id): id is string => typeof id === 'string')
       : seed.dismissedAlertIds,
@@ -796,8 +921,9 @@ export function buildBoardReportMarkdown(workspace: WorkspaceData) {
   const staleLeads = workspace.leads.filter((lead) => lead.stage !== 'won' && getDaysSince(lead.lastContacted) >= 7);
   const overdueTasks = workspace.tasks.filter((task) => task.status !== 'done' && isOverdue(task.dueDate));
   const unresolvedDecisions = workspace.decisionLogs.filter((decision) => decision.verificationStatus !== 'verified');
+  const workflowScore = calculateWorkflowScore(workspace);
 
-  return `# OneFounder Board Report\n\nGenerated: ${new Date().toLocaleString()}\n\n## Operating Summary\n- Revenue (30d): ${formatCurrency(monthlyIncome)}\n- Expenses (30d): ${formatCurrency(monthlyExpenses)}\n- Net movement (30d): ${formatCurrency(monthlyIncome - monthlyExpenses)}\n- Active automations: ${activeAutomations.length}\n- Automation hours saved/week: ${calculateAutomationHours(workspace.automations).toFixed(1)}\n- AI readiness score: ${trustScore}/100\n\n## Current Risks\n- Overdue tasks: ${overdueTasks.length}\n- Stale revenue follow-ups: ${staleLeads.length}\n- Unverified AI-influenced decisions: ${unresolvedDecisions.length}\n- High-risk AI systems: ${workspace.aiSystems.filter((system) => system.riskLevel === 'high' || system.riskLevel === 'critical').length}\n\n## Governance Actions\n${workspace.approvalRequests
+  return `# OneFounder Board Report\n\nGenerated: ${new Date().toLocaleString()}\n\n## Operating Summary\n- Revenue (30d): ${formatCurrency(monthlyIncome)}\n- Expenses (30d): ${formatCurrency(monthlyExpenses)}\n- Net movement (30d): ${formatCurrency(monthlyIncome - monthlyExpenses)}\n- Active automations: ${activeAutomations.length}\n- Automation hours saved/week: ${calculateAutomationHours(workspace.automations).toFixed(1)}\n- AI readiness score: ${trustScore}/100\n- Workflow score: ${workflowScore}/100\n\n## Current Risks\n- Overdue tasks: ${overdueTasks.length}\n- Stale revenue follow-ups: ${staleLeads.length}\n- Unverified AI-influenced decisions: ${unresolvedDecisions.length}\n- High-risk AI systems: ${workspace.aiSystems.filter((system) => system.riskLevel === 'high' || system.riskLevel === 'critical').length}\n- Due reminders: ${workspace.reminders.filter((reminder) => reminder.status === 'due').length}\n\n## Governance Actions\n${workspace.approvalRequests
     .filter((request) => request.status === 'pending')
     .map((request) => `- Pending approval: ${request.title} (${request.requestedBy})`)
     .join('\n') || '- No pending approvals'}\n\n## Recent Audit Events\n${workspace.auditEvents
@@ -864,6 +990,22 @@ export function getAutomationStatusTone(status: Automation['status']) {
   }[status];
 }
 
+export function getTraceTone(outcome: AITrace['outcome']) {
+  return {
+    healthy: 'text-emerald-300 bg-emerald-500/15',
+    warning: 'text-amber-300 bg-amber-500/15',
+    critical: 'text-rose-300 bg-rose-500/15',
+  }[outcome];
+}
+
+export function getReminderTone(status: Reminder['status']) {
+  return {
+    upcoming: 'text-cyan-300 bg-cyan-500/15',
+    due: 'text-amber-300 bg-amber-500/15',
+    done: 'text-emerald-300 bg-emerald-500/15',
+  }[status];
+}
+
 export function sortByNewest<T extends { date?: string; createdAt?: string }>(items: T[]) {
   return [...items].sort((left, right) => {
     const leftValue = new Date(left.date ?? left.createdAt ?? 0).getTime();
@@ -913,9 +1055,18 @@ export function calculateWorkflowScore(workspace: WorkspaceData) {
   const activeRuns = workspace.workflowRuns.filter((run) => run.status !== 'completed').length;
   const overdueTasks = workspace.tasks.filter((task) => task.status !== 'done' && isOverdue(task.dueDate)).length;
   const unresolvedApprovals = workspace.approvalRequests.filter((request) => request.status === 'pending').length;
+  const dueReminders = workspace.reminders.filter((reminder) => reminder.status === 'due').length;
   const automationHours = calculateAutomationHours(workspace.automations);
   const base = 60 + Math.min(20, Math.round(automationHours * 2)) + Math.min(10, activeRuns * 2);
-  return Math.max(20, Math.min(100, base - overdueTasks * 6 - unresolvedApprovals * 4));
+  return Math.max(20, Math.min(100, base - overdueTasks * 6 - unresolvedApprovals * 4 - dueReminders * 3));
+}
+
+export function calculateTraceHealth(traces: AITrace[]) {
+  if (!traces.length) return 0;
+  return Math.round(
+    traces.reduce((sum, trace) => sum + trace.qualityScore * 0.55 + trace.safetyScore * 0.45, 0) /
+      traces.length
+  );
 }
 
 export function getWorkspaceAlerts(workspace: WorkspaceData): WorkspaceAlert[] {
@@ -932,6 +1083,8 @@ export function getWorkspaceAlerts(workspace: WorkspaceData): WorkspaceAlert[] {
   const negativeNet = workspace.transactions
     .filter((transaction) => getDaysUntil(transaction.date) >= -30)
     .reduce((sum, transaction) => sum + (transaction.type === 'income' ? transaction.amount : -transaction.amount), 0);
+  const dueReminders = workspace.reminders.filter((reminder) => reminder.status === 'due');
+  const criticalTraces = workspace.aiTraces.filter((trace) => trace.outcome === 'critical');
 
   if (highRiskUngated.length) {
     alerts.push({
@@ -1002,6 +1155,30 @@ export function getWorkspaceAlerts(workspace: WorkspaceData): WorkspaceAlert[] {
       category: 'automation',
       actionLabel: 'Open Automations',
       page: 'automations',
+    });
+  }
+
+  if (dueReminders.length) {
+    alerts.push({
+      id: 'alert-due-reminders',
+      title: `${dueReminders.length} reminder(s) are due`,
+      description: 'The team has scheduled follow-through waiting in the workflow inbox.',
+      severity: 'info',
+      category: 'delivery',
+      actionLabel: 'Open Playbooks',
+      page: 'playbooks',
+    });
+  }
+
+  if (criticalTraces.length) {
+    alerts.push({
+      id: 'alert-critical-traces',
+      title: `${criticalTraces.length} AI trace(s) show critical quality or safety issues`,
+      description: 'Recent AI runs need immediate review in observability and trust workflows.',
+      severity: 'critical',
+      category: 'governance',
+      actionLabel: 'Open Trust Center',
+      page: 'trust',
     });
   }
 

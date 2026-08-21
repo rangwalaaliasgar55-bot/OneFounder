@@ -18,6 +18,7 @@ import {
   Workflow,
   X,
 } from 'lucide-react';
+import AuthScreen from './components/AuthScreen';
 import CommandPalette, { type CommandAction } from './components/CommandPalette';
 import Modal from './components/Modal';
 import AIChat from './pages/AIChat';
@@ -146,6 +147,7 @@ function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = usePersistentState('onefounder.authenticated', false);
   const [storedWorkspace, setStoredWorkspace] = usePersistentState<WorkspaceData>(
     'onefounder.workspace',
     createSeedWorkspace
@@ -543,6 +545,34 @@ function App() {
     setCurrentActorId(memberId);
   };
 
+  const signInAs = (memberId: string) => {
+    setCurrentActorId(memberId);
+    setIsAuthenticated(true);
+    const member = workspace.teamMembers.find((item) => item.id === memberId);
+    if (member) {
+      setStoredWorkspace((current) =>
+        appendAuditEvent(
+          normalizeWorkspaceData(current),
+          createAuditEvent(member.name, 'sign-in', 'Workspace session', `${member.name} signed into the workspace.`, 'info')
+        )
+      );
+    }
+  };
+
+  const signOut = () => {
+    setIsAuthenticated(false);
+    setNotificationsOpen(false);
+    setCommandPaletteOpen(false);
+    commitWorkspace(
+      (current) => current,
+      {
+        action: 'sign-out',
+        target: 'Workspace session',
+        summary: `${currentActor.name} signed out of the workspace.`,
+      }
+    );
+  };
+
   const createWorkspaceSnapshot = () => {
     if (!canRolePerform(currentActor.role, 'create-snapshot')) {
       window.alert(`${getRoleLabel(currentActor.role)} cannot create snapshots directly.`);
@@ -654,6 +684,10 @@ function App() {
                   ...workflowRunBase,
                   name: 'Weekly founder review',
                   summary: 'Weekly operating cadence across CRM, finance, trust, and execution.',
+                  steps: ['Review stale leads', 'Clear approvals', 'Audit trust posture', 'Export board report'],
+                  completedSteps: 0,
+                  nextAction: 'Review stale leads',
+                  relatedPages: ['crm', 'control', 'trust', 'playbooks'],
                 },
                 ...current.workflowRuns,
               ],
@@ -684,6 +718,18 @@ function App() {
                 },
                 ...current.tasks,
               ],
+              reminders: [
+                {
+                  id: makeId('reminder'),
+                  title: 'Finish weekly founder review',
+                  description: 'Complete the weekly cadence and export the board report.',
+                  owner: currentActor.name,
+                  dueAt: daysFromNow(2),
+                  status: 'upcoming',
+                  linkedPage: 'playbooks',
+                },
+                ...current.reminders,
+              ],
             };
           case 'revenue-recovery':
             return {
@@ -693,6 +739,10 @@ function App() {
                   ...workflowRunBase,
                   name: 'Revenue recovery sprint',
                   summary: 'Focus the week on stale opportunities and cash-moving actions.',
+                  steps: ['Re-open warm deals', 'Review objections', 'Update pricing path'],
+                  completedSteps: 0,
+                  nextAction: 'Re-open warm deals',
+                  relatedPages: ['crm', 'finance', 'playbooks'],
                 },
                 ...current.workflowRuns,
               ],
@@ -731,49 +781,66 @@ function App() {
                 },
                 ...current.decisionLogs,
               ],
+              reminders: [
+                {
+                  id: makeId('reminder'),
+                  title: 'Revenue sprint follow-up',
+                  description: 'Check recovery impact and confirm warm pipeline movement.',
+                  owner: currentActor.name,
+                  dueAt: daysFromNow(3),
+                  status: 'upcoming',
+                  linkedPage: 'crm',
+                },
+                ...current.reminders,
+              ],
             };
           case 'ai-incident':
-            return queueApprovalRequest(
-              {
-                ...current,
-                workflowRuns: [
-                  {
-                    ...workflowRunBase,
-                    name: 'AI incident response',
-                    summary: 'Runbook for trust, safety, or automation incidents involving AI systems.',
-                  },
-                  ...current.workflowRuns,
-                ],
-                tasks: [
-                  {
-                    id: makeId('task'),
-                    title: 'Freeze the affected automation or AI system scope',
-                    assignee: 'Security Lead',
-                    dueDate: daysFromNow(0),
-                    priority: 'high',
-                    status: 'todo',
-                  },
-                  {
-                    id: makeId('task'),
-                    title: 'Collect incident evidence and user-visible impact notes',
-                    assignee: currentActor.name,
-                    dueDate: daysFromNow(1),
-                    priority: 'high',
-                    status: 'todo',
-                  },
-                  ...current.tasks,
-                ],
-              },
-              {
-                title: 'Review AI incident response state changes',
-                type: 'workspace',
-                targetId: workflowRunBase.id,
-                approverRole: 'security',
-                reason: 'AI incident workflows should be visible to the security lead before wider remediation proceeds.',
-                requestedAction: 'restore-snapshot',
-                payload: JSON.stringify({ snapshotId: current.snapshots[0]?.id ?? '' }),
-              }
-            );
+            return {
+              ...current,
+              workflowRuns: [
+                {
+                  ...workflowRunBase,
+                  name: 'AI incident response',
+                  summary: 'Runbook for trust, safety, or automation incidents involving AI systems.',
+                  steps: ['Freeze risky scope', 'Collect evidence', 'Review trust controls', 'Approve remediation'],
+                  completedSteps: 0,
+                  nextAction: 'Freeze risky scope',
+                  relatedPages: ['trust', 'control', 'automations'],
+                },
+                ...current.workflowRuns,
+              ],
+              tasks: [
+                {
+                  id: makeId('task'),
+                  title: 'Freeze the affected automation or AI system scope',
+                  assignee: 'Security Lead',
+                  dueDate: daysFromNow(0),
+                  priority: 'high',
+                  status: 'todo',
+                },
+                {
+                  id: makeId('task'),
+                  title: 'Collect incident evidence and user-visible impact notes',
+                  assignee: currentActor.name,
+                  dueDate: daysFromNow(1),
+                  priority: 'high',
+                  status: 'todo',
+                },
+                ...current.tasks,
+              ],
+              reminders: [
+                {
+                  id: makeId('reminder'),
+                  title: 'AI incident follow-up review',
+                  description: 'Confirm remediation and close the incident with a decision log update.',
+                  owner: 'Security Lead',
+                  dueAt: daysFromNow(1),
+                  status: 'due',
+                  linkedPage: 'trust',
+                },
+                ...current.reminders,
+              ],
+            };
           case 'launch-readiness':
             return {
               ...current,
@@ -782,6 +849,10 @@ function App() {
                   ...workflowRunBase,
                   name: 'Launch readiness check',
                   summary: 'Pre-launch checklist spanning telemetry, support, trust, and execution.',
+                  steps: ['Verify telemetry', 'Review support path', 'Check trust controls'],
+                  completedSteps: 0,
+                  nextAction: 'Verify telemetry',
+                  relatedPages: ['projects', 'trust', 'playbooks'],
                 },
                 ...current.workflowRuns,
               ],
@@ -804,6 +875,18 @@ function App() {
                 },
                 ...current.tasks,
               ],
+              reminders: [
+                {
+                  id: makeId('reminder'),
+                  title: 'Launch readiness sign-off',
+                  description: 'Confirm launch is ready across monitoring, support, and AI trust controls.',
+                  owner: 'Ops Lead',
+                  dueAt: daysFromNow(1),
+                  status: 'due',
+                  linkedPage: 'projects',
+                },
+                ...current.reminders,
+              ],
             };
           case 'shadow-ai-cleanup':
             return {
@@ -813,6 +896,10 @@ function App() {
                   ...workflowRunBase,
                   name: 'Shadow AI cleanup sprint',
                   summary: 'Find risky usage, inventory workflows, and migrate work into approved channels.',
+                  steps: ['Inventory tools', 'Map risky flows', 'Publish approved alternatives'],
+                  completedSteps: 0,
+                  nextAction: 'Inventory tools',
+                  relatedPages: ['trust', 'control', 'playbooks'],
                 },
                 ...current.workflowRuns,
               ],
@@ -851,6 +938,18 @@ function App() {
                 },
                 ...current.decisionLogs,
               ],
+              reminders: [
+                {
+                  id: makeId('reminder'),
+                  title: 'Shadow AI cleanup checkpoint',
+                  description: 'Review inventory and agree on approved tools and workflows.',
+                  owner: 'Security Lead',
+                  dueAt: daysFromNow(4),
+                  status: 'upcoming',
+                  linkedPage: 'control',
+                },
+                ...current.reminders,
+              ],
             };
           default:
             return current;
@@ -861,6 +960,49 @@ function App() {
         target: templateId,
         summary: `Launched workflow template: ${templateId}`,
         severity: 'warning',
+      }
+    );
+  };
+
+  const advanceWorkflowRun = (runId: string) => {
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        workflowRuns: current.workflowRuns.map((run) => {
+          if (run.id !== runId) {
+            return run;
+          }
+
+          const nextCompleted = Math.min(run.completedSteps + 1, run.steps.length);
+          return {
+            ...run,
+            completedSteps: nextCompleted,
+            status: nextCompleted >= run.steps.length ? 'completed' : run.status,
+            nextAction: run.steps[nextCompleted] ?? 'Run complete',
+          };
+        }),
+      }),
+      {
+        action: 'workflow-advance',
+        target: runId,
+        summary: 'Advanced workflow run progress.',
+        severity: 'info',
+      }
+    );
+  };
+
+  const completeReminder = (reminderId: string) => {
+    commitWorkspace(
+      (current) => ({
+        ...current,
+        reminders: current.reminders.map((reminder) =>
+          reminder.id === reminderId ? { ...reminder, status: 'done' } : reminder
+        ),
+      }),
+      {
+        action: 'reminder-complete',
+        target: reminderId,
+        summary: 'Marked reminder as done.',
       }
     );
   };
@@ -1157,6 +1299,10 @@ function App() {
     })),
   ];
 
+  if (!isAuthenticated) {
+    return <AuthScreen members={workspace.teamMembers} onSignIn={signInAs} />;
+  }
+
   const renderPage = () => {
     switch (activePage) {
       case 'dashboard':
@@ -1215,6 +1361,8 @@ function App() {
             onLaunchTemplate={launchWorkflowTemplate}
             onDismissAlert={dismissAlert}
             onNavigate={navigateTo}
+            onAdvanceWorkflow={advanceWorkflowRun}
+            onCompleteReminder={completeReminder}
           />
         );
       default:
@@ -1403,6 +1551,13 @@ function App() {
                     {visibleAlerts.length}
                   </span>
                 ) : null}
+              </button>
+              <button
+                type="button"
+                onClick={signOut}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 transition-colors hover:border-white/20 hover:text-white"
+              >
+                Sign out
               </button>
             </div>
           </div>

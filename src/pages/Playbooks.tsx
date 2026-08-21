@@ -10,7 +10,12 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
-import { calculateWorkflowScore, formatShortDate } from '../lib/workspace';
+import {
+  calculateWorkflowScore,
+  formatShortDate,
+  getHoursUntil,
+  getReminderTone,
+} from '../lib/workspace';
 import type { NavPage, WorkspaceAlert, WorkspaceData } from '../types';
 
 interface PlaybooksProps {
@@ -19,6 +24,8 @@ interface PlaybooksProps {
   onLaunchTemplate: (templateId: string) => void;
   onDismissAlert: (alertId: string) => void;
   onNavigate: (page: NavPage) => void;
+  onAdvanceWorkflow: (runId: string) => void;
+  onCompleteReminder: (reminderId: string) => void;
 }
 
 const templates = [
@@ -75,9 +82,14 @@ export default function Playbooks({
   onLaunchTemplate,
   onDismissAlert,
   onNavigate,
+  onAdvanceWorkflow,
+  onCompleteReminder,
 }: PlaybooksProps) {
   const workflowScore = calculateWorkflowScore(workspace);
   const activeRuns = workspace.workflowRuns.filter((run) => run.status !== 'completed');
+  const sortedReminders = [...workspace.reminders].sort(
+    (left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime()
+  );
 
   return (
     <div className="space-y-6">
@@ -88,7 +100,7 @@ export default function Playbooks({
             <h1 className="mt-2 text-3xl font-semibold text-white">Turn repeatable AI-era work into guided operational systems</h1>
             <p className="mt-3 max-w-3xl text-slate-400">
               Great teams do not just use AI faster. They turn recurring work into clear playbooks with owners,
-              review gates, incident paths, and outcome-focused templates that anyone can launch in seconds.
+              review gates, incident paths, reminder loops, and outcome-focused templates that anyone can launch in seconds.
             </p>
           </div>
           <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-sm text-slate-200">
@@ -120,9 +132,9 @@ export default function Playbooks({
           tone="amber"
         />
         <StatCard
-          title="Automation leverage"
-          value={`${workspace.automations.filter((automation) => automation.status === 'active').length}`}
-          subtitle="Active flows available for reuse"
+          title="Due reminders"
+          value={String(workspace.reminders.filter((reminder) => reminder.status === 'due').length)}
+          subtitle="Scheduled follow-through waiting"
           icon={<Sparkles className="h-5 w-5 text-violet-300" />}
           tone="violet"
         />
@@ -217,6 +229,113 @@ export default function Playbooks({
                 No active alerts right now. This is a good time to run a weekly review or launch-readiness playbook.
               </div>
             )}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+          <h2 className="text-2xl font-semibold text-white">Active runbooks</h2>
+          <p className="mt-1 text-sm text-slate-400">Advance one step at a time so execution stays structured and visible.</p>
+          <div className="mt-6 space-y-4">
+            {activeRuns.length ? (
+              activeRuns.map((run) => {
+                const progress = run.steps.length ? Math.round((run.completedSteps / run.steps.length) * 100) : 0;
+                const nextStep = run.steps[run.completedSteps] ?? 'Run complete';
+                return (
+                  <div key={run.id} className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <p className="text-lg font-semibold text-white">{run.name}</p>
+                        <p className="mt-2 text-sm leading-6 text-slate-400">{run.summary}</p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {run.relatedPages.map((page) => (
+                            <button
+                              key={page}
+                              type="button"
+                              onClick={() => onNavigate(page)}
+                              className="rounded-full border border-white/10 bg-slate-950/40 px-3 py-1 text-xs text-slate-300 transition-colors hover:border-cyan-500/30 hover:text-white"
+                            >
+                              {page}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-right">
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Progress</p>
+                        <p className="mt-1 text-2xl font-semibold text-white">{progress}%</p>
+                      </div>
+                    </div>
+                    <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500" style={{ width: `${progress}%` }} />
+                    </div>
+                    <div className="mt-4 grid gap-3 xl:grid-cols-[1fr_auto] xl:items-center">
+                      <div>
+                        <p className="text-sm font-medium text-white">Next step</p>
+                        <p className="mt-1 text-sm text-slate-400">{nextStep}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onAdvanceWorkflow(run.id)}
+                        className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
+                      >
+                        Advance step
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="rounded-3xl border border-dashed border-white/10 bg-white/[0.03] p-5 text-sm text-slate-400">
+                No active workflows yet. Launch one above to turn repeated work into a guided system.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+          <h2 className="text-2xl font-semibold text-white">Reminders</h2>
+          <p className="mt-1 text-sm text-slate-400">Scheduled follow-through keeps AI output tied to real execution.</p>
+          <div className="mt-6 space-y-3">
+            {sortedReminders.map((reminder) => (
+              <div key={reminder.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${getReminderTone(reminder.status)}`}>
+                        {reminder.status}
+                      </span>
+                      <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                        {reminder.owner}
+                      </span>
+                    </div>
+                    <p className="mt-3 font-medium text-white">{reminder.title}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-400">{reminder.description}</p>
+                    <p className="mt-2 text-xs text-slate-500">
+                      Due {formatShortDate(reminder.dueAt)} · {getHoursUntil(reminder.dueAt)}h from now
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate(reminder.linkedPage)}
+                    className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-300 transition-colors hover:bg-cyan-500/20"
+                  >
+                    Open related page
+                  </button>
+                  {reminder.status !== 'done' ? (
+                    <button
+                      type="button"
+                      onClick={() => onCompleteReminder(reminder.id)}
+                      className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300 transition-colors hover:border-white/20 hover:text-white"
+                    >
+                      Mark done
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
